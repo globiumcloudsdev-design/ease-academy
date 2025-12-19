@@ -1,24 +1,13 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
-import { verifyToken } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
+import { ROLES } from '@/constants/roles';
 import User from '@/backend/models/User';
 
-export async function POST(request, { params }) {
+export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
-
-    if (!decoded || decoded.role !== 'super_admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = params;
+    const { params } = context || {};
+    const id = params?.id;
 
     await connectDB();
 
@@ -34,7 +23,7 @@ export async function POST(request, { params }) {
     parent.approved = true;
     parent.isActive = true;
     parent.status = 'approved';
-    parent.approvedBy = decoded.userId;
+    parent.approvedBy = user.userId;
     parent.approvedAt = new Date();
     await parent.save();
 
@@ -54,4 +43,4 @@ export async function POST(request, { params }) {
     console.error('Error approving parent:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole(ROLES.SUPER_ADMIN)]);

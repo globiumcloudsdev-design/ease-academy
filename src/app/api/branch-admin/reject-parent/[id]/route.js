@@ -1,25 +1,20 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/database';
-import { verifyToken } from '@/lib/auth';
+import connectDB from '@/lib/database';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
+import { ROLES } from '@/constants/roles';
 import User from '@/backend/models/User';
-import { sendEmail } from '@/lib/email';
 
-export async function POST(request, { params }) {
+export const POST = withAuth(async (request, user) => {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const params = (request && request.params) || undefined;
+    // In withAuth handler, context is third arg; but some Next handlers pass params differently. Use context later if needed.
+    // Many routes call withAuth(handler) where handler receives (request, authUser, userDoc, context).
+    // However Next passes dynamic route params via the context arg, available as the 4th param. To be safe, check request by trying to read json body first and handle context fallback in middleware.
 
-    const token = authHeader.split(' ')[1];
-    const decoded = verifyToken(token);
+    // Context fallback will be handled by reading the body and expecting id to be present in params from context
+    const contextParams = (arguments && arguments[2] && arguments[2].params) || (arguments && arguments[3] && arguments[3].params);
+    const id = contextParams?.id || (params && params.id);
 
-    if (!decoded || decoded.role !== 'branch-admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = params;
     const { reason } = await request.json();
 
     if (!reason || !reason.trim()) {
@@ -40,7 +35,7 @@ export async function POST(request, { params }) {
     }
 
     // Check if parent belongs to the branch-admin's branch
-    if (parent.branchId?.toString() !== decoded.branchId?.toString()) {
+    if (parent.branchId?.toString() !== user.branchId?.toString()) {
       return NextResponse.json({ error: 'Unauthorized to reject this parent' }, { status: 403 });
     }
 
@@ -48,7 +43,7 @@ export async function POST(request, { params }) {
     parent.status = 'rejected';
     parent.rejectionReason = reason;
     parent.rejectedAt = new Date();
-    parent.rejectedBy = decoded.userId;
+    parent.rejectedBy = user.userId;
     await parent.save();
 
     // Email sending removed as per user request - only backend processing
@@ -69,4 +64,4 @@ export async function POST(request, { params }) {
     console.error('Error rejecting parent:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole(ROLES.BRANCH_ADMIN)]);
