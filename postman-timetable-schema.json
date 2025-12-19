@@ -1,0 +1,130 @@
+{
+  "info": {
+    "name": "Timetable API",
+    "description": "Postman collection for Timetable CRUD and query endpoints (Super Admin)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get All Timetables",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables?branchId=&classId=&academicYear=2024-2025&page=1&limit=50",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables"],
+          "query": [
+            { "key": "branchId", "value": "" },
+            { "key": "classId", "value": "" },
+            { "key": "academicYear", "value": "2024-2025" },
+            { "key": "page", "value": "1" },
+            { "key": "limit", "value": "50" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Timetable",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Timetable\",\n  \"academicYear\": \"2024-2025\",\n  \"branchId\": \"<branchId>\",\n  \"classId\": \"<classId>\",\n  \"section\": \"A\",\n  \"effectiveFrom\": \"2024-08-01\",\n  \"effectiveTo\": \"2025-05-31\",\n  \"status\": \"active\",\n  \"periods\": [\n    {\n      \"periodNumber\": 1,\n      \"day\": \"Monday\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"08:40\",\n      \"subjectId\": \"<subjectId>\",\n      \"teacherId\": \"<teacherId>\",\n      \"periodType\": \"lecture\",\n      \"roomNumber\": \"101\",\n      \"notes\": \"Maths\"\n    }\n  ],\n  \"timeSettings\": {\n    \"periodDuration\": 40,\n    \"breakDuration\": 10,\n    \"lunchDuration\": 30,\n    \"schoolStartTime\": \"08:00\",\n    \"schoolEndTime\": \"14:00\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables"]
+        }
+      }
+    },
+    {
+      "name": "Get Timetable By ID",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables", ":id"]
+        }
+      }
+    },
+    {
+      "name": "Update Timetable",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{ /* Same as create body, with updated fields */ }"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables", ":id"]
+        }
+      }
+    },
+    {
+      "name": "Delete Timetable",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables/:id",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables", ":id"]
+        }
+      }
+    },
+    {
+      "name": "Get Class Timetable",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables/class/:classId?academicYear=2024-2025",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables", "class", ":classId"],
+          "query": [
+            { "key": "academicYear", "value": "2024-2025" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Teacher Timetable",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables/teacher/:teacherId?academicYear=2024-2025",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables", "teacher", ":teacherId"],
+          "query": [
+            { "key": "academicYear", "value": "2024-2025" }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "info": {
+    "name": "Timetable Create Example (Multiple Periods)",
+    "description": "Sample request for creating a timetable with 3-4 periods, including branchId, classId, and subject/teacher references.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Timetable (3-4 Periods)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" },
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Monday Timetable\",\n  \"academicYear\": \"2024-2025\",\n  \"branchId\": \"65a1b2c3d4e5f6a7b8c9d0e1\",\n  \"classId\": \"65b1c2d3e4f5a6b7c8d9e0f1\",\n  \"section\": \"A\",\n  \"effectiveFrom\": \"2024-08-01\",\n  \"effectiveTo\": \"2025-05-31\",\n  \"status\": \"active\",\n  \"periods\": [\n    {\n      \"periodNumber\": 1,\n      \"day\": \"Monday\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"08:40\",\n      \"subjectId\": \"65c1d2e3f4a5b6c7d8e9f0a1\",\n      \"teacherId\": \"65d1e2f3a4b5c6d7e8f9a0b1\",\n      \"periodType\": \"lecture\",\n      \"roomNumber\": \"101\",\n      \"notes\": \"Maths\"\n    },\n    {\n      \"periodNumber\": 2,\n      \"day\": \"Monday\",\n      \"startTime\": \"08:40\",\n      \"endTime\": \"09:20\",\n      \"subjectId\": \"65c1d2e3f4a5b6c7d8e9f0a2\",\n      \"teacherId\": \"65d1e2f3a4b5c6d7e8f9a0b2\",\n      \"periodType\": \"lecture\",\n      \"roomNumber\": \"102\",\n      \"notes\": \"English\"\n    },\n    {\n      \"periodNumber\": 3,\n      \"day\": \"Monday\",\n      \"startTime\": \"09:20\",\n      \"endTime\": \"10:00\",\n      \"subjectId\": \"65c1d2e3f4a5b6c7d8e9f0a3\",\n      \"teacherId\": \"65d1e2f3a4b5c6d7e8f9a0b3\",\n      \"periodType\": \"lecture\",\n      \"roomNumber\": \"103\",\n      \"notes\": \"Science\"\n    },\n    {\n      \"periodNumber\": 4,\n      \"day\": \"Monday\",\n      \"startTime\": \"10:00\",\n      \"endTime\": \"10:40\",\n      \"subjectId\": \"65c1d2e3f4a5b6c7d8e9f0a4\",\n      \"teacherId\": \"65d1e2f3a4b5c6d7e8f9a0b4\",\n      \"periodType\": \"lecture\",\n      \"roomNumber\": \"104\",\n      \"notes\": \"Urdu\"\n    }\n  ],\n  \"timeSettings\": {\n    \"periodDuration\": 40,\n    \"breakDuration\": 10,\n    \"lunchDuration\": 30,\n    \"schoolStartTime\": \"08:00\",\n    \"schoolEndTime\": \"14:00\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/super-admin/timetables",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "super-admin", "timetables"]
+        }
+      }
+    }
+  ]
+}
