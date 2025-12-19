@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeTemplate from '@/backend/models/FeeTemplate';
+import User from '@/backend/models/User';
+import Class from '@/backend/models/Class';
 
 // GET - Get single fee template
 async function getFeeTemplate(request, authenticatedUser, userDoc, { params }) {

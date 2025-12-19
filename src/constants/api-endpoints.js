@@ -120,6 +120,24 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/classes/:id',
     },
 
+    // Fee Templates
+    FEE_TEMPLATES: {
+      CREATE: '/api/super-admin/fee-templates',
+      LIST: '/api/super-admin/fee-templates',
+      GET: '/api/super-admin/fee-templates/:id',
+      UPDATE: '/api/super-admin/fee-templates/:id',
+      DELETE: '/api/super-admin/fee-templates/:id',
+    },
+
+    // Fee Vouchers
+    FEE_VOUCHERS: {
+      CREATE: '/api/super-admin/fee-vouchers',
+      LIST: '/api/super-admin/fee-vouchers',
+      GET: '/api/super-admin/fee-vouchers/:id',
+      UPDATE: '/api/super-admin/fee-vouchers/:id',
+      DELETE: '/api/super-admin/fee-vouchers/:id',
+    },
+
     // Subjects Management
     SUBJECTS: {
       CREATE: '/api/super-admin/subjects',

@@ -16,12 +16,21 @@ import {
 import { toast } from 'sonner';
 
 import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import Input from '@/components/ui/input';
 import BranchSelect from '@/components/ui/branch-select';
+import Dropdown from '@/components/ui/dropdown';
+import NestedDropdown from '@/components/ui/dropdown_fixed';
+import Tabs, { TabPanel } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import Modal from '@/components/ui/modal';
+import FullPageLoader from '@/components/ui/full-page-loader';
+import ButtonLoader from '@/components/ui/button-loader';
 
 export default function FeeTemplatesPage() {
   const [templates, setTemplates] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [classesList, setClassesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -45,6 +54,43 @@ export default function FeeTemplatesPage() {
     { value: 'miscellaneous', label: 'Miscellaneous', color: 'gray' },
   ];
 
+  const STATUS_OPTIONS = [
+    { value: '', label: 'All Status' },
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+    { value: 'archived', label: 'Archived' },
+  ];
+
+  const FREQUENCY_OPTIONS = [
+    { value: 'one-time', label: 'One Time' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'quarterly', label: 'Quarterly' },
+    { value: 'half-yearly', label: 'Half Yearly' },
+    { value: 'annually', label: 'Annually' },
+  ];
+
+  const APPLICABLE_OPTIONS = [
+    { value: 'all', label: 'All Students' },
+    { value: 'class-specific', label: 'Class Specific' },
+    { value: 'student-specific', label: 'Student Specific' },
+  ];
+
+  const MONTH_OPTIONS = [
+    { value: '', label: 'Any Month' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' },
+  ];
+
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -63,6 +109,7 @@ export default function FeeTemplatesPage() {
     status: 'active',
     branchId: '',
   });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -79,6 +126,30 @@ export default function FeeTemplatesPage() {
     }
   };
 
+  // load classes for selected branch in the form
+  const loadClasses = async (branchId) => {
+    if (!branchId) {
+      setClassesList([]);
+      return;
+    }
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { branchId, limit: 200 });
+      if (res && res.success) setClassesList(res.data || []);
+    } catch (err) {
+      console.error('Error loading classes for branch:', err);
+      setClassesList([]);
+    }
+  };
+
+  useEffect(() => {
+    // whenever the branch in the form changes, reload classes for that branch
+    if (formData.branchId) {
+      loadClasses(formData.branchId);
+    } else {
+      setClassesList([]);
+    }
+  }, [formData.branchId]);
+
   const loadTemplates = async () => {
     try {
       const params = {};
@@ -87,7 +158,7 @@ export default function FeeTemplatesPage() {
       if (statusFilter) params.status = statusFilter;
       if (branchFilter) params.branchId = branchFilter;
 
-      const res = await apiClient.get('/api/super-admin/fee-templates', params);
+      const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.FEE_TEMPLATES.LIST, params);
 
       if (res && res.success) {
         setTemplates(res.data);
@@ -107,10 +178,12 @@ export default function FeeTemplatesPage() {
 
   const loadBranches = async () => {
     try {
-      const res = await apiClient.get('/api/super-admin/branches', { limit: 100 });
+      const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST, { limit: 100 });
       if (res && res.success) {
-        setBranches(res.data);
+        setBranches(res.data.branches);
       }
+      console.log('Branches Loaded', res);
+      
     } catch (error) {
       console.error('Error loading branches:', error);
       const msg = error?.message || 'Failed to load branches';
@@ -170,7 +243,7 @@ export default function FeeTemplatesPage() {
       amount: (template.amount || 0).toString(),
       frequency: template.frequency,
       applicableTo: applicableToValue || 'all',
-      classes: template.classes || [],
+      classes: (template.classes || []).map(c => (c && c._id) ? c._id : c),
       dueDate: template.dueDate || { day: 1, month: 1 },
       validFrom: validFromValue,
       validTo: validToValue,
@@ -198,14 +271,16 @@ export default function FeeTemplatesPage() {
     }
 
     try {
+
       const url = editingTemplate
-        ? `/api/super-admin/fee-templates/${editingTemplate._id}`
-        : '/api/super-admin/fee-templates';
+        ? API_ENDPOINTS.SUPER_ADMIN.FEE_TEMPLATES.UPDATE.replace(':id', editingTemplate._id)
+        : API_ENDPOINTS.SUPER_ADMIN.FEE_TEMPLATES.CREATE;
 
       const method = editingTemplate ? 'PUT' : 'POST';
 
       const body = {
         ...formData,
+        classes: (formData.classes || []).map(c => (c && c._id) ? c._id : c),
         amount: parseFloat(formData.amount),
         lateFee: {
           ...formData.lateFee,
@@ -229,10 +304,11 @@ export default function FeeTemplatesPage() {
 
       let response;
       try {
+        setSubmitting(true);
         if (editingTemplate) {
-          response = await apiClient.put(`/api/super-admin/fee-templates/${editingTemplate._id}`, body);
+          response = await apiClient.put(url, body);
         } else {
-          response = await apiClient.post(`/api/super-admin/fee-templates`, body);
+          response = await apiClient.post(url, body);
         }
 
         if (response && response.success) {
@@ -249,6 +325,8 @@ export default function FeeTemplatesPage() {
         } else {
           toast.error(err?.message || 'Failed to save template');
         }
+      } finally {
+        setSubmitting(false);
       }
     } catch (error) {
       console.error('Error in handleFormSubmit (outer):', error);
@@ -260,7 +338,7 @@ export default function FeeTemplatesPage() {
     if (!templateToDelete) return;
 
     try {
-      const response = await apiClient.delete(`/api/super-admin/fee-templates/${templateToDelete._id}`);
+      const response = await apiClient.delete(API_ENDPOINTS.SUPER_ADMIN.FEE_TEMPLATES.DELETE.replace(':id', templateToDelete._id));
       if (response && response.success) {
         toast.success('Fee template archived successfully');
         setShowDeleteModal(false);
@@ -296,13 +374,7 @@ export default function FeeTemplatesPage() {
     count: templates.filter(t => t.category === cat.value).length,
   }));
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (loading) return <FullPageLoader message="Loading fee templates..." />;
 
   return (
     <div className="space-y-6">
@@ -312,13 +384,10 @@ export default function FeeTemplatesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Fee Templates</h1>
           <p className="text-sm text-gray-600 mt-1">Manage fee structures and templates</p>
         </div>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
+        <Button onClick={handleAddNew}>
           <Plus className="w-4 h-4" />
           Create Template
-        </button>
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -384,27 +453,19 @@ export default function FeeTemplatesPage() {
             />
           </div> 
 
-          <select
+          <Dropdown
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Categories</option>
-            {feeCategories.map(cat => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
-            ))}
-          </select>
+            options={[{ value: '', label: 'All Categories' }, ...feeCategories.map(c => ({ value: c.value, label: c.label }))]}
+            placeholder="All Categories"
+          />
 
-          <select
+          <Dropdown
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="archived">Archived</option>
-          </select>
+            options={STATUS_OPTIONS}
+            placeholder="All Status"
+          />
 
           <BranchSelect
             value={branchFilter}
@@ -497,23 +558,21 @@ export default function FeeTemplatesPage() {
                   )}
 
                   <div className="pt-3 border-t border-gray-200 flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-                    >
+                    <Button onClick={() => handleEdit(template)} className="flex-1" variant="outline">
                       <Edit className="w-4 h-4" />
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => {
                         setTemplateToDelete(template);
                         setShowDeleteModal(true);
                       }}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                      className="flex-1"
+                      variant="destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                       Archive
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -523,74 +582,43 @@ export default function FeeTemplatesPage() {
       </div>
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {editingTemplate ? 'Edit Fee Template' : 'Create Fee Template'}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editingTemplate ? 'Edit Fee Template' : 'Create Fee Template'}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" type="button" onClick={() => setShowModal(false)}>Cancel</Button>
+            <Button type="submit" form="template-form" disabled={submitting}>
+              {submitting ? <ButtonLoader /> : (editingTemplate ? 'Update Template' : 'Create Template')}
+            </Button>
+          </div>
+        }
+      >
+        {/* Tabs */}
+        <Tabs
+          tabs={[
+            { id: 'basic', label: 'Basic Info' },
+            { id: 'details', label: 'Details' },
+            { id: 'advanced', label: 'Advanced' },
+          ]}
+          activeTab={activeTab}
+          onChange={setActiveTab}
+          className="mb-4"
+        />
 
-              {/* Tabs */}
-              <div className="flex gap-4 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('basic')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'basic'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Basic Info
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('details')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'details'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Details
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('advanced')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    activeTab === 'advanced'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  Advanced
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+        <form id="template-form" onSubmit={handleFormSubmit} className="space-y-4">
               {/* Basic Info Tab */}
-              {activeTab === 'basic' && (
-                <>
+              <TabPanel value="basic" activeTab={activeTab}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Template Name <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="e.g., Monthly Tuition Fee - Grade 1"
                       />
                     </div>
@@ -599,12 +627,11 @@ export default function FeeTemplatesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Template Code <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={formData.code}
                         onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                         disabled={editingTemplate}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                         placeholder="e.g., TF-G1-M"
                       />
                     </div>
@@ -615,26 +642,22 @@ export default function FeeTemplatesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Category <span className="text-red-500">*</span>
                       </label>
-                      <select
+                      <Dropdown
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        {feeCategories.map(cat => (
-                          <option key={cat.value} value={cat.value}>{cat.label}</option>
-                        ))}
-                      </select>
+                        options={feeCategories.map(c => ({ value: c.value, label: c.label }))}
+                        placeholder="Select category"
+                      />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Amount (Rs.) <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <Input
                         type="number"
                         value={formData.amount}
                         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="5000"
                         min="0"
                         step="0.01"
@@ -660,14 +683,12 @@ export default function FeeTemplatesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Status
                       </label>
-                      <select
+                      <Dropdown
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
+                        options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]}
+                        placeholder="Status"
+                      />
                     </div>
 
                     <div>
@@ -683,44 +704,51 @@ export default function FeeTemplatesPage() {
                       />
                     </div>
                   </div>
-                </>
-              )}
+              </TabPanel>
 
               {/* Details Tab */}
-              {activeTab === 'details' && (
-                <>
+              <TabPanel value="details" activeTab={activeTab}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Frequency
                       </label>
-                      <select
+                      <Dropdown
                         value={formData.frequency}
                         onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="one-time">One Time</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="half-yearly">Half Yearly</option>
-                        <option value="annually">Annually</option>
-                      </select>
+                        options={FREQUENCY_OPTIONS}
+                        placeholder="Frequency"
+                      />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Applicable To
                       </label>
-                      <select
+                      <Dropdown
                         value={formData.applicableTo}
                         onChange={(e) => setFormData({ ...formData, applicableTo: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="all">All Students</option>
-                        <option value="class-specific">Class Specific</option>
-                        <option value="student-specific">Student Specific</option>
-                      </select>
+                        options={APPLICABLE_OPTIONS}
+                        placeholder="Applicable To"
+                      />
                     </div>
+
+                    {formData.applicableTo === 'class-specific' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Classes</label>
+                        <NestedDropdown
+                          name="classes"
+                          options={(classesList || []).map(c => ({ label: c.name, value: c._id }))}
+                          value={formData.classes}
+                          placeholder="Select classes"
+                          multiple={true}
+                          onChange={(e) => {
+                            const v = e?.target?.value;
+                            setFormData({ ...formData, classes: Array.isArray(v) ? v : (v ? [v] : []) });
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -745,28 +773,15 @@ export default function FeeTemplatesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Due Month (Optional)
                       </label>
-                      <select
-                        value={formData.dueDate.month || ''}
+                      <Dropdown
+                        value={formData.dueDate.month ? String(formData.dueDate.month) : ''}
                         onChange={(e) => setFormData({
                           ...formData,
                           dueDate: { ...formData.dueDate, month: parseInt(e.target.value) || undefined }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Any Month</option>
-                          <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                      </select>
+                        options={MONTH_OPTIONS}
+                        placeholder="Any Month"
+                      />
                     </div>
                   </div>
 
@@ -822,12 +837,10 @@ export default function FeeTemplatesPage() {
                       ))}
                     </div>
                   </div>
-                </>
-              )}
+              </TabPanel>
 
               {/* Advanced Tab */}
-              {activeTab === 'advanced' && (
-                <>
+              <TabPanel value="advanced" activeTab={activeTab}>
                   {/* Late Fee */}
                   <div className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-4">
@@ -850,17 +863,15 @@ export default function FeeTemplatesPage() {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                          <select
+                          <Dropdown
                             value={formData.lateFee.type}
                             onChange={(e) => setFormData({
                               ...formData,
                               lateFee: { ...formData.lateFee, type: e.target.value }
                             })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
-                            <option value="fixed">Fixed Amount</option>
-                            <option value="percentage">Percentage</option>
-                          </select>
+                            options={[{ value: 'fixed', label: 'Fixed Amount' }, { value: 'percentage', label: 'Percentage' }]}
+                            placeholder="Type"
+                          />
                         </div>
 
                         <div>
@@ -920,17 +931,15 @@ export default function FeeTemplatesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                            <select
+                            <Dropdown
                               value={formData.discount.type}
                               onChange={(e) => setFormData({
                                 ...formData,
                                 discount: { ...formData.discount, type: e.target.value }
                               })}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="fixed">Fixed Amount</option>
-                              <option value="percentage">Percentage</option>
-                            </select>
+                              options={[{ value: 'fixed', label: 'Fixed Amount' }, { value: 'percentage', label: 'Percentage' }]}
+                              placeholder="Type"
+                            />
                           </div>
 
                           <div>
@@ -969,29 +978,10 @@ export default function FeeTemplatesPage() {
                       </div>
                     )}
                   </div>
-                </>
-              )}
+                </TabPanel>
 
-              {/* Footer */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingTemplate ? 'Update Template' : 'Create Template'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </form>
+      </Modal>
 
       {/* Delete Modal */}
       {showDeleteModal && (
@@ -1002,18 +992,8 @@ export default function FeeTemplatesPage() {
               Are you sure you want to archive "{templateToDelete?.name}"? This will move it to archived status.
             </p>
             <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Archive
-              </button>
+              <Button variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete}>Archive</Button>
             </div>
           </div>
         </div>

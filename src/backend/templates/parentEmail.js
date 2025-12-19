@@ -123,6 +123,125 @@ export const getParentEmailTemplate = (type, parent, schoolName = 'Ease Academy'
     `;
   }
 
+  // Fee Voucher Generated for Child
+  if (type === 'CHILD_FEE_VOUCHER') {
+    const { childName, voucherNumber, amount, dueDate, month, year, category, discountAmount, lateFeeAmount, totalAmount, className } = parent;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { ${baseStyles} }
+          .container { ${containerStyles} }
+          .header { ${headerStyles} }
+          .content { ${contentStyles} }
+          .details { ${detailsStyles} }
+          .footer { ${footerStyles} }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin:0; font-size:26px;">💳 Fee Voucher - ${schoolName}</h2>
+            <p style="margin:8px 0 0 0; font-size:14px;">Payment Due Notification</p>
+          </div>
+          <div class="content">
+            <p style="margin-top:0; font-size:16px; font-weight:500;">Dear ${parent.firstName || parent.fullName || 'Parent/Guardian'},</p>
+            
+            <div style="background:#e3f2fd; padding:12px 16px; border-radius:4px; margin:14px 0; border-left:4px solid #2196f3;">
+              <strong style="color:#1565c0;">A fee voucher has been generated for your child.</strong>
+            </div>
+
+            <div class="details">
+              <h4 style="margin-top:0; color:#2b7a78;">Student Details</h4>
+              <table style="width:100%; font-size:14px;">
+                <tr>
+                  <td style="padding:6px 0; font-weight:bold; width:40%;">Student Name:</td>
+                  <td style="padding:6px 0;"><strong>${childName}</strong></td>
+                </tr>
+                ${className ? `
+                <tr>
+                  <td style="padding:6px 0; font-weight:bold;">Class:</td>
+                  <td style="padding:6px 0;">${className}</td>
+                </tr>
+                ` : ''}
+              </table>
+            </div>
+
+            <div class="details">
+              <h4 style="margin-top:0; color:#2b7a78;">Voucher Details</h4>
+              <table style="width:100%; font-size:14px;">
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold; width:40%;">Voucher Number:</td>
+                  <td style="padding:8px 0;"><strong style="color:#2b7a78;">${voucherNumber}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold;">Fee Category:</td>
+                  <td style="padding:8px 0;">${category || 'Monthly Fee'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold;">Month/Year:</td>
+                  <td style="padding:8px 0;">${month}/${year}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold;">Base Amount:</td>
+                  <td style="padding:8px 0;">Rs. ${amount?.toLocaleString()}</td>
+                </tr>
+                ${discountAmount > 0 ? `
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold; color:#27ae60;">Discount:</td>
+                  <td style="padding:8px 0; color:#27ae60;">- Rs. ${discountAmount?.toLocaleString()}</td>
+                </tr>
+                ` : ''}
+                ${lateFeeAmount > 0 ? `
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold; color:#e74c3c;">Late Fee:</td>
+                  <td style="padding:8px 0; color:#e74c3c;">+ Rs. ${lateFeeAmount?.toLocaleString()}</td>
+                </tr>
+                ` : ''}
+                <tr style="border-top:2px solid #2b7a78;">
+                  <td style="padding:12px 0; font-weight:bold; font-size:16px;">Total Payable:</td>
+                  <td style="padding:12px 0; font-weight:bold; font-size:16px; color:#2b7a78;">Rs. ${totalAmount?.toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0; font-weight:bold;">Due Date:</td>
+                  <td style="padding:8px 0; color:#e74c3c;"><strong>${new Date(dueDate).toLocaleDateString()}</strong></td>
+                </tr>
+              </table>
+            </div>
+
+            ${lateFeeAmount > 0 ? `
+            <div style="background:#fff3cd; padding:14px; border-radius:4px; margin:16px 0; border-left:4px solid #ffc107;">
+              <strong style="color:#856404;">⚠️ Late Fee Applied:</strong>
+              <p style="margin:6px 0 0 0; color:#856404;">A late fee of Rs. ${lateFeeAmount?.toLocaleString()} has been added due to previous unpaid fees. Please clear dues promptly to avoid additional charges.</p>
+            </div>
+            ` : ''}
+
+            <div style="background:#d1ecf1; padding:14px; border-radius:4px; margin:16px 0; border-left:4px solid#17a2b8;">
+              <strong style="color:#0c5460;">💡 Payment Instructions:</strong>
+              <ul style="margin:10px 0; padding-left:20px; color:#0c5460;">
+                <li>Please pay before the due date to avoid late fees</li>
+                <li>Quote voucher number <strong>${voucherNumber}</strong> when making payment</li>
+                <li>Payment can be made at school office or online portal</li>
+                <li>Keep the payment receipt for your records</li>
+              </ul>
+            </div>
+
+            <p style="margin:18px 0 0 0; color:#666; font-size:14px;">For any queries regarding this fee voucher, please contact the school accounts department.</p>
+            <p style="margin:12px 0 0 0;">Thank you for your cooperation.</p>
+            <p style="margin:8px 0 0 0;">Best regards,<br><strong>${schoolName} Accounts Department</strong></p>
+          </div>
+          <div class="footer">
+            <p style="margin:0;">This is an automated email. Please do not reply to this message.</p>
+            <p style="margin:6px 0 0 0;">&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Default template
   return `<html><body><p>Hello ${parent.firstName || parent.fullName || ''},</p><p>Your parent account has been updated.</p></body></html>`;
 };
