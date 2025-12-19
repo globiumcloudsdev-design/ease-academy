@@ -19,16 +19,17 @@ async function getTeacher(request, authenticatedUser, userDoc, context) {
 
     await connectDB();
 
-    const { params } = context || {};
-    let { id } = params || {};
+    const paramsObj = (context && await context.params) || {};
+    let id = paramsObj?.id;
     if (!id) {
       // fallback: extract id from URL path
       try {
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean);
-        id = parts[parts.length - 1];
+        const _fallbackId = parts[parts.length - 1];
+        if (_fallbackId) id = _fallbackId;
       } catch (e) {
-        id = undefined;
+        // leave id undefined
       }
     }
 
@@ -73,15 +74,16 @@ async function updateTeacher(request, authenticatedUser, userDoc, context) {
 
     await connectDB();
 
-    const { params } = context || {};
-    let { id } = params || {};
+    const paramsObj = (context && await context.params) || {};
+    let id = paramsObj?.id;
     if (!id) {
       try {
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean);
-        id = parts[parts.length - 1];
+        const _fallbackId = parts[parts.length - 1];
+        if (_fallbackId) id = _fallbackId;
       } catch (e) {
-        id = undefined;
+        // leave id undefined
       }
     }
     const updates = await request.json();
@@ -205,6 +207,24 @@ async function updateTeacher(request, authenticatedUser, userDoc, context) {
         teacher.teacherProfile.subjects = updates.subjects;
         delete updates.subjects;
       }
+
+      // Handle classes assignment (branch-scoped)
+      if (updates.classes !== undefined) {
+        const classIds = (updates.classes || []).map(c => (typeof c === 'object' ? (c.classId?._id || c.classId) : c));
+        if (classIds.length > 0) {
+          const ClassModel = (await import('@/backend/models/Class')).default;
+          const classesFound = await ClassModel.find({ _id: { $in: classIds }, branchId: authenticatedUser.branchId });
+          if (classesFound.length !== classIds.length) {
+            return NextResponse.json(
+              { success: false, message: 'One or more classes not found or do not belong to your branch' },
+              { status: 404 }
+            );
+          }
+        }
+        teacher.teacherProfile.classes = updates.classes;
+        delete updates.classes;
+      }
+
       if (updates.documents) {
         teacher.teacherProfile.documents = updates.documents;
         delete updates.documents;
@@ -284,15 +304,16 @@ async function deleteTeacher(request, authenticatedUser, userDoc, context) {
 
     await connectDB();
 
-    const { params } = context || {};
-    let { id } = params || {};
+    const paramsObj = (context && await context.params) || {};
+    let id = paramsObj?.id;
     if (!id) {
       try {
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean);
-        id = parts[parts.length - 1];
+        const _fallbackId = parts[parts.length - 1];
+        if (_fallbackId) id = _fallbackId;
       } catch (e) {
-        id = undefined;
+        // leave id undefined
       }
     }
 

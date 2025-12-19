@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeTemplate from '@/backend/models/FeeTemplate';
 
@@ -142,6 +142,6 @@ async function deleteFeeTemplate(request, authenticatedUser, userDoc, { params }
   }
 }
 
-export const GET = withAuth(getFeeTemplate);
-export const PUT = withAuth(updateFeeTemplate);
-export const DELETE = withAuth(deleteFeeTemplate);
+export const GET = withAuth(getFeeTemplate, [requireRole('branch_admin')]);
+export const PUT = withAuth(updateFeeTemplate, [requireRole('branch_admin')]);
+export const DELETE = withAuth(deleteFeeTemplate, [requireRole('branch_admin')]);

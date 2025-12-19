@@ -2,21 +2,16 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Message from '@/backend/models/Message';
 import User from '@/backend/models/User';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'parent') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const paramsObj = (context && await context.params) || {};
+    const childId = paramsObj?.id || (request.nextUrl && request.nextUrl.pathname.split('/').pop());
 
-    const { id: childId } = params;
-
-    const parent = await User.findById(session.user.id);
+    const parent = await User.findById(authenticatedUser.userId);
     if (!parent || !parent.parentProfile.children.some(c => c.id.toString() === childId)) {
       return NextResponse.json({ error: 'Unauthorized access to child' }, { status: 403 });
     }
@@ -38,4 +33,4 @@ export async function GET(request, { params }) {
     console.error('Get child messages error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole('parent')]);

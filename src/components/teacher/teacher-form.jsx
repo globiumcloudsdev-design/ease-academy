@@ -12,7 +12,6 @@ import GenderSelect from '@/components/ui/gender-select';
 import BloodGroupSelect from '@/components/ui/blood-group';
 import DepartmentSelect from '@/components/ui/department-select';
 import ClassSelect from '@/components/ui/class-select';
-import SubjectSelect from '@/components/ui/subject-select';
 import DocumentTypeSelect from '@/components/ui/document-type-select';
 import ButtonLoader from '@/components/ui/button-loader';
 
@@ -32,9 +31,7 @@ export default function TeacherForm({
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState('personal');
   const [selectedDocType, setSelectedDocType] = useState('');
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
-  
-  // New qualification state
+    // New qualification state
   const [newQualification, setNewQualification] = useState({
     degree: '',
     institution: '',
@@ -43,10 +40,9 @@ export default function TeacherForm({
     major: ''
   });
 
-  // New class assignment state
+  // New class assignment state (only class selection, no subject)
   const [newClassAssignment, setNewClassAssignment] = useState({
-    classId: '',
-    subjectId: ''
+    classId: ''
   });
 
   // Initial form data
@@ -190,23 +186,37 @@ export default function TeacherForm({
     }
   }, [editingTeacher, userRole, currentBranchId]);
 
-  // Filter subjects based on selected class
+  // Ensure class assignments belong to the selected branch; remove any assignments that don't
   useEffect(() => {
-    if (newClassAssignment.classId) {
-      const selectedClass = classes.find(c => c._id === newClassAssignment.classId);
-      if (selectedClass?.subjects) {
-        const classSubjectIds = selectedClass.subjects.map(s => s._id || s);
-        const filtered = subjects.filter(subject => 
-          classSubjectIds.includes(subject._id)
-        );
-        setFilteredSubjects(filtered);
-      } else {
-        setFilteredSubjects(subjects);
-      }
-    } else {
-      setFilteredSubjects([]);
+    const branchId = formData.branchId;
+    if (!branchId) return;
+
+    const normalizeId = (id) => (id && id._id) ? String(id._id) : String(id || '');
+
+    const validClassIds = new Set(
+      classes
+        .filter(c => normalizeId(c.branchId) === String(branchId))
+        .map(c => String(c._id))
+    );
+
+    const currentAssignments = formData.teacherProfile?.classes || [];
+
+    const filtered = currentAssignments.filter(a => {
+      const aid = normalizeId(a.classId);
+      return validClassIds.has(String(aid));
+    });
+
+    if (filtered.length !== currentAssignments.length) {
+      setFormData(prev => ({
+        ...prev,
+        teacherProfile: {
+          ...prev.teacherProfile,
+          classes: filtered,
+        },
+      }));
+      toast.info('Removed class assignments that do not belong to the selected branch');
     }
-  }, [newClassAssignment.classId, classes, subjects]);
+  }, [formData.branchId, classes]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -436,17 +446,22 @@ export default function TeacherForm({
 
   // Class assignment methods
   const handleClassSelection = (classId) => {
-    setNewClassAssignment({ ...newClassAssignment, classId, subjectId: '' });
+    setNewClassAssignment({ ...newClassAssignment, classId });
   };
 
   const addClassAssignment = () => {
-    if (!newClassAssignment.classId || !newClassAssignment.subjectId) {
-      toast.error('Please select both class and subject');
+    if (!newClassAssignment.classId) {
+      toast.error('Please select a class');
       return;
     }
 
-    const classObj = classes.find(c => c._id === newClassAssignment.classId);
-    const subjectObj = subjects.find(s => s._id === newClassAssignment.subjectId);
+    const classObj = classes.find(c => String(c._id) === String(newClassAssignment.classId));
+
+    const alreadyAssigned = (formData.teacherProfile.classes || []).some(a => String(a.classId?._id || a.classId || a) === String(newClassAssignment.classId));
+    if (alreadyAssigned) {
+      toast.error('Class already assigned to this teacher');
+      return;
+    }
 
     setFormData({
       ...formData,
@@ -456,15 +471,12 @@ export default function TeacherForm({
           ...formData.teacherProfile.classes,
           {
             classId: newClassAssignment.classId,
-            className: classObj?.name || '',
-            subjectId: newClassAssignment.subjectId,
-            subjectName: subjectObj?.name || ''
+            className: classObj?.name || ''
           }
         ],
       },
     });
-    setNewClassAssignment({ classId: '', subjectId: '' });
-    setFilteredSubjects([]);
+    setNewClassAssignment({ classId: '' });
   };
 
   const removeClassAssignment = (index) => {
@@ -475,6 +487,15 @@ export default function TeacherForm({
         classes: formData.teacherProfile.classes.filter((_, i) => i !== index),
       },
     });
+  };
+
+  // Return classes for selected branch and not already assigned
+  const getAvailableClasses = () => {
+    const branchId = formData.branchId;
+    if (!branchId) return [];
+    const normalizeId = (id) => (id && id._id) ? String(id._id) : String(id || '');
+    const assigned = new Set((formData.teacherProfile.classes || []).map(a => normalizeId(a.classId)));
+    return classes.filter(c => normalizeId(c.branchId) === String(branchId) && !assigned.has(String(c._id)));
   };
 
   // Document methods
@@ -826,7 +847,7 @@ export default function TeacherForm({
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                 <DepartmentSelect
                   name="teacherProfile.departmentId"
@@ -835,7 +856,7 @@ export default function TeacherForm({
                   departments={departments}
                   placeholder="Select Department"
                 />
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
@@ -934,45 +955,39 @@ export default function TeacherForm({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Class Assignments</label>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                   <ClassSelect
                     name="newClassId"
                     value={newClassAssignment.classId}
                     onChange={(e) => handleClassSelection(e.target.value)}
-                    classes={classes}
-                    placeholder="Select Class"
+                    classes={getAvailableClasses()}
+                    placeholder={formData.branchId ? "Select Class" : "Select Branch first"}
+                    disabled={!formData.branchId}
                   />
 
-                  <SubjectSelect
-                    name="newSubjectId"
-                    value={newClassAssignment.subjectId}
-                    onChange={(e) => setNewClassAssignment({ ...newClassAssignment, subjectId: e.target.value })}
-                    subjects={filteredSubjects.length > 0 ? filteredSubjects : subjects}
-                    disabled={!newClassAssignment.classId}
-                    placeholder="Select Subject"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={addClassAssignment}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Assignment
-                  </button>
+                  <div className="md:col-span-2 flex items-center">
+                    <button
+                      type="button"
+                      onClick={addClassAssignment}
+                      className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg ${formData.branchId ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                      disabled={!formData.branchId}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Class
+                    </button>
+                  </div>
                 </div>
 
                 {formData.teacherProfile.classes.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {formData.teacherProfile.classes.map((assignment, index) => {
-                      const cls = classes.find(c => c._id === assignment.classId);
-                      const subj = subjects.find(s => s._id === assignment.subjectId);
+                      const cls = classes.find(c => String(c._id) === String(assignment.classId || assignment.classId?._id || assignment.classId));
                       return (
                         <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
                           <div className="flex items-center gap-2">
                             <BookOpen className="h-4 w-4 text-blue-600" />
                             <span className="text-sm font-medium">
-                              {cls?.name || assignment.className} - {subj?.name || assignment.subjectName}
+                              {cls?.name || assignment.className}
                             </span>
                           </div>
                           <button

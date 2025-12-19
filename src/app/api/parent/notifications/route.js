@@ -2,19 +2,13 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Notification from '@/backend/models/Notification';
 import User from '@/backend/models/User';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 
-export async function GET(request) {
+export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
     await connectDB();
 
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'parent') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const parent = await User.findById(session.user.id);
+    const parent = await User.findById(authenticatedUser.userId);
     if (!parent) {
       return NextResponse.json({ error: 'Parent not found' }, { status: 404 });
     }
@@ -23,7 +17,7 @@ export async function GET(request) {
 
     const notifications = await Notification.find({
       $or: [
-        { targetUser: session.user.id },
+        { targetUser: authenticatedUser.userId },
         { childId: { $in: childIds } },
       ],
     })
@@ -35,4 +29,4 @@ export async function GET(request) {
     console.error('Get notifications error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole('parent')]);

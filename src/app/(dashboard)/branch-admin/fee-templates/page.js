@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,10 +10,11 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Edit, Trash2, Search, DollarSign, Copy, Building2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, DollarSign, Copy, Building2, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 
 const FEE_FREQUENCIES = [
   { value: 'monthly', label: 'Monthly' },
@@ -29,6 +31,7 @@ const FEE_TYPES = [
   { value: 'library', label: 'Library Fee' },
   { value: 'transport', label: 'Transport Fee' },
   { value: 'activity', label: 'Activity Fee' },
+  { value: 'monthlyFee', label: 'Monthly Fee' },
   { value: 'lab', label: 'Lab Fee' },
   { value: 'hostel', label: 'Hostel Fee' },
   { value: 'other', label: 'Other' },
@@ -37,6 +40,7 @@ const FEE_TYPES = [
 export default function FeeTemplatesPage() {
   const { user } = useAuth();
   const [templates, setTemplates] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -45,17 +49,23 @@ export default function FeeTemplatesPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
+  const [classDropdownOpen, setClassDropdownOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
     description: '',
-    feeType: 'tuition',
-    baseAmount: '',
+    feeType: 'tuition', // maps to FeeTemplate.category
+    amount: '',
     frequency: 'monthly',
     isActive: true,
-    applicableFrom: '',
-    applicableTo: '',
     components: [],
+    classes: [], // class IDs that this template applies to
+    sections: [], // sections array
+    applicableTo: 'all', // 'all', 'class-specific', 'student-specific'
+    lateFee: { enabled: false, type: 'fixed', amount: '', graceDays: '' },
+    discount: { enabled: false, type: 'fixed', amount: '', criteria: '' },
+    paymentMethods: ['cash', 'bank-transfer', 'online'],
   });
 
   const [newComponent, setNewComponent] = useState({
@@ -66,7 +76,31 @@ export default function FeeTemplatesPage() {
 
   useEffect(() => {
     fetchTemplates();
+    fetchClasses();
   }, [search, typeFilter, pagination.page]);
+
+  // Close class dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (classDropdownOpen && !e.target.closest('.class-dropdown-container')) {
+        setClassDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [classDropdownOpen]);
+
+  const fetchClasses = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.CLASSES.LIST, { limit: 200 });
+      if (response.success) {
+        setClasses(response.data.classes || []);
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      toast.error('Failed to load classes');
+    }
+  };
 
   const fetchTemplates = async () => {
     try {
@@ -80,8 +114,9 @@ export default function FeeTemplatesPage() {
 
       const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.LIST, params);
       if (response.success) {
-        setTemplates(response.data.feeTemplates);
-        setPagination(response.data.pagination);
+        // Server returns { success: true, data: { templates, pagination } }
+        setTemplates(response.data.templates || []);
+        setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -102,7 +137,7 @@ export default function FeeTemplatesPage() {
 
   const addComponent = () => {
     if (!newComponent.name || !newComponent.amount) {
-      alert('Please fill in component name and amount');
+      toast.warning('Please fill in component name and amount');
       return;
     }
     setFormData((prev) => ({
@@ -124,26 +159,53 @@ export default function FeeTemplatesPage() {
     setSubmitting(true);
 
     try {
+      // Map front-end fields to the FeeTemplate schema
+      const payload = {
+        name: formData.name,
+        code: (formData.code || '').toUpperCase(),
+        category: formData.feeType, // matches schema enum values
+        description: formData.description,
+        amount: parseFloat(formData.amount) || 0,
+        frequency: formData.frequency,
+        applicableTo: formData.applicableTo,
+        classes: formData.applicableTo === 'class-specific' ? formData.classes : [],
+        sections: formData.sections,
+        lateFee: {
+          enabled: formData.lateFee.enabled,
+          type: formData.lateFee.type,
+          amount: parseFloat(formData.lateFee.amount) || 0,
+          graceDays: parseInt(formData.lateFee.graceDays) || 0,
+        },
+        discount: {
+          enabled: formData.discount.enabled,
+          type: formData.discount.type,
+          amount: parseFloat(formData.discount.amount) || 0,
+          criteria: formData.discount.criteria,
+        },
+        paymentMethods: formData.paymentMethods,
+        status: formData.isActive ? 'active' : 'inactive',
+      };
+
       if (isEditMode) {
         const response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.UPDATE.replace(':id', currentTemplate._id),
-          formData
+          payload
         );
         if (response.success) {
-          alert('Fee template updated successfully!');
+          toast.success('Fee template updated successfully!');
           setIsModalOpen(false);
           fetchTemplates();
         }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.CREATE, formData);
+        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.CREATE, payload);
         if (response.success) {
-          alert('Fee template created successfully!');
+          toast.success('Fee template created successfully!');
           setIsModalOpen(false);
           fetchTemplates();
         }
       }
     } catch (error) {
-      alert(error.message || 'Failed to save fee template');
+      toast.error(error.message || 'Failed to save fee template');
     } finally {
       setSubmitting(false);
     }
@@ -153,14 +215,19 @@ export default function FeeTemplatesPage() {
     setCurrentTemplate(template);
     setFormData({
       name: template.name || '',
+      code: template.code || '',
       description: template.description || '',
-      feeType: template.feeType || 'tuition',
-      baseAmount: template.baseAmount || '',
+      feeType: template.category || 'tuition',
+      amount: template.amount !== undefined ? String(template.amount) : '',
       frequency: template.frequency || 'monthly',
-      isActive: template.isActive !== undefined ? template.isActive : true,
-      applicableFrom: template.applicableFrom ? template.applicableFrom.split('T')[0] : '',
-      applicableTo: template.applicableTo ? template.applicableTo.split('T')[0] : '',
+      isActive: template.status === 'active',
       components: template.components || [],
+      classes: template.classes?.map(c => c._id || c) || [],
+      sections: template.sections || [],
+      applicableTo: template.applicableTo || 'all',
+      lateFee: template.lateFee || { enabled: false, type: 'fixed', amount: '', graceDays: '' },
+      discount: template.discount || { enabled: false, type: 'fixed', amount: '', criteria: '' },
+      paymentMethods: template.paymentMethods || ['cash', 'bank-transfer', 'online'],
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -172,11 +239,11 @@ export default function FeeTemplatesPage() {
     try {
       const response = await apiClient.delete(API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.DELETE.replace(':id', id));
       if (response.success) {
-        alert('Fee template deleted successfully!');
+        toast.success('Fee template deleted successfully!');
         fetchTemplates();
       }
     } catch (error) {
-      alert(error.message || 'Failed to delete fee template');
+      toast.error(error.message || 'Failed to delete fee template');
     }
   };
 
@@ -201,21 +268,26 @@ export default function FeeTemplatesPage() {
     setCurrentTemplate(null);
     setFormData({
       name: '',
+      code: '',
       description: '',
       feeType: 'tuition',
-      baseAmount: '',
+      amount: '',
       frequency: 'monthly',
       isActive: true,
-      applicableFrom: '',
-      applicableTo: '',
       components: [],
+      classes: [],
+      sections: [],
+      applicableTo: 'all',
+      lateFee: { enabled: false, type: 'fixed', amount: '', graceDays: '' },
+      discount: { enabled: false, type: 'fixed', amount: '', criteria: '' },
+      paymentMethods: ['cash', 'bank-transfer', 'online'],
     });
     setIsEditMode(false);
     setIsModalOpen(true);
   };
 
   const calculateTotalAmount = (template) => {
-    const base = parseFloat(template.baseAmount) || 0;
+    const base = parseFloat(template.amount || template.baseAmount || 0) || 0;
     const componentTotal = (template.components || []).reduce((sum, comp) => sum + (parseFloat(comp.amount) || 0), 0);
     return base + componentTotal;
   };
@@ -229,11 +301,22 @@ export default function FeeTemplatesPage() {
       <Card>
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
-            <CardTitle>Fee Templates Management</CardTitle>
-            <Button onClick={handleAddNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Template
-            </Button>
+            <div>
+              <CardTitle>Fee Templates Management</CardTitle>
+              <p className="text-sm text-gray-500 mt-1">Create reusable fee structures and generate vouchers for students</p>
+            </div>
+            <div className="flex gap-2">
+              <Link href="/branch-admin/fee-vouchers">
+                <Button variant="outline">
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Generate Vouchers
+                </Button>
+              </Link>
+              <Button onClick={handleAddNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Template
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -259,19 +342,21 @@ export default function FeeTemplatesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Template Name</TableHead>
+                <TableHead>Code</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Frequency</TableHead>
-                <TableHead>Base Amount</TableHead>
-                <TableHead>Total Amount</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Late Fee</TableHead>
+                <TableHead>Discount</TableHead>
+                <TableHead>Applicable To</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Scope</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {templates.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500">
+                  <TableCell colSpan={10} className="text-center text-gray-500">
                     No fee templates found
                   </TableCell>
                 </TableRow>
@@ -279,50 +364,77 @@ export default function FeeTemplatesPage() {
                 templates.map((template) => (
                   <TableRow key={template._id}>
                     <TableCell className="font-medium">{template.name}</TableCell>
+                    <TableCell className="text-xs text-gray-600">{template.code}</TableCell>
                     <TableCell>
-                      <span className="capitalize">{template.feeType}</span>
+                      <span className="capitalize">{template.category || template.feeType}</span>
                     </TableCell>
                     <TableCell>
                       <span className="capitalize">{template.frequency}</span>
                     </TableCell>
-                    <TableCell>PKR {parseFloat(template.baseAmount).toLocaleString()}</TableCell>
-                    <TableCell className="font-semibold">
-                      PKR {calculateTotalAmount(template).toLocaleString()}
+                    <TableCell className="font-semibold">PKR {parseFloat(template.amount || template.baseAmount || 0).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {template.lateFee?.enabled ? (
+                        <span className="text-xs text-orange-600">
+                          {template.lateFee.type === 'percentage'
+                            ? `${template.lateFee.amount}%`
+                            : `PKR ${template.lateFee.amount}`}
+                          {template.lateFee.graceDays > 0 && ` (${template.lateFee.graceDays}d grace)`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {template.discount?.enabled ? (
+                        <span className="text-xs text-green-600">
+                          {template.discount.type === 'percentage'
+                            ? `${template.discount.amount}%`
+                            : `PKR ${template.discount.amount}`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {template.applicableTo === 'class-specific' && template.classes?.length > 0 ? (
+                        <span className="text-xs text-blue-600">
+                          {template.classes.length} class{template.classes.length > 1 ? 'es' : ''}
+                        </span>
+                      ) : template.applicableTo === 'student-specific' ? (
+                        <span className="text-xs text-orange-600">Student Specific</span>
+                      ) : (
+                        <span className="text-xs text-green-600">All Students</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span
-                        className={`px-2 py-1 rounded-full text-xs ${
-                          template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                        }`}
+                        className={`px-2 py-1 rounded-full text-xs ${template.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                          }`}
                       >
-                        {template.isActive ? 'Active' : 'Inactive'}
+                        {template.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      {template.branchId ? (
-                        <span className="flex items-center gap-1 text-xs text-blue-600">
-                          <Building2 className="w-3 h-3" />
-                          Branch
-                        </span>
-                      ) : (
-                        <span className="text-xs text-purple-600">School-Wide</span>
-                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="icon-sm" onClick={() => handleClone(template)} title="Clone">
                           <Copy className="w-4 h-4" />
                         </Button>
-                        {template.branchId && template.branchId === user?.branchId && (
-                          <>
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(template)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(template._id)}>
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </Button>
-                          </>
-                        )}
+                        {(() => {
+                          const templateBranchId = template.branchId?._id || template.branchId;
+                          if (templateBranchId && String(templateBranchId) === String(user?.branchId._id)) {
+                            return (
+                              <>
+                                <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(template)}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(template._id)}>
+                                  <Trash2 className="w-4 h-4 text-red-600" />
+                                </Button>
+                              </>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -375,16 +487,30 @@ export default function FeeTemplatesPage() {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium mb-1">Template Name *</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border rounded-lg"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Template Name *</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Template Code *</label>
+              <input
+                type="text"
+                name="code"
+                value={formData.code}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border rounded-lg"
+                required
+              />
+            </div>
           </div>
 
           <div>
@@ -400,7 +526,7 @@ export default function FeeTemplatesPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Fee Type *</label>
+              <label className="block text-sm font-medium mb-1">Category *</label>
               <Dropdown name="feeType" value={formData.feeType} onChange={handleInputChange} options={FEE_TYPES} />
             </div>
             <div>
@@ -414,12 +540,136 @@ export default function FeeTemplatesPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Applicable To *</label>
+              <Dropdown
+                name="applicableTo"
+                value={formData.applicableTo}
+                onChange={handleInputChange}
+                options={[
+                  { value: 'all', label: 'All Students' },
+                  { value: 'class-specific', label: 'Specific Classes' },
+                  { value: 'student-specific', label: 'Student Specific' },
+                ]}
+              />
+            </div>
+            {formData.applicableTo === 'class-specific' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Select Classes *</label>
+                <div className="relative class-dropdown-container">
+                  <button
+                    type="button"
+                    onClick={() => setClassDropdownOpen(!classDropdownOpen)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-left bg-white hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  >
+                    <span className="text-gray-700">
+                      {formData.classes.length === 0
+                        ? 'Select classes...'
+                        : `${formData.classes.length} class${formData.classes.length > 1 ? 'es' : ''} selected`}
+                    </span>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  </button>
+
+                  {classDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      {classes.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-gray-500">No classes available</div>
+                      ) : (
+                        classes.map((cls) => {
+                          const isSelected = formData.classes.includes(cls._id);
+                          return (
+                            <label
+                              key={cls._id}
+                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      classes: [...prev.classes, cls._id],
+                                    }));
+                                  } else {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      classes: prev.classes.filter((id) => id !== cls._id),
+                                    }));
+                                  }
+                                }}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900">{cls.name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {cls.code} • {cls.grade?.name || 'N/A'}
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Classes Badges */}
+                {formData.classes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {formData.classes.map((classId) => {
+                      const cls = classes.find((c) => c._id === classId);
+                      if (!cls) return null;
+                      return (
+                        <span
+                          key={classId}
+                          className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium"
+                        >
+                          {cls.name}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                classes: prev.classes.filter((id) => id !== classId),
+                              }));
+                            }}
+                            className="hover:text-blue-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sections */}
           <div>
-            <label className="block text-sm font-medium mb-1">Base Amount (PKR) *</label>
+            <label className="block text-sm font-medium mb-1">Sections (Optional)</label>
+            <input
+              type="text"
+              placeholder="Enter sections separated by commas (e.g., A, B, C)"
+              value={formData.sections.join(', ')}
+              onChange={(e) => {
+                const sections = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                setFormData((prev) => ({ ...prev, sections }));
+              }}
+              className="w-full px-3 py-2 border rounded-lg"
+            />
+            <p className="text-xs text-gray-500 mt-1">Comma-separated list of sections</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Amount (PKR) *</label>
             <input
               type="number"
-              name="baseAmount"
-              value={formData.baseAmount}
+              name="amount"
+              value={formData.amount}
               onChange={handleInputChange}
               className="w-full px-3 py-2 border rounded-lg"
               min="0"
@@ -428,26 +678,182 @@ export default function FeeTemplatesPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Applicable From</label>
-              <input
-                type="date"
-                name="applicableFrom"
-                value={formData.applicableFrom}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
+          {/* Info Alert */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex gap-2">
+              <div className="text-blue-600 mt-0.5">ℹ️</div>
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">About Fee Vouchers:</p>
+                <p>This template will be used to generate fee vouchers. The <strong>due date</strong> will be assigned when you generate vouchers for students, not in this template. Late fees will be automatically calculated based on the voucher's due date.</p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Applicable To</label>
-              <input
-                type="date"
-                name="applicableTo"
-                value={formData.applicableTo}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
+          </div>
+
+          {/* Late Fee Settings */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium">Late Fee Settings</h3>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.lateFee.enabled}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    lateFee: { ...prev.lateFee, enabled: e.target.checked }
+                  }))}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <span className="text-sm">Enable Late Fee</span>
+              </label>
+            </div>
+
+            {formData.lateFee.enabled && (
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <Dropdown
+                    value={formData.lateFee.type}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      lateFee: { ...prev.lateFee, type: e.target.value }
+                    }))}
+                    options={[
+                      { value: 'fixed', label: 'Fixed Amount' },
+                      { value: 'percentage', label: 'Percentage' },
+                    ]}
+                    placeholder="Select Type"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Amount {formData.lateFee.type === 'percentage' && '(%)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.lateFee.amount}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      lateFee: { ...prev.lateFee, amount: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Grace Days</label>
+                  <input
+                    type="number"
+                    value={formData.lateFee.graceDays}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      lateFee: { ...prev.lateFee, graceDays: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    min="0"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Discount Settings */}
+          <div className="border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium">Discount Settings</h3>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.discount.enabled}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    discount: { ...prev.discount, enabled: e.target.checked }
+                  }))}
+                  className="w-4 h-4 text-blue-600 rounded"
+                />
+                <span className="text-sm">Enable Discount</span>
+              </label>
+            </div>
+
+            {formData.discount.enabled && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Type</label>
+                      <Dropdown
+                        value={formData.discount.type}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          discount: { ...prev.discount, type: e.target.value }
+                        }))}
+                        options={[
+                          { value: 'fixed', label: 'Fixed Amount' },
+                          { value: 'percentage', label: 'Percentage' },
+                        ]}
+                        placeholder="Select Type"
+                      />
+                    </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Amount {formData.discount.type === 'percentage' && '(%)'}
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.discount.amount}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        discount: { ...prev.discount, amount: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Discount Criteria</label>
+                  <textarea
+                    value={formData.discount.criteria}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      discount: { ...prev.discount, criteria: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    rows="2"
+                    placeholder="e.g., Early payment discount, Sibling discount"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Methods */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Payment Methods *</label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {['cash', 'bank-transfer', 'online', 'cheque', 'card'].map(method => (
+                <label key={method} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.paymentMethods.includes(method)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setFormData(prev => ({
+                          ...prev,
+                          paymentMethods: [...prev.paymentMethods, method]
+                        }));
+                      } else {
+                        setFormData(prev => ({
+                          ...prev,
+                          paymentMethods: prev.paymentMethods.filter(m => m !== method)
+                        }));
+                      }
+                    }}
+                    className="w-4 h-4 text-blue-600 rounded"
+                  />
+                  <span className="text-sm capitalize">{method.replace('-', ' ')}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -465,7 +871,7 @@ export default function FeeTemplatesPage() {
           {/* Fee Components Section */}
           <div className="border-t pt-4">
             <h3 className="font-semibold mb-3">Fee Components (Optional)</h3>
-            
+
             {/* Existing Components */}
             {formData.components.length > 0 && (
               <div className="mb-4 space-y-2">

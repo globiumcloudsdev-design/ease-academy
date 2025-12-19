@@ -15,6 +15,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import apiClient from '@/lib/api-client';
+import Input from '@/components/ui/input';
+import BranchSelect from '@/components/ui/branch-select';
+
 export default function FeeTemplatesPage() {
   const [templates, setTemplates] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -51,6 +55,8 @@ export default function FeeTemplatesPage() {
     applicableTo: 'all',
     classes: [],
     dueDate: { day: 1, month: 1 },
+    validFrom: '',
+    validTo: '',
     lateFee: { enabled: false, type: 'fixed', amount: 0, graceDays: 0 },
     discount: { enabled: false, type: 'fixed', amount: 0, criteria: '' },
     paymentMethods: ['cash', 'bank-transfer', 'online'],
@@ -75,35 +81,44 @@ export default function FeeTemplatesPage() {
 
   const loadTemplates = async () => {
     try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (categoryFilter) params.append('category', categoryFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (branchFilter) params.append('branchId', branchFilter);
+      const params = {};
+      if (searchTerm) params.search = searchTerm;
+      if (categoryFilter) params.category = categoryFilter;
+      if (statusFilter) params.status = statusFilter;
+      if (branchFilter) params.branchId = branchFilter;
 
-      const res = await fetch(`/api/super-admin/fee-templates?${params}`);
-      const data = await res.json();
+      const res = await apiClient.get('/api/super-admin/fee-templates', params);
 
-      if (data.success) {
-        setTemplates(data.data);
+      if (res && res.success) {
+        setTemplates(res.data);
       } else {
-        toast.error(data.message || 'Failed to load fee templates');
+        toast.error(res?.message || 'Failed to load fee templates');
       }
     } catch (error) {
       console.error('Error loading templates:', error);
-      toast.error('Failed to load fee templates');
+      const msg = error?.message || 'Failed to load fee templates';
+      if (error?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+      } else {
+        toast.error(msg);
+      }
     }
   };
 
   const loadBranches = async () => {
     try {
-      const res = await fetch('/api/super-admin/branches?limit=100');
-      const data = await res.json();
-      if (data.success) {
-        setBranches(data.data);
+      const res = await apiClient.get('/api/super-admin/branches', { limit: 100 });
+      if (res && res.success) {
+        setBranches(res.data);
       }
     } catch (error) {
       console.error('Error loading branches:', error);
+      const msg = error?.message || 'Failed to load branches';
+      if (error?.status === 401) {
+        toast.error('Session expired. Please log in again.');
+      } else {
+        toast.error(msg);
+      }
     }
   };
 
@@ -131,16 +146,34 @@ export default function FeeTemplatesPage() {
 
   const handleEdit = (template) => {
     setEditingTemplate(template);
+
+    // normalize any date-like values that were previously stored in `applicableTo`
+    const isDateString = (val) => {
+      return typeof val === 'string' && !['all', 'class-specific', 'student-specific'].includes(val) && !isNaN(Date.parse(val));
+    };
+
+    let applicableToValue = template.applicableTo;
+    let validFromValue = template.validFrom ? new Date(template.validFrom).toISOString().slice(0,10) : '';
+    let validToValue = template.validTo ? new Date(template.validTo).toISOString().slice(0,10) : '';
+
+    if (isDateString(applicableToValue)) {
+      // move old date stored incorrectly under `applicableTo` into `validFrom`
+      validFromValue = validFromValue || new Date(applicableToValue).toISOString().slice(0,10);
+      applicableToValue = 'all';
+    }
+
     setFormData({
       name: template.name,
       code: template.code,
       category: template.category,
       description: template.description || '',
-      amount: template.amount.toString(),
+      amount: (template.amount || 0).toString(),
       frequency: template.frequency,
-      applicableTo: template.applicableTo,
+      applicableTo: applicableToValue || 'all',
       classes: template.classes || [],
       dueDate: template.dueDate || { day: 1, month: 1 },
+      validFrom: validFromValue,
+      validTo: validToValue,
       lateFee: template.lateFee || { enabled: false, type: 'fixed', amount: 0, graceDays: 0 },
       discount: template.discount || { enabled: false, type: 'fixed', amount: 0, criteria: '' },
       paymentMethods: template.paymentMethods || ['cash', 'bank-transfer', 'online'],
@@ -159,6 +192,11 @@ export default function FeeTemplatesPage() {
       return;
     }
 
+    if (!formData.category) {
+      toast.error('Please select a category');
+      return;
+    }
+
     try {
       const url = editingTemplate
         ? `/api/super-admin/fee-templates/${editingTemplate._id}`
@@ -166,34 +204,54 @@ export default function FeeTemplatesPage() {
 
       const method = editingTemplate ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          amount: parseFloat(formData.amount),
-          lateFee: {
-            ...formData.lateFee,
-            amount: parseFloat(formData.lateFee.amount) || 0,
-          },
-          discount: {
-            ...formData.discount,
-            amount: parseFloat(formData.discount.amount) || 0,
-          },
-        }),
-      });
+      const body = {
+        ...formData,
+        amount: parseFloat(formData.amount),
+        lateFee: {
+          ...formData.lateFee,
+          amount: parseFloat(formData.lateFee.amount) || 0,
+        },
+        discount: {
+          ...formData.discount,
+          amount: parseFloat(formData.discount.amount) || 0,
+        },
+      };
 
-      const data = await res.json();
+      // sanitize incorrect date stored under applicableTo from older records
+      if (
+        body.applicableTo &&
+        !['all', 'class-specific', 'student-specific'].includes(body.applicableTo) &&
+        !isNaN(Date.parse(body.applicableTo))
+      ) {
+        body.validFrom = body.validFrom || body.applicableTo;
+        body.applicableTo = 'all';
+      }
 
-      if (data.success) {
-        toast.success(data.message);
-        setShowModal(false);
-        loadTemplates();
-      } else {
-        toast.error(data.message || 'Operation failed');
+      let response;
+      try {
+        if (editingTemplate) {
+          response = await apiClient.put(`/api/super-admin/fee-templates/${editingTemplate._id}`, body);
+        } else {
+          response = await apiClient.post(`/api/super-admin/fee-templates`, body);
+        }
+
+        if (response && response.success) {
+          toast.success(response.message || 'Template saved');
+          setShowModal(false);
+          loadTemplates();
+        } else {
+          toast.error(response?.message || 'Operation failed');
+        }
+      } catch (err) {
+        console.error('Error saving template:', err);
+        if (err?.status === 401) {
+          toast.error('Session expired. Please login again.');
+        } else {
+          toast.error(err?.message || 'Failed to save template');
+        }
       }
     } catch (error) {
-      console.error('Error saving template:', error);
+      console.error('Error in handleFormSubmit (outer):', error);
       toast.error('Failed to save template');
     }
   };
@@ -202,23 +260,22 @@ export default function FeeTemplatesPage() {
     if (!templateToDelete) return;
 
     try {
-      const res = await fetch(`/api/super-admin/fee-templates/${templateToDelete._id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
+      const response = await apiClient.delete(`/api/super-admin/fee-templates/${templateToDelete._id}`);
+      if (response && response.success) {
         toast.success('Fee template archived successfully');
         setShowDeleteModal(false);
         setTemplateToDelete(null);
         loadTemplates();
       } else {
-        toast.error(data.message || 'Failed to archive template');
+        toast.error(response?.message || 'Failed to archive template');
       }
-    } catch (error) {
-      console.error('Error archiving template:', error);
-      toast.error('Failed to archive template');
+    } catch (err) {
+      console.error('Error archiving template:', err);
+      if (err?.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else {
+        toast.error(err?.message || 'Failed to archive template');
+      }
     }
   };
 
@@ -318,16 +375,14 @@ export default function FeeTemplatesPage() {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search templates..."
+          <div>
+            <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Search templates..."
+              icon={Search}
             />
-          </div>
+          </div> 
 
           <select
             value={categoryFilter}
@@ -351,18 +406,13 @@ export default function FeeTemplatesPage() {
             <option value="archived">Archived</option>
           </select>
 
-          <select
+          <BranchSelect
             value={branchFilter}
             onChange={(e) => setBranchFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Branches</option>
-            {branches.map(branch => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name} - {branch.city}
-              </option>
-            ))}
-          </select>
+            branches={branches}
+            placeholder="All Branches"
+            className="w-full"
+          />
         </div>
       </div>
 
@@ -624,18 +674,13 @@ export default function FeeTemplatesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Branch (Optional)
                       </label>
-                      <select
+                      <BranchSelect
                         value={formData.branchId}
                         onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">All Branches</option>
-                        {branches.map(branch => (
-                          <option key={branch._id} value={branch._id}>
-                            {branch.name} - {branch.city}
-                          </option>
-                        ))}
-                      </select>
+                        branches={branches}
+                        placeholder="All Branches"
+                        className="w-full"
+                      />
                     </div>
                   </div>
                 </>
@@ -709,7 +754,7 @@ export default function FeeTemplatesPage() {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="">Any Month</option>
-                        <option value="1">January</option>
+                          <option value="1">January</option>
                         <option value="2">February</option>
                         <option value="3">March</option>
                         <option value="4">April</option>
@@ -722,6 +767,28 @@ export default function FeeTemplatesPage() {
                         <option value="11">November</option>
                         <option value="12">December</option>
                       </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Valid From (optional)</label>
+                      <input
+                        type="date"
+                        value={formData.validFrom}
+                        onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Valid To (optional)</label>
+                      <input
+                        type="date"
+                        value={formData.validTo}
+                        onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
                     </div>
                   </div>
 

@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Notification from '@/backend/models/Notification';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 
-export async function GET(request, { params }) {
+export const GET = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'parent') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = params;
+    const paramsObj = (context && await context.params) || {};
+    const id = paramsObj?.id || (request.nextUrl && request.nextUrl.pathname.split('/').pop());
 
     const notification = await Notification.findOne({
       _id: id,
-      targetUser: session.user.id,
+      targetUser: authenticatedUser.userId,
     }).populate('childId', 'fullName studentProfile.registrationNumber');
 
     if (!notification) {
@@ -29,23 +24,19 @@ export async function GET(request, { params }) {
     console.error('Get notification error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole('parent')]);
 
-export async function PUT(request, { params }) {
+export const PUT = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'parent') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { id } = params;
+    const paramsObj = (context && await context.params) || {};
+    const id = paramsObj?.id || (request.nextUrl && request.nextUrl.pathname.split('/').pop());
     const body = await request.json();
     const { isRead } = body;
 
     const notification = await Notification.findOneAndUpdate(
-      { _id: id, targetUser: session.user.id },
+      { _id: id, targetUser: authenticatedUser.userId },
       { isRead },
       { new: true }
     );
@@ -59,4 +50,4 @@ export async function PUT(request, { params }) {
     console.error('Update notification error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole('parent')]);

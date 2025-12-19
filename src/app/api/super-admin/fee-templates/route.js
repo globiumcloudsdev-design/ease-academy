@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/database';
 import FeeTemplate from '@/backend/models/FeeTemplate';
 import Branch from '@/backend/models/Branch';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
+import connectDB from '@/lib/database';
 
 // GET - List all fee templates
 async function getFeeTemplates(request, authenticatedUser) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -64,7 +64,7 @@ async function getFeeTemplates(request, authenticatedUser) {
 // POST - Create new fee template
 async function createFeeTemplate(request, authenticatedUser, userDoc) {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
     const {
@@ -149,5 +149,5 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
   }
 }
 
-export const GET = withAuth(getFeeTemplates);
-export const POST = withAuth(createFeeTemplate);
+export const GET = withAuth(getFeeTemplates, [requireRole('super_admin')]);
+export const POST = withAuth(createFeeTemplate, [requireRole('super_admin')]);

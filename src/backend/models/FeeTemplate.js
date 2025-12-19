@@ -19,7 +19,7 @@ const feeTemplateSchema = new mongoose.Schema(
     category: {
       type: String,
       required: [true, 'Fee category is required'],
-      enum: ['tuition', 'admission', 'examination', 'transport', 'library', 'laboratory', 'sports', 'hostel', 'miscellaneous'],
+      enum: ['tuition', 'admission', 'examination', 'transport', 'library', 'laboratory', 'sports', 'hostel', 'miscellaneous', 'monthlyFee', 'activity', 'other'],
     },
     description: {
       type: String,
@@ -43,6 +43,10 @@ const feeTemplateSchema = new mongoose.Schema(
       default: 'all',
     },
     classes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+    }],
+    sections: [{
       type: String,
       trim: true,
     }],

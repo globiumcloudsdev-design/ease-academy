@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/database';
 import FeeTemplate from '@/backend/models/FeeTemplate';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
+import connectDB from '@/lib/database';
 
 // GET - Get single fee template
 async function getFeeTemplate(request) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const url = new URL(request.url);
@@ -41,7 +41,7 @@ async function getFeeTemplate(request) {
 // PUT - Update fee template
 async function updateFeeTemplate(request, authenticatedUser, userDoc) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const url = new URL(request.url);
@@ -91,7 +91,7 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc) {
 // DELETE - Delete fee template
 async function deleteFeeTemplate(request) {
   try {
-    await dbConnect();
+    await connectDB();
 
     // Extract ID from URL
     const url = new URL(request.url);
@@ -122,6 +122,6 @@ async function deleteFeeTemplate(request) {
   }
 }
 
-export const GET = withAuth(getFeeTemplate);
-export const PUT = withAuth(updateFeeTemplate);
-export const DELETE = withAuth(deleteFeeTemplate);
+export const GET = withAuth(getFeeTemplate, [requireRole('super_admin')]);
+export const PUT = withAuth(updateFeeTemplate, [requireRole('super_admin')]);
+export const DELETE = withAuth(deleteFeeTemplate, [requireRole('super_admin')]);

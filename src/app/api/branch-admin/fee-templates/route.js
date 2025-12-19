@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import FeeTemplate from '@/backend/models/FeeTemplate';
 
@@ -135,5 +135,5 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
   }
 }
 
-export const GET = withAuth(getFeeTemplates);
-export const POST = withAuth(createFeeTemplate);
+export const GET = withAuth(getFeeTemplates, [requireRole('branch_admin')]);
+export const POST = withAuth(createFeeTemplate, [requireRole('branch_admin')]);

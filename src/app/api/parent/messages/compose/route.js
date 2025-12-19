@@ -2,17 +2,11 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/database';
 import Message from '@/backend/models/Message';
 import User from '@/backend/models/User';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 
-export async function POST(request) {
+export const POST = withAuth(async (request, authenticatedUser) => {
   try {
     await connectDB();
-
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'parent') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const body = await request.json();
     const { recipientId, subject, content, priority } = body;
@@ -27,10 +21,10 @@ export async function POST(request) {
     }
 
     // Generate conversationId based on sender and recipient
-    const conversationId = [session.user.id, recipientId].sort().join('-');
+    const conversationId = [authenticatedUser.userId, recipientId].sort().join('-');
 
     const message = new Message({
-      sender: session.user.id,
+      sender: authenticatedUser.userId,
       recipient: recipientId,
       subject,
       content,
@@ -45,4 +39,4 @@ export async function POST(request) {
     console.error('Compose message error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+}, [requireRole('parent')]);

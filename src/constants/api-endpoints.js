@@ -339,6 +339,15 @@ export const API_ENDPOINTS = {
       DELETE: '/api/branch-admin/fee-templates/:id',
     },
     
+    // Fee Vouchers
+    FEE_VOUCHERS: {
+      CREATE: '/api/branch-admin/fee-vouchers',
+      LIST: '/api/branch-admin/fee-vouchers',
+      GET: '/api/branch-admin/fee-vouchers/:id',
+      UPDATE: '/api/branch-admin/fee-vouchers/:id',
+      DELETE: '/api/branch-admin/fee-vouchers/:id',
+    },
+    
     // Expenses Management
     EXPENSES: {
       CREATE: '/api/branch-admin/expenses',
