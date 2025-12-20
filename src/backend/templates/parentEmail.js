@@ -211,6 +211,13 @@ export const getParentEmailTemplate = (type, parent, schoolName = 'Ease Academy'
               </table>
             </div>
 
+            <div style="text-align:center; margin:20px 0;">
+              <a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/super-admin/fee-vouchers/${voucherId}/download" 
+                 style="display:inline-block; background:#2b7a78; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                📄 Download Voucher
+              </a>
+            </div>
+
             ${lateFeeAmount > 0 ? `
             <div style="background:#fff3cd; padding:14px; border-radius:4px; margin:16px 0; border-left:4px solid #ffc107;">
               <strong style="color:#856404;">⚠️ Late Fee Applied:</strong>

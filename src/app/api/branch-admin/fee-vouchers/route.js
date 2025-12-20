@@ -53,9 +53,10 @@ export const GET = withAuth(async (request, user, userDoc) => {
 
     const [vouchers, total] = await Promise.all([
       FeeVoucher.find(query)
-        .populate('studentId', 'fullName firstName lastName email studentProfile.rollNumber')
+        .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber studentProfile.section')
         .populate('templateId', 'name code category')
         .populate('classId', 'name code')
+        .populate('branchId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -253,6 +254,7 @@ export const POST = withAuth(async (request, user, userDoc) => {
               studentName,
               name: studentName,
               voucherNumber,
+              voucherId: voucher._id,
               amount: baseAmount,
               discountAmount,
               lateFeeAmount,
@@ -273,6 +275,7 @@ export const POST = withAuth(async (request, user, userDoc) => {
               firstName: parentName || 'Parent',
               childName: studentName,
               voucherNumber,
+              voucherId: voucher._id,
               amount: baseAmount,
               discountAmount,
               lateFeeAmount,

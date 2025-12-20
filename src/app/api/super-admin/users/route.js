@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
-import dbConnect from '@/lib/database';
+import connectDB from '@/lib/database';
 
 // GET - List users with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
     const { searchParams } = new URL(request.url);
 
     const role = searchParams.get('role');
@@ -82,7 +82,7 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
 // POST - Create new user
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
     const body = await request.json();
     const { fullName, firstName, lastName, email, phone, password, role, branchId, permissions, isActive, dateOfBirth, gender, nationality, cnic, religion, bloodGroup, address } = body;
 

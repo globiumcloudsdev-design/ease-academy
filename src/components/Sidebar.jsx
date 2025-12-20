@@ -95,6 +95,7 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         { name: 'Fee Templates', path: '/super-admin/fee-management/templates', icon: Receipt },
+        { name: 'Fee Voucher', path: '/super-admin/fee-vouchers', icon: Receipt },
         { name: 'Branch Fees', path: '/super-admin/fee-management/branch-fees', icon: Wallet },
         { name: 'Fee Reports', path: '/super-admin/fee-management/reports', icon: FileText },
       ],
@@ -112,12 +113,12 @@ const ROLE_MENUS = {
       category: 'Attendance Management',
       isCollapsible: true,
       items: [
-        { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
-        { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
-        { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
-        { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
+        // { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
+        // { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
+        // { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
+        // { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
         { name: 'Attendance QR Code', path: '/super-admin/attendance', icon: QrCode },
-        { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
+        // { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
       ],
     },
     {
@@ -180,15 +181,6 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: 'Finance Management',
-      isCollapsible: true,
-      items: [
-        { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
-        { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
-        { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
-      ],
-    },
-    {
       category: 'Operations',
       isCollapsible: true,
       items: [
@@ -210,6 +202,7 @@ const ROLE_MENUS = {
       category: 'Finance Management',
       items: [
         { name: 'Fees', path: '/branch-admin/fees', icon: DollarSign },
+        { name: 'Fee Voucher', path: '/branch-admin/fee-vouchers', icon: Receipt },
         { name: 'Fee Templates', path: '/branch-admin/fee-templates', icon: Receipt },
         { name: 'Expenses', path: '/branch-admin/expenses', icon: Wallet },
       ],

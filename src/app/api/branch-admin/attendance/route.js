@@ -63,6 +63,16 @@ async function getAttendance(request, authenticatedUser, userDoc) {
         .populate('classId', 'name code')
         .populate('subjectId', 'name code')
         .populate('markedBy', 'fullName email')
+        .populate({
+          path: 'records.studentId',
+          model: 'User',
+          select: 'fullName firstName lastName email phone studentProfile branchId',
+          populate: {
+            path: 'branchId',
+            model: 'Branch',
+            select: 'name'
+          }
+        })
         .sort({ date: -1 })
         .skip(skip)
         .limit(limit)

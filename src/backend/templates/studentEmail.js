@@ -344,6 +344,13 @@ export const getStudentEmailTemplate = (type, student, schoolName = 'Ease Academ
               </table>
             </div>
             
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/super-admin/fee-vouchers/${student.voucherId || voucherNumber}/download" 
+                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                📄 Download Fee Voucher
+              </a>
+            </div>
+            
             ${lateFeeAmount > 0 ? `
             <div style="background: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
               <strong style="color: #856404;">⚠️ Late Fee Applied:</strong>

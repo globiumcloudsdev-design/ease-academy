@@ -9,11 +9,12 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Calendar, Users } from 'lucide-react';
+import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { toast } from 'sonner';
+import { generateFeeVoucherPDF } from '@/lib/pdf-generator';
 
 const MONTHS = [
   { value: '1', label: 'January' },
@@ -72,8 +73,10 @@ export default function FeeVouchersPage() {
   const formatStudent = (student) => {
     const nameRaw = student?.fullName || `${student?.firstName || ''} ${student?.lastName || ''}`;
     const name = (nameRaw || 'Student').trim() || 'Student';
+    const registrationNumber = student?.studentProfile?.registrationNumber || student?.registrationNumber || '—';
     const rollNumber = student?.studentProfile?.rollNumber || student?.rollNumber || '—';
-    return { name, rollNumber };
+    const section = student?.studentProfile?.section || '—';
+    return { name, registrationNumber, rollNumber, section };
   };
 
   useEffect(() => {
@@ -277,6 +280,25 @@ export default function FeeVouchersPage() {
     fetchVoucherDetail(id);
   };
 
+  const handleDownloadVoucher = async (voucher) => {
+    try {
+      // If we don't have full voucher data, fetch it
+      if (!voucher.studentId?.fullName && !voucher.studentId?.firstName) {
+        const res = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.GET.replace(':id', voucher._id));
+        console.log('Generate PDF Voucher', res);
+        
+        if (res?.success) {
+          generateFeeVoucherPDF(res.data);
+        }
+      } else {
+        generateFeeVoucherPDF(voucher);
+      }
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+              console.log('Generate PDF Voucher Error', error);
+    }
+  };
+
   if (loading && vouchers.length === 0) {
     return <FullPageLoader message="Loading fee vouchers..." />;
   }
@@ -354,11 +376,13 @@ export default function FeeVouchersPage() {
                     <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
                     <TableCell>
                       {(() => {
-                        const { name, rollNumber } = formatStudent(voucher.studentId);
+                        const { name, registrationNumber, rollNumber, section } = formatStudent(voucher.studentId);
                         return (
                           <div>
                             <div className="font-medium">{name}</div>
-                            <div className="text-xs text-gray-500">{rollNumber}</div>
+                            <div className="text-xs text-gray-500">
+                              Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
+                            </div>
                           </div>
                         );
                       })()}
@@ -388,6 +412,9 @@ export default function FeeVouchersPage() {
                       <div className="flex gap-2">
                         <Button variant="ghost" size="icon-sm" title="View Details" onClick={() => handleViewVoucher(voucher._id)}>
                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon-sm" title="Download PDF" onClick={() => handleDownloadVoucher(voucher)}>
+                          <Download className="w-4 h-4" />
                         </Button>
                         {voucher.status !== 'paid' && voucher.status !== 'cancelled' && (
                           <Button 
@@ -440,7 +467,11 @@ export default function FeeVouchersPage() {
         onClose={() => setIsViewModalOpen(false)}
         title="Voucher Details"
         footer={
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => handleDownloadVoucher(viewingVoucher)}>
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
             <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>Close</Button>
           </div>
         }
@@ -462,13 +493,15 @@ export default function FeeVouchersPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(() => {
-                const { name, rollNumber } = formatStudent(viewingVoucher.studentId);
+                const { name, registrationNumber, rollNumber, section } = formatStudent(viewingVoucher.studentId);
                 return (
                   <React.Fragment>
                     <div className="bg-white border rounded-lg p-3">
                       <p className="text-xs text-gray-500">Student</p>
                       <p className="font-semibold">{name}</p>
-                      <p className="text-sm text-gray-600">Roll: {rollNumber}</p>
+                      <p className="text-sm text-gray-600">
+                        Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
+                      </p>
                     </div>
                     <div className="bg-white border rounded-lg p-3">
                       <p className="text-xs text-gray-500">Class</p>
@@ -631,7 +664,7 @@ export default function FeeVouchersPage() {
                       ) : (
                         students.map((student) => {
                           const isSelected = formData.studentIds.includes(student._id);
-                          const { name, rollNumber } = formatStudent(student);
+                          const { name, registrationNumber, rollNumber, section } = formatStudent(student);
                           return (
                             <label
                               key={student._id}
@@ -657,7 +690,9 @@ export default function FeeVouchersPage() {
                               />
                               <div className="flex-1">
                                 <div className="font-medium text-gray-900">{name}</div>
-                                <div className="text-xs text-gray-500">{rollNumber}</div>
+                                <div className="text-xs text-gray-500">
+                                  Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
+                                </div>
                               </div>
                             </label>
                           );

@@ -8,18 +8,19 @@ import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
 
 // GET /api/branch-admin/fee-vouchers/[id] - Get single voucher
-export const GET = withAuth(async (request, user, userDoc, context) => {
+export const GET = withAuth(async (request, user, userDoc, { params }) => {
   try {
     await connectDB();
 
-    const { params } = context;
+    const { id } = await params;
     const voucher = await FeeVoucher.findOne({
-      _id: params.id,
+      _id: id,
       branchId: user.branchId,
     })
-      .populate('studentId', 'fullName firstName lastName email studentProfile.rollNumber studentProfile.classId studentProfile.section')
+      .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber studentProfile.classId studentProfile.section')
       .populate('templateId', 'name code category amount lateFee discount')
       .populate('classId', 'name code')
+      .populate('branchId', 'name')
       .lean();
 
     if (!voucher) {
@@ -43,13 +44,13 @@ export const GET = withAuth(async (request, user, userDoc, context) => {
 }, [requireRole(['branch_admin'])]);
 
 // DELETE /api/branch-admin/fee-vouchers/[id] - Cancel voucher
-export const DELETE = withAuth(async (request, user, userDoc, context) => {
+export const DELETE = withAuth(async (request, user, userDoc, { params }) => {
   try {
     await connectDB();
 
-    const { params } = context;
+    const { id } = await params;
     const voucher = await FeeVoucher.findOne({
-      _id: params.id,
+      _id: id,
       branchId: user.branchId,
     });
 
