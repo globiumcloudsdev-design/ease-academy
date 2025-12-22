@@ -5,106 +5,101 @@ import Attendance from '@/backend/models/Attendance';
 import User from '@/backend/models/User';
 import FeeVoucher from '@/backend/models/FeeVoucher';
 
+// POST - Scan QR code for attendance
 async function scanAttendance(request, authenticatedUser, userDoc) {
   try {
     if (authenticatedUser.role !== 'branch_admin') {
-      return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
+      return NextResponse.json(
+        { success: false, message: 'Access denied' },
+        { status: 403 }
+      );
     }
 
     if (!authenticatedUser.branchId) {
-      return NextResponse.json({ success: false, message: 'No branch assigned' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: 'No branch assigned' },
+        { status: 400 }
+      );
     }
 
     await connectDB();
 
     const body = await request.json();
-    const qr = body.qr || body;
+    const { qr, date, subjectId, eventId, attendanceType } = body;
 
-    console.log('Scanned QR payload:', qr);
-
-    if (!qr || (!qr.id && !qr.registrationNumber)) {
-      return NextResponse.json({ success: false, message: 'Invalid QR payload' }, { status: 400 });
-    }
-
-    // find student by id or registration number
-    const student = await User.findOne({
-      role: 'student',
-      $or: [
-        { _id: qr.id },
-        { 'studentProfile.registrationNumber': qr.registrationNumber }
-      ]
-    }).lean();
-
-    if (!student) {
-      return NextResponse.json({ success: false, message: 'Student not found' }, { status: 404 });
-    }
-
-    // ensure student belongs to this branch
-    if (!student.branchId || student.branchId.toString() !== authenticatedUser.branchId.toString()) {
-      return NextResponse.json({ success: false, message: 'Student does not belong to your branch' }, { status: 400 });
-    }
-
-    const classId = qr.classId || student.studentProfile?.classId;
-    if (!classId) {
-      return NextResponse.json({ success: false, message: 'Class information missing' }, { status: 400 });
-    }
-
-    const date = body.date ? new Date(body.date) : new Date();
-    const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    // Build query for existing attendance respecting attendanceType/subject/event
-    const query = {
-      branchId: authenticatedUser.branchId,
-      classId,
-      date: day,
-    };
-
-    const requestedType = body.attendanceType || 'daily';
-    if (requestedType === 'event') {
-      if (!body.eventId) {
-        return NextResponse.json({ success: false, message: 'eventId is required for event attendance' }, { status: 400 });
-      }
-      query.attendanceType = 'event';
-      query.eventId = body.eventId;
-    } else if (requestedType === 'subject') {
-      if (!body.subjectId) {
-        return NextResponse.json({ success: false, message: 'subjectId is required for subject attendance' }, { status: 400 });
-      }
-      query.attendanceType = 'subject';
-      query.subjectId = body.subjectId;
-    } else {
-      query.attendanceType = 'daily';
-    }
-
-    // Find or create attendance for this branch/class/date and requested type
-    let attendance = await Attendance.findOne(query);
-    if (!attendance) {
-      // Use atomic upsert to avoid race/duplicate key issues
-      attendance = await Attendance.findOneAndUpdate(
-        query,
-        {
-          $setOnInsert: {
-            branchId: authenticatedUser.branchId,
-            classId,
-            date: day,
-            attendanceType: query.attendanceType,
-            subjectId: query.subjectId || undefined,
-            eventId: query.eventId || undefined,
-            records: [],
-            markedBy: authenticatedUser.userId,
-          },
-        },
-        { new: true, upsert: true }
+    if (!qr) {
+      return NextResponse.json(
+        { success: false, message: 'QR data is required' },
+        { status: 400 }
       );
     }
 
-    const studentId = student._id.toString();
-    const existingIndex = attendance.records.findIndex(r => r.studentId.toString() === studentId);
-    if (existingIndex >= 0) {
-      attendance.records[existingIndex].status = 'present';
-      attendance.records[existingIndex].checkInTime = new Date().toISOString();
-    } else {
-      attendance.records.push({ studentId: student._id, status: 'present', checkInTime: new Date().toISOString() });
+    // Parse QR data - could be JSON or plain text (registration number)
+    let qrData;
+    try {
+      qrData = JSON.parse(qr);
+    } catch (e) {
+      // If not JSON, treat as registration number
+      qrData = { registrationNumber: qr };
     }
+
+    // Find student by registration number
+    const student = await User.findOne({
+      registrationNumber: qrData.registrationNumber,
+      role: 'student',
+      branchId: authenticatedUser.branchId,
+    });
+
+    if (!student) {
+      return NextResponse.json(
+        { success: false, message: 'Student not found' },
+        { status: 404 }
+      );
+    }
+
+    const attendanceDate = date ? new Date(date) : new Date();
+
+    // Find or create attendance record for today
+    let attendance = await Attendance.findOne({
+      branchId: authenticatedUser.branchId,
+      classId: student.studentProfile?.classId || student.classId,
+      date: attendanceDate,
+      attendanceType: attendanceType || 'daily',
+      ...(subjectId && { subjectId }),
+      ...(eventId && { eventId }),
+    });
+
+    if (!attendance) {
+      // Create new attendance record
+      attendance = new Attendance({
+        branchId: authenticatedUser.branchId,
+        classId: student.studentProfile?.classId || student.classId,
+        section: student.section,
+        subjectId: subjectId || null,
+        eventId: eventId || null,
+        date: attendanceDate,
+        attendanceType: attendanceType || 'daily',
+        markedBy: authenticatedUser.userId,
+        records: [],
+      });
+    }
+
+    // Check if student already marked
+    const existingRecord = attendance.records.find(r => r.studentId.toString() === student._id.toString());
+
+    if (existingRecord) {
+      return NextResponse.json(
+        { success: false, message: 'Attendance already marked for this student today' },
+        { status: 400 }
+      );
+    }
+
+    // Add student record
+    attendance.records.push({
+      studentId: student._id,
+      status: 'present',
+      markedAt: new Date(),
+    });
 
     await attendance.save();
 
@@ -142,7 +137,10 @@ async function scanAttendance(request, authenticatedUser, userDoc) {
     return NextResponse.json({ success: true, message: 'Attendance recorded', data: { attendance, student: studentDetails } });
   } catch (error) {
     console.error('Scan attendance error:', error);
-    return NextResponse.json({ success: false, message: error.message || 'Failed to record attendance' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to record attendance' },
+      { status: 500 }
+    );
   }
 }
 

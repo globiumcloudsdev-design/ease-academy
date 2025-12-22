@@ -50,7 +50,7 @@ export default function LoginPage() {
     { email: 'superadmin@easeacademy.com', password: 'SuperAdmin@123', role: 'Super Admin' },
     { email: 'hafizshoaib@gmail.com', password: '123456', role: 'Branch Admin' },
     { email: 'shoaibrazamemon170@gmail.com', password: 'Teacher@123', role: 'Teacher' },
-    { email: 'student@easeacademy.com', password: 'student123', role: 'Student' },
+    // { email: 'student@easeacademy.com', password: 'student123', role: 'Student' },
   ];
 
   const fillTestCredentials = (testEmail, testPassword) => {

@@ -215,5 +215,7 @@ async function markAttendance(request, authenticatedUser, userDoc) {
   }
 }
 
+
+
 export const GET = withAuth(getAttendance);
 export const POST = withAuth(markAttendance);

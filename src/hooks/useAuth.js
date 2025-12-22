@@ -1,10 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import { useRouter } from 'next/navigation';
-import apiClient, { setAccessToken, getAccessToken, clearAccessToken } from '@/lib/api-client';
-import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import { ROLES } from '@/constants/roles';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+} from "react";
+import { useRouter } from "next/navigation";
+import apiClient, {
+  setAccessToken,
+  getAccessToken,
+  clearAccessToken,
+} from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import { ROLES } from "@/constants/roles";
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -22,14 +32,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        const token = localStorage.getItem('accessToken');
-        
+        const token = localStorage.getItem("accessToken");
+
         if (token) {
           setAccessToken(token);
-          
+
           // Fetch current user
           const response = await apiClient.get(API_ENDPOINTS.AUTH.ME);
-          
+
           if (response.success) {
             setUser(response.data);
           } else {
@@ -39,7 +49,7 @@ export function AuthProvider({ children }) {
           }
         }
       } catch (error) {
-        console.error('Auth init error:', error);
+        console.error("Auth init error:", error);
         clearAccessToken();
         setUser(null);
       } finally {
@@ -53,62 +63,68 @@ export function AuthProvider({ children }) {
   /**
    * Redirect to appropriate dashboard based on role
    */
-  const redirectToDashboard = useCallback((role) => {
-    console.log('Redirecting user with role:', role);
-    const dashboards = {
-      super_admin: '/super-admin',
-      branch_admin: '/branch-admin',
-      teacher: '/teacher',
-      parent: '/parent',
-      student: '/student',
-    };
-    
-    const dashboard = dashboards[role] || '/dashboard';
-    console.log('Redirecting to:', dashboard);
-    router.push(dashboard);
-  }, [router]);
+  const redirectToDashboard = useCallback(
+    (role) => {
+      console.log("Redirecting user with role:", role);
+      const dashboards = {
+        super_admin: "/super-admin",
+        branch_admin: "/branch-admin",
+        teacher: "/teacher",
+        parent: "/parent",
+        student: "/student",
+      };
+
+      const dashboard = dashboards[role] || "/dashboard";
+      console.log("Redirecting to:", dashboard);
+      router.push(dashboard);
+    },
+    [router]
+  );
 
   /**
    * Login user
    */
-  const login = useCallback(async (email, password) => {
-    try {
-      setLoading(true);
-      setError(null);
+  const login = useCallback(
+    async (email, password) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, {
-        email,
-        password,
-      });
+        const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, {
+          email,
+          password,
+        });
 
-      if (response.success) {
-        const { user, accessToken } = response.data;
-        
-        // Save token
-        localStorage.setItem('accessToken', accessToken);
-        setAccessToken(accessToken);
-        
-        // Set user
-        setUser(user);
-        
-        // Small delay to ensure state update
-        setTimeout(() => {
-          redirectToDashboard(user.role);
-        }, 100);
-        
-        return { success: true };
-      } else {
-        setError(response.message);
-        return { success: false, message: response.message };
+        if (response.success) {
+          const { user, accessToken } = response.data;
+
+          // Save token
+          localStorage.setItem("accessToken", accessToken);
+          setAccessToken(accessToken);
+
+          // Set user
+          setUser(user);
+
+          // Small delay to ensure state update
+          setTimeout(() => {
+            redirectToDashboard(user.role);
+          }, 100);
+
+          return { success: true };
+        } else {
+          setError(response.message);
+          return { success: false, message: response.message };
+        }
+      } catch (error) {
+        const message = error.message || "Login failed";
+        setError(message);
+        return { success: false, message };
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      const message = error.message || 'Login failed';
-      setError(message);
-      return { success: false, message };
-    } finally {
-      setLoading(false);
-    }
-  }, [redirectToDashboard]);
+    },
+    [redirectToDashboard]
+  );
 
   /**
    * Register user
@@ -118,7 +134,10 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData);
+      const response = await apiClient.post(
+        API_ENDPOINTS.AUTH.REGISTER,
+        userData
+      );
 
       if (response.success) {
         return { success: true, message: response.message };
@@ -127,7 +146,7 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      const message = error.response?.data?.message || "Registration failed";
       setError(message);
       return { success: false, message };
     } finally {
@@ -143,13 +162,13 @@ export function AuthProvider({ children }) {
       // Call logout endpoint
       await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT);
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     } finally {
       // Clear local data
-      localStorage.removeItem('accessToken');
+      localStorage.removeItem("accessToken");
       clearAccessToken();
       setUser(null);
-      router.push('/login');
+      router.push("/login");
     }
   }, [router]);
 
@@ -161,10 +180,13 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
-        currentPassword,
-        newPassword,
-      });
+      const response = await apiClient.post(
+        API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+        {
+          currentPassword,
+          newPassword,
+        }
+      );
 
       if (response.success) {
         return { success: true, message: response.message };
@@ -173,7 +195,8 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to change password';
+      const message =
+        error.response?.data?.message || "Failed to change password";
       setError(message);
       return { success: false, message };
     } finally {
@@ -189,7 +212,10 @@ export function AuthProvider({ children }) {
       setLoading(true);
       setError(null);
 
-      const response = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
+      const response = await apiClient.post(
+        API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+        { email }
+      );
 
       if (response.success) {
         return { success: true, message: response.message };
@@ -198,7 +224,8 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to send reset email';
+      const message =
+        error.response?.data?.message || "Failed to send reset email";
       setError(message);
       return { success: false, message };
     } finally {
@@ -226,7 +253,8 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to reset password';
+      const message =
+        error.response?.data?.message || "Failed to reset password";
       setError(message);
       return { success: false, message };
     } finally {
@@ -252,7 +280,8 @@ export function AuthProvider({ children }) {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to update profile';
+      const message =
+        error.response?.data?.message || "Failed to update profile";
       setError(message);
       return { success: false, message };
     } finally {
@@ -266,55 +295,64 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     try {
       const response = await apiClient.get(API_ENDPOINTS.AUTH.ME);
-      
+
       if (response.success) {
         setUser(response.data);
       }
     } catch (error) {
-      console.error('Failed to refresh user:', error);
+      console.error("Failed to refresh user:", error);
     }
   }, []);
 
   /**
    * Check if user has a specific role
    */
-  const hasRole = useCallback((role) => {
-    if (!user) return false;
-    
-    if (Array.isArray(role)) {
-      return role.includes(user.role);
-    }
-    
-    return user.role === role;
-  }, [user]);
+  const hasRole = useCallback(
+    (role) => {
+      if (!user) return false;
+
+      if (Array.isArray(role)) {
+        return role.includes(user.role);
+      }
+
+      return user.role === role;
+    },
+    [user]
+  );
 
   /**
    * Check if user has a specific permission
    */
-  const hasPermission = useCallback((permission) => {
-    if (!user) return false;
-    
-    // Super admin has all permissions
-    if (user.role === ROLES.SUPER_ADMIN) return true;
-    
-    if (Array.isArray(permission)) {
-      return permission.some(p => user.permissions?.includes(p));
-    }
-    
-    return user.permissions?.includes(permission);
-  }, [user]);
+  const hasPermission = useCallback(
+    (permission) => {
+      if (!user) return false;
+
+      // Super admin has all permissions
+      if (user.role === ROLES.SUPER_ADMIN) return true;
+
+      if (Array.isArray(permission)) {
+        return permission.some((p) => user.permissions?.includes(p));
+      }
+
+      return user.permissions?.includes(permission);
+    },
+    [user]
+  );
 
   /**
    * Check if user belongs to a specific branch
    */
-  const hasBranch = useCallback((branchId) => {
-    if (!user) return false;
-    
-    // Super admin has access to all branches
-    if (user.role === ROLES.SUPER_ADMIN) return true;
-    
-    return user.branchId === branchId;
-  }, [user]);
+  const hasBranch = useCallback(
+    (branchId) => {
+      if (!user) return false;
+
+      // Super admin has access to all branches
+      if (user.role === ROLES.SUPER_ADMIN) return true;
+
+      return user.branchId === branchId;
+    },
+    [user]
+  );
 
   const value = {
     user,
@@ -342,11 +380,11 @@ export function AuthProvider({ children }) {
  */
 export function useAuth() {
   const context = useContext(AuthContext);
-  
+
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
-  
+
   return context;
 }
 
@@ -357,7 +395,7 @@ export function withAuth(Component, options = {}) {
   return function ProtectedRoute(props) {
     const { user, loading } = useAuth();
     const router = useRouter();
-    const { requiredRole, requiredPermission, redirectTo = '/login' } = options;
+    const { requiredRole, requiredPermission, redirectTo = "/login" } = options;
 
     useEffect(() => {
       if (!loading && !user) {
@@ -368,23 +406,23 @@ export function withAuth(Component, options = {}) {
           const hasRequiredRole = Array.isArray(requiredRole)
             ? requiredRole.includes(user.role)
             : user.role === requiredRole;
-          
+
           if (!hasRequiredRole) {
-            router.push('/unauthorized');
+            router.push("/unauthorized");
             return;
           }
         }
-        
+
         // Check permission
         if (requiredPermission) {
-          const hasRequiredPermission = 
+          const hasRequiredPermission =
             user.role === ROLES.SUPER_ADMIN ||
             (Array.isArray(requiredPermission)
-              ? requiredPermission.some(p => user.permissions?.includes(p))
+              ? requiredPermission.some((p) => user.permissions?.includes(p))
               : user.permissions?.includes(requiredPermission));
-          
+
           if (!hasRequiredPermission) {
-            router.push('/unauthorized');
+            router.push("/unauthorized");
             return;
           }
         }

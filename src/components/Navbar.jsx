@@ -230,7 +230,7 @@ export default function Navbar() {
               
               {/* Mobile CTA Buttons */}
               <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-slate-200">
-                <Link href="/auth/sign-in" onClick={() => setIsOpen(false)}>
+                <Link href="/login" onClick={() => setIsOpen(false)}>
                   <Button variant="outline" className="w-full justify-center">
                     Sign In
                   </Button>

@@ -47,7 +47,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 transition-all duration-300 shadow-sm">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky z-10 transition-all duration-300 shadow-sm md:top-0 top-16">
       <div className="flex items-center justify-between px-4 md:px-6 py-4">
         <div className="flex items-center gap-4">
           <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -77,17 +77,26 @@ export default function Header() {
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
           </Button>
 
-          {/* Profile Dropdown */}
+          {/* Profile Dropdown - Mobile responsive */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={toggleDropdown}
-              className="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-3 py-2 transition-colors group"
+              className="flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 md:px-3 py-2 transition-colors group"
             >
-              <div className="text-right">
+              {/* Mobile: Show only avatar and chevron */}
+              <div className="md:hidden">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                  {(user?.fullName || user?.name || 'U').charAt(0).toUpperCase()}
+                </div>
+              </div>
+
+              {/* Desktop: Show full user info */}
+              <div className="hidden md:block text-right">
                 <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{user?.fullName || user?.name || 'User'}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role?.replace('_', ' ') || 'Role'}</p>
               </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
+
+              <div className="hidden md:block w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
                 {(user?.fullName || user?.name || 'U').charAt(0).toUpperCase()}
               </div>
               <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />

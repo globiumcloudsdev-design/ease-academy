@@ -55,34 +55,34 @@ export default function PerformanceMetrics({ metrics }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <Card key={card.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-2 md:pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-gray-700">
+                <CardTitle className="text-xs md:text-sm font-medium text-gray-700">
                   {card.title}
                 </CardTitle>
-                <div className={`${card.bgColor} p-2 rounded-lg`}>
-                  <Icon className={`h-4 w-4 ${card.color}`} />
+                <div className={`${card.bgColor} p-1.5 md:p-2 rounded-lg`}>
+                  <Icon className={`h-3 w-3 md:h-4 md:w-4 ${card.color}`} />
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 md:space-y-3">
               {card.metrics.map((metric, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500">{metric.label}</p>
-                    <p className="text-lg font-semibold text-gray-900">{metric.value}</p>
+                <div key={idx} className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500 truncate">{metric.label}</p>
+                    <p className="text-base md:text-lg font-semibold text-gray-900">{metric.value}</p>
                   </div>
                   {metric.change !== 0 && (
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-shrink-0">
                       {metric.change > 0 ? (
-                        <TrendingUp className="h-4 w-4 text-green-600" />
+                        <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
                       ) : (
-                        <TrendingDown className="h-4 w-4 text-red-600" />
+                        <TrendingDown className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
                       )}
                       <span
                         className={`ml-1 text-xs font-medium ${

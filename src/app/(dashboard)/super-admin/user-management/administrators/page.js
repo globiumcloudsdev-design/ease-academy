@@ -376,14 +376,14 @@ export default function AdministratorsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 sm:pt-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
             Administrators Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">
             Manage system and branch administrators
           </p>
         </div>
@@ -463,26 +463,27 @@ export default function AdministratorsPage() {
       {/* Administrators Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle>All Administrators ({filteredAdmins.length})</CardTitle>
-            <Button onClick={handleAddNew}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <CardTitle className="text-lg sm:text-xl">All Administrators ({filteredAdmins.length})</CardTitle>
+            <Button onClick={handleAddNew} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              Add Administrator
+              <span className="hidden sm:inline">Add Administrator</span>
+              <span className="sm:hidden">Add Admin</span>
             </Button>
           </div>
-
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Branch</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="min-w-[200px]">Name</TableHead>
+                <TableHead className="hidden sm:table-cell min-w-[200px]">Contact</TableHead>
+                <TableHead className="hidden md:table-cell">Role</TableHead>
+                <TableHead className="hidden lg:table-cell min-w-[150px]">Branch</TableHead>
+                <TableHead className="min-w-[80px]">Status</TableHead>
+                <TableHead className="hidden xl:table-cell">Last Login</TableHead>
+                <TableHead className="text-right min-w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -572,6 +573,7 @@ export default function AdministratorsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -605,7 +607,7 @@ export default function AdministratorsPage() {
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wide">
               Personal Information
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   First Name <span className="text-red-500">*</span>
@@ -661,7 +663,7 @@ export default function AdministratorsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Date of Birth <span className="text-red-500">*</span>

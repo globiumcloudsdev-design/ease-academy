@@ -1,12 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { Card } from '@/components/ui/card';
-import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import apiClient from '@/lib/api-client';
-import { Users, GraduationCap, BookOpen, Calendar, TrendingUp, TrendingDown, Clock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { Card } from "@/components/ui/card";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import apiClient from "@/lib/api-client";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+
+// Import all the new components
+import DashboardGreeting from "@/components/teacher/DashboardGreeting";
+import DashboardStats from "@/components/teacher/DashboardStats";
+import QuickActions from "@/components/teacher/QuickActions";
+import MyClassesCard from "@/components/teacher/MyClassesCard";
+import UpcomingExamsCard from "@/components/teacher/UpcomingExamsCard";
+import TodayAttendanceCard from "@/components/teacher/TodayAttendanceCard";
+import RecentActivityFeed from "@/components/teacher/RecentActivityFeed";
+import CheckInOutCard from "@/components/teacher/CheckInOutCard";
+import AttendanceHistoryCard from "@/components/teacher/AttendanceHistoryCard";
+import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
 
 export default function TeacherDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -16,42 +28,309 @@ export default function TeacherDashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!authLoading && user) {
-      if (user.role !== 'teacher') {
-        router.push('/login');
+    // Check authentication and role
+    if (!authLoading) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      if (user.role !== "teacher") {
+        router.push("/login");
         return;
       }
       fetchDashboardData();
     }
-  }, [user, authLoading]);
+  }, [authLoading, user, router]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(API_ENDPOINTS.TEACHER.DASHBOARD);
-      
-      if (response.success) {
-        setDashboardData(response.data);
-      } else {
-        setError(response.message || 'Failed to load dashboard');
-      }
+
+      // MOCK DATA - Remove this when backend is ready
+      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate API delay
+
+      const mockData = {
+        stats: {
+          classes: { total: 5, active: 3, change: 2 },
+          students: { total: 150, change: 5 },
+          attendance: { average: 92, change: 3 },
+          exams: { total: 8, thisWeek: 2, change: 1 },
+        },
+        myClasses: [
+          {
+            _id: "1",
+            name: "Mathematics 101",
+            code: "MATH101",
+            studentCount: 30,
+            attendanceRate: 95,
+            schedule: [
+              { day: "Monday", startTime: "09:00", endTime: "10:30" },
+              { day: "Wednesday", startTime: "14:00", endTime: "15:30" },
+            ],
+            nextClass: "Tomorrow at 9:00 AM",
+          },
+          {
+            _id: "2",
+            name: "Physics 201",
+            code: "PHY201",
+            studentCount: 25,
+            attendanceRate: 88,
+            schedule: [
+              { day: "Tuesday", startTime: "10:00", endTime: "11:30" },
+            ],
+            nextClass: "Tuesday at 10:00 AM",
+          },
+          {
+            _id: "3",
+            name: "Chemistry 301",
+            code: "CHEM301",
+            studentCount: 28,
+            attendanceRate: 91,
+            schedule: [
+              {
+                day: new Date().toLocaleDateString("en-US", {
+                  weekday: "long",
+                }),
+                startTime: "09:00",
+                endTime: "10:30",
+              },
+            ],
+            nextClass: "Now",
+          },
+        ],
+        upcomingExams: [
+          {
+            _id: "1",
+            title: "Mid-term Exam - Mathematics",
+            date: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
+            classId: { name: "Mathematics 101" },
+            duration: 120,
+            room: "A101",
+            subject: "Mathematics",
+          },
+          {
+            _id: "2",
+            title: "Final Exam - Physics",
+            date: new Date(Date.now() + 86400000 * 7).toISOString(), // Next week
+            classId: { name: "Physics 201" },
+            duration: 180,
+            room: "B205",
+            subject: "Physics",
+          },
+          {
+            _id: "3",
+            title: "Quiz - Chemistry",
+            date: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days
+            classId: { name: "Chemistry 301" },
+            duration: 60,
+            room: "C102",
+            subject: "Chemistry",
+          },
+        ],
+        branchInfo: {
+          branchName: "Main Campus",
+          branchCode: "MC001",
+        },
+        todayAttendance: {
+          totalClasses: 4,
+          completedClasses: 2,
+          pendingClasses: 2,
+          totalStudents: 120,
+          presentStudents: 110,
+          absentStudents: 8,
+          lateStudents: 2,
+          attendanceRate: 92,
+        },
+        recentActivity: [
+          {
+            _id: "1",
+            type: "attendance",
+            title: "Attendance marked",
+            description: "Marked attendance for Mathematics 101",
+            timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            className: "Mathematics 101",
+            status: "completed",
+          },
+          {
+            _id: "2",
+            type: "exam",
+            title: "Exam scheduled",
+            description: "Mid-term exam scheduled for Mathematics 101",
+            timestamp: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+            className: "Mathematics 101",
+            status: "pending",
+          },
+          {
+            _id: "3",
+            type: "assignment",
+            title: "Assignment created",
+            description: "New assignment posted for Physics 201",
+            timestamp: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+            className: "Physics 201",
+            status: "completed",
+          },
+          {
+            _id: "4",
+            type: "announcement",
+            title: "Announcement posted",
+            description: "Holiday notice for next week",
+            timestamp: new Date(Date.now() - 14400000).toISOString(), // 4 hours ago
+            status: "completed",
+          },
+        ],
+        teacherAttendance: {
+          status: "checked_in",
+          checkInTime: new Date(Date.now() - 28800000).toISOString(), // 8 hours ago
+          checkOutTime: null,
+          workingHours: null,
+        },
+        attendanceHistory: [
+          {
+            _id: "1",
+            date: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+            status: "present",
+            checkInTime: new Date(
+              Date.now() - 86400000 - 28800000
+            ).toISOString(),
+            checkOutTime: new Date(
+              Date.now() - 86400000 - 3600000
+            ).toISOString(),
+            workingHours: "9h 0m",
+          },
+          {
+            _id: "2",
+            date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+            status: "present",
+            checkInTime: new Date(
+              Date.now() - 86400000 * 2 - 28800000
+            ).toISOString(),
+            checkOutTime: new Date(
+              Date.now() - 86400000 * 2 - 3600000
+            ).toISOString(),
+            workingHours: "8h 30m",
+          },
+          {
+            _id: "3",
+            date: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+            status: "late",
+            checkInTime: new Date(
+              Date.now() - 86400000 * 3 - 25200000
+            ).toISOString(),
+            checkOutTime: new Date(
+              Date.now() - 86400000 * 3 - 3600000
+            ).toISOString(),
+            workingHours: "8h 0m",
+          },
+          {
+            _id: "4",
+            date: new Date(Date.now() - 86400000 * 4).toISOString(), // 4 days ago
+            status: "present",
+            checkInTime: new Date(
+              Date.now() - 86400000 * 4 - 28800000
+            ).toISOString(),
+            checkOutTime: new Date(
+              Date.now() - 86400000 * 4 - 3600000
+            ).toISOString(),
+            workingHours: "9h 15m",
+          },
+          {
+            _id: "5",
+            date: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
+            status: "present",
+            checkInTime: new Date(
+              Date.now() - 86400000 * 5 - 28800000
+            ).toISOString(),
+            checkOutTime: new Date(
+              Date.now() - 86400000 * 5 - 3600000
+            ).toISOString(),
+            workingHours: "8h 45m",
+          },
+        ],
+      };
+
+      setDashboardData(mockData);
+
+      // UNCOMMENT THIS WHEN BACKEND IS READY:
+      // const response = await apiClient.get(API_ENDPOINTS.TEACHER.DASHBOARD);
+      // if (response.success) {
+      //   setDashboardData(response.data);
+      // } else {
+      //   setError(response.message || "Failed to load dashboard");
+      // }
     } catch (err) {
-      setError(err.message || 'Failed to load dashboard data');
-      console.error('Dashboard fetch error:', err);
+      setError(err.message || "Failed to load dashboard data");
+      console.error("Dashboard fetch error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCheckIn = async () => {
+    try {
+      // MOCK CHECK-IN - Remove when backend is ready
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Update the teacherAttendance status
+      setDashboardData((prev) => ({
+        ...prev,
+        teacherAttendance: {
+          status: "checked_in",
+          checkInTime: new Date().toISOString(),
+          checkOutTime: null,
+          workingHours: null,
+        },
+      }));
+
+      // UNCOMMENT WHEN BACKEND IS READY:
+      // const response = await apiClient.post(API_ENDPOINTS.TEACHER.CHECK_IN);
+      // if (response.success) {
+      //   fetchDashboardData();
+      // }
+    } catch (error) {
+      console.error("Check-in error:", error);
+      throw error;
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      // MOCK CHECK-OUT - Remove when backend is ready
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Calculate working hours
+      const checkInTime = new Date(
+        dashboardData?.teacherAttendance?.checkInTime
+      );
+      const checkOutTime = new Date();
+      const diffMs = checkOutTime - checkInTime;
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const workingHours = `${hours}h ${minutes}m`;
+
+      // Update the teacherAttendance status
+      setDashboardData((prev) => ({
+        ...prev,
+        teacherAttendance: {
+          status: "checked_out",
+          checkInTime: prev.teacherAttendance.checkInTime,
+          checkOutTime: checkOutTime.toISOString(),
+          workingHours,
+        },
+      }));
+
+      // UNCOMMENT WHEN BACKEND IS READY:
+      // const response = await apiClient.post(API_ENDPOINTS.TEACHER.CHECK_OUT);
+      // if (response.success) {
+      //   fetchDashboardData();
+      // }
+    } catch (error) {
+      console.error("Check-out error:", error);
+      throw error;
+    }
+  };
+
   if (authLoading || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -59,11 +338,13 @@ export default function TeacherDashboard() {
       <div className="flex items-center justify-center min-h-screen">
         <Card className="p-6 max-w-md">
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-destructive mb-2">Error</h2>
+            <h2 className="text-xl font-semibold text-destructive mb-2">
+              Error Loading Dashboard
+            </h2>
             <p className="text-muted-foreground">{error}</p>
             <button
               onClick={fetchDashboardData}
-              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
             >
               Retry
             </button>
@@ -77,178 +358,46 @@ export default function TeacherDashboard() {
     return null;
   }
 
-  const { stats, myClasses, upcomingExams, branchInfo } = dashboardData;
-
-  const statsCards = [
-    {
-      title: 'My Classes',
-      value: stats.classes.total,
-      icon: BookOpen,
-      color: 'bg-blue-500',
-      href: '/teacher/classes',
-    },
-    {
-      title: 'Total Students',
-      value: stats.students.total,
-      icon: Users,
-      color: 'bg-green-500',
-      href: '/teacher/classes',
-    },
-    {
-      title: 'Upcoming Exams',
-      value: stats.exams.total,
-      icon: Calendar,
-      color: 'bg-purple-500',
-      href: '/teacher/exams',
-    },
-    {
-      title: 'Attendance Rate',
-      value: `${stats.attendance.average}%`,
-      icon: Clock,
-      color: 'bg-orange-500',
-      href: '/teacher/attendance',
-    },
-  ];
+  const {
+    stats,
+    myClasses,
+    upcomingExams,
+    branchInfo,
+    todayAttendance,
+    recentActivity,
+    teacherAttendance,
+    attendanceHistory,
+  } = dashboardData;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Teacher Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user.fullName}! Managing your classes at {branchInfo.branchName}
-        </p>
-      </div>
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+      {/* Greeting Section */}
+      <DashboardGreeting user={user} branchInfo={branchInfo} />
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsCards.map((stat) => (
-          <Card
-            key={stat.title}
-            className="p-6 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => router.push(stat.href)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                <p className="text-3xl font-bold mt-2">{stat.value}</p>
-              </div>
-              <div className={`p-3 rounded-full ${stat.color} text-white`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-            </div>
-          </Card>
-        ))}
+      <DashboardStats stats={stats} />
+
+      {/* Check-In/Out & Attendance History */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CheckInOutCard
+          teacherAttendance={teacherAttendance}
+          onCheckIn={handleCheckIn}
+          onCheckOut={handleCheckOut}
+        />
+        <AttendanceHistoryCard attendanceHistory={attendanceHistory} />
       </div>
 
-      {/* My Classes and Upcoming Exams */}
+      {/* Classes and Exams */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* My Classes */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">My Classes</h2>
-          {myClasses.length > 0 ? (
-            <div className="space-y-3">
-              {myClasses.map((classItem) => (
-                <div
-                  key={classItem._id}
-                  className="flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 cursor-pointer transition-colors"
-                  onClick={() => router.push(`/teacher/classes/${classItem._id}`)}
-                >
-                  <div>
-                    <p className="font-medium">{classItem.name}</p>
-                    <p className="text-sm text-muted-foreground">Code: {classItem.code}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{classItem.studentCount}</p>
-                    <p className="text-xs text-muted-foreground">Students</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No classes assigned</p>
-            </div>
-          )}
-        </Card>
-
-        {/* Upcoming Exams */}
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Upcoming Exams</h2>
-          {upcomingExams.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingExams.map((exam) => (
-                <div
-                  key={exam._id}
-                  className="p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-primary/10 rounded">
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{exam.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {new Date(exam.date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{exam.classId?.name}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No upcoming exams</p>
-            </div>
-          )}
-        </Card>
+        <MyClassesCard classes={myClasses} />
+        <UpcomingExamsCard exams={upcomingExams} />
       </div>
+
+      {/* Today's Attendance */}
+      <TodayAttendanceCard attendanceData={todayAttendance} />
 
       {/* Quick Actions */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <button
-            onClick={() => router.push('/teacher/classes')}
-            className="p-4 text-left border rounded-lg hover:bg-muted transition-colors"
-          >
-            <BookOpen className="w-8 h-8 text-blue-500 mb-2" />
-            <p className="font-medium">My Classes</p>
-            <p className="text-sm text-muted-foreground">View and manage classes</p>
-          </button>
-          <button
-            onClick={() => router.push('/teacher/attendance')}
-            className="p-4 text-left border rounded-lg hover:bg-muted transition-colors"
-          >
-            <Clock className="w-8 h-8 text-green-500 mb-2" />
-            <p className="font-medium">Mark Attendance</p>
-            <p className="text-sm text-muted-foreground">Take student attendance</p>
-          </button>
-          <button
-            onClick={() => router.push('/teacher/exams')}
-            className="p-4 text-left border rounded-lg hover:bg-muted transition-colors"
-          >
-            <Calendar className="w-8 h-8 text-purple-500 mb-2" />
-            <p className="font-medium">Manage Exams</p>
-            <p className="text-sm text-muted-foreground">Create and grade exams</p>
-          </button>
-          <button
-            onClick={() => router.push('/teacher/results')}
-            className="p-4 text-left border rounded-lg hover:bg-muted transition-colors"
-          >
-            <GraduationCap className="w-8 h-8 text-orange-500 mb-2" />
-            <p className="font-medium">View Results</p>
-            <p className="text-sm text-muted-foreground">Check student results</p>
-          </button>
-        </div>
-      </Card>
+      <QuickActions />
     </div>
   );
 }

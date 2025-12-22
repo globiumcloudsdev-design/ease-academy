@@ -656,7 +656,8 @@ const SuperAdminStudentsPage = () => {
 
           {/* Table */}
           <div className="border rounded-lg overflow-hidden">
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
                   <TableHead className="font-semibold">Student</TableHead>
@@ -779,6 +780,7 @@ const SuperAdminStudentsPage = () => {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           {/* Pagination */}
@@ -897,3 +899,7 @@ const SuperAdminStudentsPage = () => {
 };
 
 export default SuperAdminStudentsPage;
+
+
+
+

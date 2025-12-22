@@ -133,7 +133,7 @@ export default function SuperAdminDashboard() {
   return (
     <div className="p-4 md:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-8">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
             Super Admin Dashboard
@@ -329,6 +329,7 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              
               <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div className="flex items-center gap-3">
                   <UserCheck className="w-5 h-5 text-blue-500" />

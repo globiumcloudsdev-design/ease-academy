@@ -61,19 +61,19 @@ export default function HeaderStats({ stats }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4 mb-6">
       {statsConfig.map((stat) => {
         const Icon = stat.icon;
         return (
           <Card key={stat.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <Icon className="h-5 w-5 text-white" />
+            <CardContent className="p-3 md:p-4">
+              <div className="flex items-start justify-between mb-2 md:mb-3">
+                <div className={`${stat.color} p-2 md:p-3 rounded-lg`}>
+                  <Icon className="h-4 w-4 md:h-5 md:w-5 text-white" />
                 </div>
                 {stat.trend !== 0 && (
                   <span
-                    className={`text-xs font-semibold px-2 py-1 rounded ${
+                    className={`text-xs font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded ${
                       stat.trend > 0
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'
@@ -84,10 +84,10 @@ export default function HeaderStats({ stats }) {
                 )}
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <p className="text-xs md:text-sm text-gray-600 dark:text-gray-400 mb-1">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+                <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1">
                   {stat.value}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-500">
