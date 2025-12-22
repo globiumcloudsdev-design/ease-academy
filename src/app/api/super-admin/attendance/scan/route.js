@@ -3,7 +3,13 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Attendance from '@/backend/models/Attendance';
 import User from '@/backend/models/User';
+import Exam from '@/backend/models/Exam';
+import Event from '@/backend/models/Event';
+import Timetable from '@/backend/models/Timetable';
+import Subject from '@/backend/models/Subject';
+import Branch from '@/backend/models/Branch';
 
+// POST - Scan QR code for attendance
 async function scanAttendance(request, authenticatedUser, userDoc) {
   try {
     if (authenticatedUser.role !== 'super_admin') {

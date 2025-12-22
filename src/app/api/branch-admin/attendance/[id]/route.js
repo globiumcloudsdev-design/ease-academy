@@ -6,6 +6,9 @@ import User from '@/backend/models/User';
 import Class from '@/backend/models/Class';
 import Subject from '@/backend/models/Subject';
 import Branch from '@/backend/models/Branch';
+import Exam from '@/backend/models/Exam';
+import Event from '@/backend/models/Event';
+import Timetable from '@/backend/models/Timetable';
 
 // GET - Get single attendance record
 async function getAttendanceRecord(request, authenticatedUser, userDoc, { params }) {

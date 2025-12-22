@@ -318,7 +318,7 @@ export default function SyllabusPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
+      <div className="mb-6 pt-8">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <FileText className="h-7 w-7" />
           Syllabus Management

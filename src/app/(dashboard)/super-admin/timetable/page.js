@@ -865,14 +865,20 @@ export default function TimetablePage() {
 
     return (
         <div className="container mx-auto p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold">Timetable Management</h1>
-                    <p className="text-muted-foreground">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-6 sm:pt-8">
+                <div className="space-y-1">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
+                        Timetable Management
+                    </h1>
+                    <p className="text-muted-foreground text-sm sm:text-base">
                         Manage class timetables and periods
                     </p>
                 </div>
-                <Button onClick={handleCreateNew}>
+                <Button
+                    onClick={handleCreateNew}
+                    className="w-full sm:w-auto sm:self-center"
+                    size="sm"
+                >
                     <Plus className="mr-2 h-4 w-4" />
                     Create Timetable
                 </Button>

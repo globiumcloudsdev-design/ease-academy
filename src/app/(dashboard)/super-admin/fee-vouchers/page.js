@@ -311,12 +311,15 @@ export default function SuperAdminFeeVouchersPage() {
     <div className="p-6">
       <Card>
         <CardHeader className="border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-0">
             <div>
-              <CardTitle>Fee Vouchers (Super Admin)</CardTitle>
+              <CardTitle className="text-xl sm:text-2xl">Fee Vouchers (Super Admin)</CardTitle>
               <p className="text-sm text-gray-500 mt-1">Generate and manage fee vouchers across branches</p>
             </div>
-            <Button onClick={handleOpenGenerateModal}>
+            <Button
+              onClick={handleOpenGenerateModal}
+              className="mt-2 sm:mt-0 w-full sm:w-auto"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Generate Vouchers
             </Button>
@@ -501,7 +504,7 @@ export default function SuperAdminFeeVouchersPage() {
         </div>
       }>
         <form onSubmit={handleGenerateVouchers} className="space-y-4 max-h-[70vh] overflow-y-auto">
-          
+
           {/* Auto-Selection Info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <div className="flex gap-2">
@@ -583,13 +586,13 @@ export default function SuperAdminFeeVouchersPage() {
 
               {formData.studentIds.length > 0 && !formData.selectAllStudents && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.studentIds.slice(0,5).map((studentId) => {
+                  {formData.studentIds.slice(0, 5).map((studentId) => {
                     const student = students.find(s => s._id === studentId);
                     if (!student) return null;
-                        const { name } = formatStudent(student);
+                    const { name } = formatStudent(student);
                     return (
                       <span key={studentId} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-                            {name}
+                        {name}
                         <button type="button" onClick={() => setFormData(prev => ({ ...prev, studentIds: prev.studentIds.filter(id => id !== studentId) }))} className="hover:text-blue-900">×</button>
                       </span>
                     );

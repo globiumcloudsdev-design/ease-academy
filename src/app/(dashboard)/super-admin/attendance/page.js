@@ -36,7 +36,7 @@ export default function SuperAdminAttendancePage() {
   const [saving, setSaving] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
-  
+
   // History states
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -52,14 +52,14 @@ export default function SuperAdminAttendancePage() {
   const [editStatus, setEditStatus] = useState('');
   const [editRemarks, setEditRemarks] = useState('');
   const [updating, setUpdating] = useState(false);
-  
+
   // Data states
   const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  
+
   // Form states
   const [selectedBranch, setSelectedBranch] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
@@ -70,23 +70,23 @@ export default function SuperAdminAttendancePage() {
   const [selectedEvent, setSelectedEvent] = useState('');
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Attendance states
   const [attendanceRecords, setAttendanceRecords] = useState({});
   const [scannedStudents, setScannedStudents] = useState([]);
   const [markedStudents, setMarkedStudents] = useState([]);
-  
+
   // Student search states
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
-  
+
   // Fetch branches and today's attendance on mount
   useEffect(() => {
     fetchBranches();
     fetchTodayAttendance();
   }, []);
-  
+
   // Fetch classes when branch changes
   useEffect(() => {
     if (selectedBranch) {
@@ -99,7 +99,7 @@ export default function SuperAdminAttendancePage() {
       setFilteredStudents([]);
     }
   }, [selectedBranch]);
-  
+
   // Fetch students when class/section changes
   useEffect(() => {
     if (selectedBranch && selectedClass && selectedSection) {
@@ -130,7 +130,7 @@ export default function SuperAdminAttendancePage() {
       fetchExistingAttendance(students);
     }
   }, [attendanceType, selectedSubject, selectedEvent, attendanceDate]);
-  
+
   // Filter students when search changes
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -147,7 +147,7 @@ export default function SuperAdminAttendancePage() {
       );
     }
   }, [searchQuery, students]);
-  
+
   // Debounced student search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -157,10 +157,10 @@ export default function SuperAdminAttendancePage() {
         setSearchResults([]);
       }
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [studentSearchQuery]);
-  
+
   const fetchTodayAttendance = async () => {
     try {
       const todayDate = new Date().toISOString().split('T')[0];
@@ -169,17 +169,17 @@ export default function SuperAdminAttendancePage() {
         date: todayDate,
         limit: 1000
       });
-      
+
       console.log('Raw API response:', response);
       console.log('Response success:', response.success);
       console.log('Response data:', response.data);
-      
+
       if (response.success && response.data) {
         console.log('Today attendance API response:', response.data);
         const attendanceRecords = response.data.attendance || [];
         console.log('Attendance records found:', attendanceRecords.length);
         const markedStudentsList = [];
-        
+
         // Extract unique students from today's attendance
         attendanceRecords.forEach(record => {
           console.log('Processing attendance record:', record);
@@ -204,7 +204,7 @@ export default function SuperAdminAttendancePage() {
             });
           }
         });
-        
+
         console.log('Final marked students list:', markedStudentsList);
         setMarkedStudents(markedStudentsList);
       }
@@ -213,7 +213,7 @@ export default function SuperAdminAttendancePage() {
       // Don't show error toast, just log it
     }
   };
-  
+
   const fetchBranches = async () => {
     try {
       setLoading(true);
@@ -225,7 +225,7 @@ export default function SuperAdminAttendancePage() {
       setLoading(false);
     }
   };
-  
+
   const fetchClasses = async () => {
     try {
       setLoading(true);
@@ -240,7 +240,7 @@ export default function SuperAdminAttendancePage() {
       setLoading(false);
     }
   };
-  
+
   const fetchSubjects = async () => {
     if (!selectedClass) return;
     try {
@@ -261,12 +261,12 @@ export default function SuperAdminAttendancePage() {
       toast.error('Failed to fetch events');
     }
   };
-  
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.STUDENTS.LIST);
-      
+
       const filtered = response.data.students.filter((student) => {
         const studentBranchId = student.branchId || student.branchId?._id;
         const studentClassId = student.classId || student.studentProfile?.classId || student.studentProfile?.classId?._id;
@@ -276,10 +276,10 @@ export default function SuperAdminAttendancePage() {
           (student.section === selectedSection)
         );
       });
-      
+
       setStudents(filtered);
       setFilteredStudents(filtered);
-      
+
       // Initialize attendance records
       await fetchExistingAttendance(filtered);
     } catch (error) {
@@ -288,21 +288,21 @@ export default function SuperAdminAttendancePage() {
       setLoading(false);
     }
   };
-  
+
   const fetchExistingAttendance = async (studentList) => {
     try {
       const params = {
-          branchId: selectedBranch,
-          classId: selectedClass,
-          date: attendanceDate,
-        };
+        branchId: selectedBranch,
+        classId: selectedClass,
+        date: attendanceDate,
+      };
 
       if (attendanceType === 'subject') params.subjectId = selectedSubject || undefined;
       if (attendanceType === 'event') params.eventId = selectedEvent || undefined;
       params.attendanceType = attendanceType || (selectedSubject ? 'subject' : 'daily');
 
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.LIST, params);
-      
+
       if (response.data.attendance) {
         const records = {};
         response.data.attendance.records?.forEach(record => {
@@ -326,14 +326,14 @@ export default function SuperAdminAttendancePage() {
       setAttendanceRecords(records);
     }
   };
-  
+
   const handleStatusChange = (studentId, status) => {
     setAttendanceRecords(prev => ({
       ...prev,
       [studentId]: status
     }));
   };
-  
+
   const handleQRScan = async (qrData) => {
     // Always send the QR payload to backend scan endpoint; backend will handle matching
     try {
@@ -374,20 +374,20 @@ export default function SuperAdminAttendancePage() {
       toast.error(err.response?.data?.message || 'Failed to record scan');
     }
   };
-  
+
   const searchStudents = async (query) => {
     if (!query || query.length < 2) {
       setSearchResults([]);
       return;
     }
-    
+
     try {
       setSearching(true);
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.STUDENTS.SEARCH, {
         q: query,
         branchId: selectedBranch || undefined
       });
-      
+
       if (response.success && response.data) {
         setSearchResults(Array.isArray(response.data) ? response.data : []);
       } else {
@@ -401,7 +401,7 @@ export default function SuperAdminAttendancePage() {
       setSearching(false);
     }
   };
-  
+
   const markStudentAttendance = async (student, status = 'present') => {
     try {
       // Create attendance record for this student
@@ -445,25 +445,25 @@ export default function SuperAdminAttendancePage() {
       toast.error(error.response?.data?.message || 'Failed to mark attendance');
     }
   };
-  
+
   const viewStudentAttendance = (studentId) => {
     router.push(`/super-admin/students/${studentId}/attendance?return=/super-admin/attendance`);
   };
-  
+
   const handleSubmit = async () => {
     if (!selectedBranch || !selectedClass || !selectedSection) {
       toast.error('Please select branch, class and section');
       return;
     }
-    
+
     try {
       setSaving(true);
-      
+
       const records = Object.entries(attendanceRecords).map(([studentId, status]) => ({
         studentId,
         status
       }));
-      
+
       const payload = {
         branchId: selectedBranch,
         classId: selectedClass,
@@ -474,20 +474,20 @@ export default function SuperAdminAttendancePage() {
         eventId: attendanceType === 'event' ? selectedEvent : null,
         records
       };
-      
+
       await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.CREATE, payload);
       toast.success('Attendance saved successfully!');
-      
+
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to save attendance');
     } finally {
       setSaving(false);
     }
   };
-  
+
   const getSelectedClass = () => classes.find(c => c._id === selectedClass);
   const sections = getSelectedClass()?.sections || [];
-  
+
   const getStatusIcon = (status) => {
     switch (status) {
       case 'present':
@@ -500,21 +500,21 @@ export default function SuperAdminAttendancePage() {
         return null;
     }
   };
-  
+
   // History functions
   const fetchAttendanceHistory = async () => {
     try {
       setHistoryLoading(true);
       const params = {};
-      
+
       if (historyFilters.fromDate) params.fromDate = historyFilters.fromDate;
       if (historyFilters.toDate) params.toDate = historyFilters.toDate;
       if (historyFilters.branchId) params.branchId = historyFilters.branchId;
       if (historyFilters.classId) params.classId = historyFilters.classId;
       if (historyFilters.attendanceType) params.attendanceType = historyFilters.attendanceType;
-      
+
       const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.ATTENDANCE.LIST, { params });
-      
+
       if (response.success && response.data) {
         setAttendanceHistory(response.data.attendance || []);
       }
@@ -524,14 +524,14 @@ export default function SuperAdminAttendancePage() {
       setHistoryLoading(false);
     }
   };
-  
+
   const handleEditStatus = (record) => {
     setEditingRecord(record);
     setEditStatus(record.status);
     setEditRemarks(record.remarks || '');
     setEditModalOpen(true);
   };
-  
+
   const getStatusBadge = (status) => {
     const variants = {
       present: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
@@ -541,33 +541,34 @@ export default function SuperAdminAttendancePage() {
       excused: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
       leave: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
     };
-    
+
     return (
       <Badge className={variants[status]}>
         {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
       </Badge>
     );
   };
-  
+
   if (loading && !branches.length) return <FullPageLoader />;
-  
+
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-8">
         <div>
-          <h1 className="text-3xl font-bold">Mark Attendance</h1>
-          <p className="text-gray-500 dark:text-gray-400">
+          <h1 className="text-2xl sm:text-3xl font-bold">Mark Attendance</h1>
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
             Mark attendance for students across all branches
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setShowScanner(true)}>
-            <Camera className="h-4 w-4 mr-2" />
-            Scan QR
-          </Button>
-        </div>
+        <Button
+          onClick={() => setShowScanner(true)}
+          className="mt-2 sm:mt-0 w-full sm:w-auto"
+        >
+          <Camera className="h-4 w-4 mr-2" />
+          Scan QR
+        </Button>
       </div>
-      
+
       <Card>
         <CardHeader>
           <CardTitle>Attendance Filters</CardTitle>
@@ -584,7 +585,7 @@ export default function SuperAdminAttendancePage() {
                 placeholder="Select branch"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Date</Label>
               <Input
@@ -594,7 +595,7 @@ export default function SuperAdminAttendancePage() {
                 max={new Date().toISOString().split('T')[0]}
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Class *</Label>
               <Dropdown
@@ -606,7 +607,7 @@ export default function SuperAdminAttendancePage() {
                 placeholder="Select class"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Section *</Label>
               <Dropdown
@@ -618,7 +619,7 @@ export default function SuperAdminAttendancePage() {
                 placeholder="Select section"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label>Subject (Optional)</Label>
               <Dropdown
@@ -662,7 +663,7 @@ export default function SuperAdminAttendancePage() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Student Search for Manual Marking */}
       <Card>
         <CardHeader>
@@ -687,7 +688,7 @@ export default function SuperAdminAttendancePage() {
                 </div>
               )}
             </div>
-            
+
             {searchResults.length > 0 && (
               <div className="border rounded-lg max-h-96 overflow-y-auto">
                 <Table>
@@ -759,7 +760,7 @@ export default function SuperAdminAttendancePage() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Marked Students Today */}
       {markedStudents.length > 0 && (
         <Card>
@@ -822,12 +823,12 @@ export default function SuperAdminAttendancePage() {
           </CardContent>
         </Card>
       )}
-      
+
       {selectedBranch && selectedClass && selectedSection && (
         <>
           <Tabs
             tabs={[
-              { id: 'manual', label: 'Manual Attendance' }, 
+              { id: 'manual', label: 'Manual Attendance' },
               { id: 'qr', label: 'QR Code Scan' },
               { id: 'history', label: 'Attendance History' }
             ]}
@@ -945,7 +946,7 @@ export default function SuperAdminAttendancePage() {
                       Scanned students will be automatically marked as present.
                     </p>
                   </div>
-                  
+
                   {scannedStudents.length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-2">
@@ -971,7 +972,7 @@ export default function SuperAdminAttendancePage() {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className="border rounded-lg">
                     <Table>
                       <TableHeader>
@@ -1090,7 +1091,7 @@ export default function SuperAdminAttendancePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {attendanceHistory.flatMap(attendance => 
+                      {attendanceHistory.flatMap(attendance =>
                         attendance.records.map(record => (
                           <TableRow key={`${attendance._id}-${record._id}`}>
                             <TableCell>
@@ -1228,7 +1229,7 @@ export default function SuperAdminAttendancePage() {
           )}
         </div>
       </Modal>
-      
+
       {showScanner && (
         <Modal open={true} onClose={() => setShowScanner(false)} title="Scan QR Code" size="xl">
           <div className="p-4">

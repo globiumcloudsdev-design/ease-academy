@@ -6,6 +6,9 @@ import Class from '@/backend/models/Class';
 import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import Branch from '@/backend/models/Branch';
+import Exam from '@/backend/models/Exam';
+import Event from '@/backend/models/Event';
+import Timetable from '@/backend/models/Timetable';
 
 // GET - Get all attendance records for super admin (all branches)
 async function getAttendance(request, authenticatedUser, userDoc) {

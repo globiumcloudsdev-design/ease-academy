@@ -116,11 +116,11 @@ const ROLE_MENUS = {
           path: "/super-admin/student-management/students",
           icon: Users,
         },
-        {
-          name: "Admissions",
-          path: "/super-admin/student-management/admissions",
-          icon: UserPlus,
-        },
+        // {
+        //   name: "Admissions",
+        //   path: "/super-admin/student-management/admissions",
+        //   icon: UserPlus,
+        // },
       ],
     },
     {
@@ -148,41 +148,41 @@ const ROLE_MENUS = {
           path: "/super-admin/fee-vouchers",
           icon: Receipt,
         },
-        {
-          name: "Branch Fees",
-          path: "/super-admin/fee-management/branch-fees",
-          icon: Wallet,
-        },
-        {
-          name: "Fee Reports",
-          path: "/super-admin/fee-management/reports",
-          icon: FileText,
-        },
+        // {
+        //   name: "Branch Fees",
+        //   path: "/super-admin/fee-management/branch-fees",
+        //   icon: Wallet,
+        // },
+        // {
+        //   name: "Fee Reports",
+        //   path: "/super-admin/fee-management/reports",
+        //   icon: FileText,
+        // },
       ],
     },
+    // {
+    //   category: "Salary Management",
+    //   isCollapsible: true,
+    //   items: [
+    //     {
+    //       name: "Salary Templates",
+    //       path: "/super-admin/salary-management/salary-templates",
+    //       icon: DollarSign,
+    //     },
+    //     {
+    //       name: "Payroll Processing",
+    //       path: "/super-admin/salary-management/payroll",
+    //       icon: Banknote,
+    //     },
+    //     {
+    //       name: "Salary Reports",
+    //       path: "/super-admin/salary-management/reports",
+    //       icon: BarChart3,
+    //     },
+    //   ],
+    // },
     {
-      category: "Salary Management",
-      isCollapsible: true,
-      items: [
-        {
-          name: "Salary Templates",
-          path: "/super-admin/salary-management/salary-templates",
-          icon: DollarSign,
-        },
-        {
-          name: "Payroll Processing",
-          path: "/super-admin/salary-management/payroll",
-          icon: Banknote,
-        },
-        {
-          name: "Salary Reports",
-          path: "/super-admin/salary-management/reports",
-          icon: BarChart3,
-        },
-      ],
-    },
-    {
-      category: "Attendance Management",
+      category: "Attendance",
       isCollapsible: true,
       items: [
         // { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
@@ -213,74 +213,74 @@ const ROLE_MENUS = {
         },
       ],
     },
-    {
-      category: "System Analytics",
-      isCollapsible: true,
-      items: [
-        {
-          name: "Financial Reports",
-          path: "/super-admin/analytics/financial",
-          icon: TrendingUp,
-        },
-        {
-          name: "Academic Reports",
-          path: "/super-admin/analytics/academic",
-          icon: BookOpen,
-        },
-        {
-          name: "Operational Reports",
-          path: "/super-admin/analytics/operational",
-          icon: BarChart3,
-        },
-      ],
-    },
-    {
-      category: "Configuration",
-      isCollapsible: true,
-      items: [
-        {
-          name: "General Settings",
-          path: "/super-admin/configuration/general",
-          icon: Settings,
-        },
-        {
-          name: "Academic Settings",
-          path: "/super-admin/configuration/academic-settings",
-          icon: School,
-        },
-        {
-          name: "Security Settings",
-          path: "/super-admin/configuration/security",
-          icon: Shield,
-        },
-        {
-          name: "Notifications",
-          path: "/super-admin/configuration/notifications",
-          icon: Bell,
-        },
-      ],
-    },
-    {
-      category: "Audit & Logs",
-      isCollapsible: true,
-      items: [
-        {
-          name: "Activity Logs",
-          path: "/super-admin/audit-logs/activity",
-          icon: Activity,
-        },
-        {
-          name: "System Logs",
-          path: "/super-admin/audit-logs/system",
-          icon: Cog,
-        },
-        {
-          name: "Login History",
-          path: "/super-admin/audit-logs/login-history",
-          icon: Users,
-        },
-      ],
-    },
+    // {
+    //   category: "System Analytics",
+    //   isCollapsible: true,
+    //   items: [
+    //     {
+    //       name: "Financial Reports",
+    //       path: "/super-admin/analytics/financial",
+    //       icon: TrendingUp,
+    //     },
+    //     {
+    //       name: "Academic Reports",
+    //       path: "/super-admin/analytics/academic",
+    //       icon: BookOpen,
+    //     },
+    //     {
+    //       name: "Operational Reports",
+    //       path: "/super-admin/analytics/operational",
+    //       icon: BarChart3,
+    //     },
+    //   ],
+    // },
+    // {
+    //   category: "Configuration",
+    //   isCollapsible: true,
+    //   items: [
+    //     {
+    //       name: "General Settings",
+    //       path: "/super-admin/configuration/general",
+    //       icon: Settings,
+    //     },
+    //     {
+    //       name: "Academic Settings",
+    //       path: "/super-admin/configuration/academic-settings",
+    //       icon: School,
+    //     },
+    //     {
+    //       name: "Security Settings",
+    //       path: "/super-admin/configuration/security",
+    //       icon: Shield,
+    //     },
+    //     {
+    //       name: "Notifications",
+    //       path: "/super-admin/configuration/notifications",
+    //       icon: Bell,
+    //     },
+    //   ],
+    // },
+    // {
+    //   category: "Audit & Logs",
+    //   isCollapsible: true,
+    //   items: [
+    //     {
+    //       name: "Activity Logs",
+    //       path: "/super-admin/audit-logs/activity",
+    //       icon: Activity,
+    //     },
+    //     {
+    //       name: "System Logs",
+    //       path: "/super-admin/audit-logs/system",
+    //       icon: Cog,
+    //     },
+    //     {
+    //       name: "Login History",
+    //       path: "/super-admin/audit-logs/login-history",
+    //       icon: Users,
+    //     },
+    //   ],
+    // },
   ],
 
   branch_admin: [
@@ -347,16 +347,16 @@ const ROLE_MENUS = {
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
       ],
     },
-    {
-      category: "Settings",
-      items: [
-        {
-          name: "Branch Settings",
-          path: "/branch-admin/settings",
-          icon: Settings,
-        },
-      ],
-    },
+    // {
+    //   category: "Settings",
+    //   items: [
+    //     {
+    //       name: "Branch Settings",
+    //       path: "/branch-admin/settings",
+    //       icon: Settings,
+    //     },
+    //   ],
+    // },
   ],
 
   teacher: [
@@ -411,15 +411,15 @@ const ROLE_MENUS = {
         { name: "Fee Status", path: "/parent/fees", icon: DollarSign },
       ],
     },
-    {
-      category: "Account",
-      isCollapsible: true,
-      items: [
-        { name: "Profile", path: "/parent/profile", icon: Users },
-        { name: "Messages", path: "/parent/messages", icon: FileText },
-        { name: "Settings", path: "/parent/settings", icon: Settings },
-      ],
-    },
+    // {
+    //   category: "Account",
+    //   isCollapsible: true,
+    //   items: [
+    //     { name: "Profile", path: "/parent/profile", icon: Users },
+    //     { name: "Messages", path: "/parent/messages", icon: FileText },
+    //     { name: "Settings", path: "/parent/settings", icon: Settings },
+    //   ],
+    // },
   ],
 
   student: [

@@ -291,7 +291,7 @@ const saveGss = async (e) => {
         <div className="min-h-screen bg-gray-50 p-4 md:p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-6">
+                <div className="mb-6 pt-8">
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
                         <BookOpen className="h-7 w-7 md:h-8 md:w-8 text-blue-600" />
                         Academic Setup

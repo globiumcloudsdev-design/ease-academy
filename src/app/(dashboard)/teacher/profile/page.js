@@ -46,8 +46,8 @@ export default function TeacherProfilePage() {
 
       const mockData = {
         profile: {
-          firstName: "Muhammad",
-          lastName: "Ahmed Khan",
+          firstName: "Shoaib",
+          lastName: "Raza Attari",
           email: "m.ahmed.khan@ease.edu",
           phone: "+92 300 1234567",
           address: "House #123, Street 4, DHA Phase 5, Karachi",

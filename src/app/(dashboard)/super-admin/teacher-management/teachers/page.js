@@ -178,7 +178,7 @@ export default function TeachersPage() {
       {fullPageLoading && <FullPageLoader message="Processing..." />}
       
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-6 pt-8">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <Users className="h-8 w-8 text-blue-600" />
           Teacher Management

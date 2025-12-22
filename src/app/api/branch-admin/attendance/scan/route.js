@@ -4,6 +4,9 @@ import connectDB from '@/lib/database';
 import Attendance from '@/backend/models/Attendance';
 import User from '@/backend/models/User';
 import FeeVoucher from '@/backend/models/FeeVoucher';
+import Exam from '@/backend/models/Exam';
+import Event from '@/backend/models/Event';
+import Timetable from '@/backend/models/Timetable';
 
 // POST - Scan QR code for attendance
 async function scanAttendance(request, authenticatedUser, userDoc) {
