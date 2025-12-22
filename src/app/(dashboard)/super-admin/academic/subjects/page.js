@@ -470,13 +470,14 @@ export default function SubjectsPage() {
         ) : subjects.length === 0 ? (
           <div className="p-8 text-center text-gray-500">No subjects found</div>
         ) : (
-          <Table className="w-full">
+          <Table className="w-full"
+          >
             <TableHeader className="bg-gray-50 border-b border-gray-200">
               <TableRow>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade/Class</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</TableHead>
-                <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours/Week</TableHead>
+                {/* <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hours/Week</TableHead> */}
                 {/* <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</TableHead> */}
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
                 <TableHead className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
@@ -494,7 +495,7 @@ export default function SubjectsPage() {
                   </TableCell>
 
                   <TableCell className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {subject.classId ? `Grade ${subject.classId.grade} - ${subject.classId.name}` : (subject.classId?.name || '—')}
+                    {subject.classId ? `${subject.name} - ${subject.classId.name}` : (subject.classId?.name || '—')}
                   </TableCell>
 
                   <TableCell className="px-6 py-4 whitespace-nowrap">
@@ -508,26 +509,10 @@ export default function SubjectsPage() {
                     </span>
                   </TableCell>
 
-                  <TableCell className="px-6 py-4 whitespace-nowrap">
+                  {/* <TableCell className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1 text-sm text-gray-900">
                       <Clock className="h-4 w-4 text-gray-400" />
                       {subject.hoursPerWeek}h/week
-                    </div>
-                  </TableCell>
-
-                  {/* <TableCell className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <div className="w-44">
-                        <Dropdown
-                          id={`section-${subject._id}`}
-                          name={`section-${subject._id}`}
-                          value={selectedSection[subject._id] || ''}
-                          onChange={(e) => handleSectionSelect(subject._id, subject.classId?._id || subject.classId, e.target.value)}
-                          options={[{ label: 'All Sections', value: '' }, ...(subject.classId?.sections || []).map(s => ({ label: s.name || s, value: s }))]}
-                          placeholder="All Sections"
-                        />
-                      </div>
-                      <div className="text-sm text-gray-700">{sectionCount[subject._id] ?? 0} students</div>
                     </div>
                   </TableCell> */}
 
@@ -601,7 +586,7 @@ export default function SubjectsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Class *</label>
-              <Dropdown id="modal-class" name="classId" value={formData.classId} onChange={(e) => setFormData({ ...formData, classId: e.target.value })} options={[{ label: 'Select Class', value: '' }, ...classes.map(c => ({ label: `${c.name} - Grade ${c.grade}`, value: c._id }))]} placeholder="Select Class" />
+              <Dropdown id="modal-class" name="classId" value={formData.classId} onChange={(e) => setFormData({ ...formData, classId: e.target.value })} options={[{ label: 'Select Class', value: '' }, ...classes.map(c => ({ label: `${c.name} - ${c.grade.name}`, value: c._id }))]} placeholder="Select Class" />
             </div>
 
             <div>
@@ -614,7 +599,7 @@ export default function SubjectsPage() {
               <Dropdown id="modal-subject-type" name="subjectType" value={formData.subjectType} onChange={(e) => setFormData({ ...formData, subjectType: e.target.value })} options={[{ label: 'Core', value: 'core' }, { label: 'Elective', value: 'elective' }, { label: 'Co-curricular', value: 'co-curricular' }, { label: 'Skill-based', value: 'skill-based' }]} placeholder="Select Type" />
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Hours Per Week</label>
               <Input type="number" value={formData.hoursPerWeek} onChange={(e) => setFormData({ ...formData, hoursPerWeek: parseInt(e.target.value) })} placeholder="Hours per week" />
             </div>
@@ -627,7 +612,7 @@ export default function SubjectsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Credit Hours</label>
               <Input type="number" value={formData.creditHours} onChange={(e) => setFormData({ ...formData, creditHours: parseInt(e.target.value) })} placeholder="Credit hours" />
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

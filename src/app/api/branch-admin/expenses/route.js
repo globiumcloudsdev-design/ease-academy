@@ -61,6 +61,7 @@ async function getExpenses(request, authenticatedUser, userDoc) {
       Expense.find(query)
         .populate('approvedBy', 'fullName email')
         .populate('createdBy', 'fullName email')
+        .populate('eventId', 'title eventType startDate endDate')
         .sort({ date: -1 })
         .skip(skip)
         .limit(limit)
@@ -123,12 +124,48 @@ async function createExpense(request, authenticatedUser, userDoc) {
 
     const body = await request.json();
 
+    // Handle event expenses - check if expense already exists for this event
+    if (body.isEventExpense && body.eventId) {
+      const existingEventExpense = await Expense.findOne({
+        branchId: authenticatedUser.branchId,
+        isEventExpense: true,
+        eventId: body.eventId,
+      });
+
+      if (existingEventExpense) {
+        // Update existing event expense by adding the new amount
+        existingEventExpense.amount += parseFloat(body.amount) || 0;
+        existingEventExpense.paidAmount += parseFloat(body.paidAmount) || 0;
+        existingEventExpense.updatedAt = new Date();
+
+        // Update other fields if provided
+        if (body.description) existingEventExpense.description = body.description;
+        if (body.paymentMethod) existingEventExpense.paymentMethod = body.paymentMethod;
+        if (body.paymentStatus) existingEventExpense.paymentStatus = body.paymentStatus;
+        if (body.vendor) existingEventExpense.vendor = body.vendor;
+        if (body.notes) existingEventExpense.notes = body.notes;
+
+        await existingEventExpense.save();
+
+        return NextResponse.json({
+          success: true,
+          data: existingEventExpense,
+          message: 'Event expense updated successfully',
+        });
+      }
+    }
+
     // Ensure expense is created for admin's branch only
     const expenseData = {
       ...body,
       branchId: authenticatedUser.branchId, // Force branch to admin's branch
       createdBy: authenticatedUser.userId,
     };
+
+    // Only set eventId if it's an event expense and eventId is provided
+    if (!expenseData.isEventExpense || !expenseData.eventId) {
+      delete expenseData.eventId;
+    }
 
     const expense = new Expense(expenseData);
     await expense.save();

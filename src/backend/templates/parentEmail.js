@@ -249,6 +249,96 @@ export const getParentEmailTemplate = (type, parent, schoolName = 'Ease Academy'
     `;
   }
 
+  // Child Exam Scheduled
+  if (type === 'CHILD_EXAM_SCHEDULED') {
+    const { firstName, childName, examTitle, examType, examDate, subjectNames, className, schoolName } = parent;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { ${baseStyles} }
+          .container { ${containerStyles} }
+          .header { ${headerStyles} }
+          .content { ${contentStyles} }
+          .details { ${detailsStyles} }
+          .footer { ${footerStyles} }
+          .exam-alert { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin: 0; font-size: 26px;">📚 ${schoolName}</h2>
+            <p style="margin: 8px 0 0 0; font-size: 14px;">Exam Schedule Notification</p>
+          </div>
+
+          <div class="content">
+            <p style="margin-top: 0; font-size: 16px; font-weight: 500;">Dear ${firstName},</p>
+
+            <div class="exam-alert">
+              <strong>📅 Exam Scheduled for ${childName}</strong>
+            </div>
+
+            <p>A new examination has been scheduled for your child <strong>${childName}</strong>. Please find the details below:</p>
+
+            <div style="${detailsStyles}">
+              <h4 style="margin-top: 0; color: #2b7a78;">Exam Details</h4>
+              <table style="width: 100%; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; width: 40%;">Student Name:</td>
+                  <td style="padding: 8px 0;">${childName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Class:</td>
+                  <td style="padding: 8px 0;">${className}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Exam Title:</td>
+                  <td style="padding: 8px 0;">${examTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Exam Type:</td>
+                  <td style="padding: 8px 0;">${examType.replace('_', ' ').toUpperCase()}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Exam Date:</td>
+                  <td style="padding: 8px 0;"><strong style="color: #e74c3c;">${examDate}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Subjects:</td>
+                  <td style="padding: 8px 0;">${subjectNames}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="${detailsStyles}">
+              <h4 style="margin-top: 0; color: #2b7a78;">Parent Guidelines</h4>
+              <ul style="margin: 8px 0; padding-left: 20px;">
+                <li>Ensure your child arrives at school on time for the examination</li>
+                <li>Help your child prepare necessary stationery and admit card</li>
+                <li>Monitor your child's preparation and provide necessary support</li>
+                <li>Contact the class teacher if your child needs special assistance</li>
+                <li>Check school communications regularly for any updates</li>
+              </ul>
+            </div>
+
+            <p style="margin: 20px 0; color: #666; font-size: 14px;">We wish ${childName} the very best for the upcoming examination. Your support and encouragement play a crucial role in your child's success.</p>
+
+            <p style="margin: 20px 0 0 0;">Best regards,<br><strong>${schoolName} Administration</strong></p>
+          </div>
+
+          <div class="footer">
+            <p style="margin: 0;">This is an automated email. Please do not reply to this message.</p>
+            <p style="margin: 6px 0 0 0;">&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Default template
   return `<html><body><p>Hello ${parent.firstName || parent.fullName || ''},</p><p>Your parent account has been updated.</p></body></html>`;
 };

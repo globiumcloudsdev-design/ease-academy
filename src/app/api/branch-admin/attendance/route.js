@@ -163,10 +163,34 @@ async function markAttendance(request, authenticatedUser, userDoc) {
     });
 
     if (existingAttendance) {
-      return NextResponse.json(
-        { success: false, message: 'Attendance already marked for this date and class' },
-        { status: 400 }
+      // If attendance exists, add/update the new student records
+      const newRecords = body.records || [];
+
+      // Check if any of the new students are already marked
+      const existingStudentIds = existingAttendance.records.map(r => r.studentId.toString());
+      const duplicateStudents = newRecords.filter(record =>
+        existingStudentIds.includes(record.studentId.toString())
       );
+
+      if (duplicateStudents.length > 0) {
+        return NextResponse.json(
+          { success: false, message: `Attendance already marked for ${duplicateStudents.length} student(s)` },
+          { status: 400 }
+        );
+      }
+
+      // Add new records to existing attendance
+      existingAttendance.records.push(...newRecords);
+      existingAttendance.markedBy = authenticatedUser.userId; // Update who marked it
+      if (body.notes) existingAttendance.notes = body.notes;
+
+      await existingAttendance.save();
+
+      return NextResponse.json({
+        success: true,
+        message: 'Attendance updated successfully',
+        data: { attendance: existingAttendance },
+      });
     }
 
     const attendance = new Attendance({

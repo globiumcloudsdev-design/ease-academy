@@ -382,6 +382,91 @@ export const getStudentEmailTemplate = (type, student, schoolName = 'Ease Academ
     `;
   }
 
+  // Exam Scheduled
+  if (type === 'exam_scheduled') {
+    const { studentName, examTitle, examType, examDate, subjectNames, className, schoolName } = student;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body { ${baseStyles} }
+          .container { ${containerStyles} }
+          .header { ${headerStyles} }
+          .content { ${contentStyles} }
+          .details { ${detailsStyles} }
+          .footer { ${footerStyles} }
+          .exam-alert { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2 style="margin: 0; font-size: 28px;">📚 ${schoolName}</h2>
+            <p style="margin: 10px 0 0 0; font-size: 14px;">Exam Schedule Notification</p>
+          </div>
+
+          <div class="content">
+            <p style="margin-top: 0; font-size: 16px; font-weight: 500;">Dear ${studentName},</p>
+
+            <div class="exam-alert">
+              <strong>📅 New Exam Scheduled</strong>
+            </div>
+
+            <p>A new examination has been scheduled for your class. Please find the details below:</p>
+
+            <div style="${detailsStyles}">
+              <h4 style="margin-top: 0; color: #667eea;">Exam Details</h4>
+              <table style="width: 100%; font-size: 14px;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; width: 40%;">Exam Title:</td>
+                  <td style="padding: 8px 0;">${examTitle}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Exam Type:</td>
+                  <td style="padding: 8px 0;">${examType.replace('_', ' ').toUpperCase()}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Class:</td>
+                  <td style="padding: 8px 0;">${className}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Exam Date:</td>
+                  <td style="padding: 8px 0;"><strong style="color: #e74c3c;">${examDate}</strong></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold;">Subjects:</td>
+                  <td style="padding: 8px 0;">${subjectNames}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="${detailsStyles}">
+              <h4 style="margin-top: 0; color: #667eea;">Important Instructions</h4>
+              <ul style="margin: 8px 0; padding-left: 20px;">
+                <li>Make sure to arrive at least 15 minutes before the exam time</li>
+                <li>Bring all necessary stationery and admit card</li>
+                <li>Check the exam schedule regularly for any updates</li>
+                <li>Contact your class teacher if you have any concerns</li>
+              </ul>
+            </div>
+
+            <p style="margin: 20px 0; color: #666; font-size: 14px;">Best of luck for your examination! If you have any questions, please contact your class teacher or school administration.</p>
+
+            <p style="margin: 20px 0 0 0;">Best regards,<br><strong>${schoolName} Administration</strong></p>
+          </div>
+
+          <div class="footer">
+            <p style="margin: 0;">This is an automated email. Please do not reply to this message.</p>
+            <p style="margin: 5px 0 0 0;">&copy; ${new Date().getFullYear()} ${schoolName}. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   // Default template
   return `<html><body><p>Hello,</p><p>Student record updated.</p></body></html>`;
 };

@@ -18,7 +18,7 @@ async function getClass(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const classItem = await Class.findOne({
       _id: id,
@@ -60,7 +60,7 @@ async function updateClass(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Find class and verify it belongs to admin's branch
@@ -115,7 +115,7 @@ async function deleteClass(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find and delete class (only from admin's branch)
     const classItem = await Class.findOneAndDelete({

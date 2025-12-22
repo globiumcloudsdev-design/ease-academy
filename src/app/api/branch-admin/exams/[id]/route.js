@@ -19,12 +19,14 @@ async function getExam(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
+    const { id } = await params;
+
     const exam = await Exam.findOne({
-      _id: params.id,
+      _id: id,
       branchId: authenticatedUser.branchId,
     })
       .populate('classId', 'name code')
-      .populate('subjectId', 'name code')
+      .populate('subjects.subjectId', 'name code')
       .populate('results.studentId', 'firstName lastName admissionNumber')
       .populate('createdBy', 'fullName email')
       .lean();
@@ -61,15 +63,17 @@ async function updateExam(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
+    const { id } = await params;
+
     const body = await request.json();
 
     const exam = await Exam.findOneAndUpdate(
-      { _id: params.id, branchId: authenticatedUser.branchId },
+      { _id: id, branchId: authenticatedUser.branchId },
       { $set: body },
       { new: true, runValidators: true }
     )
       .populate('classId', 'name code')
-      .populate('subjectId', 'name code')
+      .populate('subjects.subjectId', 'name code')
       .lean();
 
     if (!exam) {
@@ -105,8 +109,10 @@ async function deleteExam(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
+    const { id } = await params;
+
     const exam = await Exam.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       branchId: authenticatedUser.branchId,
     });
 

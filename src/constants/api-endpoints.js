@@ -171,11 +171,11 @@ export const API_ENDPOINTS = {
 
     // Grades (alias to school endpoints)
     GRADES: {
-      LIST: '/api/school/grades',
-      CREATE: '/api/school/grades',
-      GET: '/api/school/grades/:id',
-      UPDATE: '/api/school/grades/:id',
-      DELETE: '/api/school/grades/:id',
+      LIST: '/api/super-admin/school/grades',
+      CREATE: '/api/super-admin/school/grades',
+      GET: '/api/super-admin/school/grades/:id',
+      UPDATE: '/api/super-admin/school/grades/:id',
+      DELETE: '/api/super-admin/school/grades/:id',
     },
 
     // Departments Management

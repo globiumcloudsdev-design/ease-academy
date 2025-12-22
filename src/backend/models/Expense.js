@@ -71,6 +71,21 @@ const expenseSchema = new mongoose.Schema(
       type: String,
       enum: ['daily', 'weekly', 'monthly', 'yearly'],
     },
+    // Event-related fields
+    isEventExpense: {
+      type: Boolean,
+      default: false,
+    },
+    eventId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Event',
+    },
+    eventDetails: {
+      title: String,
+      eventType: String,
+      startDate: Date,
+      endDate: Date,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

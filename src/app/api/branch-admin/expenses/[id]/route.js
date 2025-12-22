@@ -15,7 +15,7 @@ async function getExpense(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const expense = await Expense.findOne({
       _id: id,
@@ -23,6 +23,7 @@ async function getExpense(request, authenticatedUser, userDoc, { params }) {
     })
       .populate('approvedBy', 'fullName email')
       .populate('createdBy', 'fullName email')
+      .populate('eventId', 'title eventType startDate endDate')
       .lean();
 
     if (!expense) {
@@ -57,7 +58,7 @@ async function updateExpense(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Find expense and verify it belongs to admin's branch
@@ -75,6 +76,11 @@ async function updateExpense(request, authenticatedUser, userDoc, { params }) {
 
     // Prevent changing branchId
     delete updates.branchId;
+
+    // Only set eventId if it's an event expense and eventId is provided
+    if (!updates.isEventExpense || !updates.eventId) {
+      delete updates.eventId;
+    }
 
     // Update expense
     Object.keys(updates).forEach((key) => {
@@ -111,7 +117,7 @@ async function deleteExpense(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Find and delete expense (only from admin's branch)
     const expense = await Expense.findOneAndDelete({

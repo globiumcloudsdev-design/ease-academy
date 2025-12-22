@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
+import Table, { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function FeeTemplatesPage() {
   const [templates, setTemplates] = useState([]);
@@ -477,108 +478,114 @@ export default function FeeTemplatesPage() {
         </div>
       </div>
 
-      {/* Templates Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {templates.length === 0 ? (
-          <div className="col-span-full bg-white p-12 rounded-lg border border-gray-200 text-center">
-            <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No fee templates found. Create your first template to get started.</p>
-          </div>
-        ) : (
-          templates.map((template) => {
-            const categoryColor = getCategoryColor(template.category);
-            return (
-              <div key={template._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-                <div className={`bg-${categoryColor}-500 p-4`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">{template.name}</h3>
-                      <p className="text-white text-opacity-90 text-sm mt-1">Code: {template.code}</p>
-                    </div>
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        template.status === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : template.status === 'inactive'
-                          ? 'bg-gray-100 text-gray-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
-                    >
-                      {template.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Category</span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full bg-${categoryColor}-100 text-${categoryColor}-700`}>
-                      {getCategoryLabel(template.category)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Amount</span>
-                    <span className="text-lg font-bold text-gray-900">Rs. {template.amount.toLocaleString()}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Frequency</span>
-                    <span className="text-sm font-medium text-gray-900 capitalize">{template.frequency}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Applicable To</span>
-                    <span className="text-sm font-medium text-gray-900 capitalize">{template.applicableTo}</span>
-                  </div>
-
-                  {template.branchId && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Branch</span>
-                      <span className="text-sm font-medium text-gray-900">{template.branchId.name}</span>
-                    </div>
-                  )}
-
-                  {template.lateFee?.enabled && (
-                    <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>Late fee: Rs. {template.lateFee.amount}</span>
-                    </div>
-                  )}
-
-                  {template.discount?.enabled && (
-                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-                      <TrendingUp className="w-4 h-4" />
-                      <span>Discount: Rs. {template.discount.amount}</span>
-                    </div>
-                  )}
-
-                  {template.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{template.description}</p>
-                  )}
-
-                  <div className="pt-3 border-t border-gray-200 flex items-center gap-2">
-                    <Button onClick={() => handleEdit(template)} className="flex-1" variant="outline">
-                      <Edit className="w-4 h-4" />
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setTemplateToDelete(template);
-                        setShowDeleteModal(true);
-                      }}
-                      className="flex-1"
-                      variant="destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Archive
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
+      {/* Templates Table */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Template Name</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Frequency</TableHead>
+              <TableHead>Applicable To</TableHead>
+              <TableHead>Branch</TableHead>
+              <TableHead>Late Fee</TableHead>
+              <TableHead>Discount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {templates.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={11} className="text-center py-12">
+                  <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No fee templates found. Create your first template to get started.</p>
+                </TableCell>
+              </TableRow>
+            ) : (
+              templates.map((template) => {
+                const categoryColor = getCategoryColor(template.category);
+                return (
+                  <TableRow key={template._id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{template.name}</div>
+                        {template.description && (
+                          <div className="text-sm text-gray-500 line-clamp-1">{template.description}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">{template.code}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full bg-${categoryColor}-100 text-${categoryColor}-700`}>
+                        {getCategoryLabel(template.category)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-semibold">Rs. {template.amount.toLocaleString()}</TableCell>
+                    <TableCell className="capitalize">{template.frequency}</TableCell>
+                    <TableCell className="capitalize">{template.applicableTo}</TableCell>
+                    <TableCell>{template.branchId?.name || 'All Branches'}</TableCell>
+                    <TableCell>
+                      {template.lateFee?.enabled ? (
+                        <span className="text-xs text-orange-600">
+                          {template.lateFee.type === 'percentage'
+                            ? `${template.lateFee.amount}%`
+                            : `Rs. ${template.lateFee.amount}`}
+                          {template.lateFee.graceDays > 0 && ` (${template.lateFee.graceDays}d)`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {template.discount?.enabled ? (
+                        <span className="text-xs text-green-600">
+                          {template.discount.type === 'percentage'
+                            ? `${template.discount.amount}%`
+                            : `Rs. ${template.discount.amount}`}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">None</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          template.status === 'active'
+                            ? 'bg-green-100 text-green-700'
+                            : template.status === 'inactive'
+                            ? 'bg-gray-100 text-gray-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {template.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button onClick={() => handleEdit(template)} variant="outline" size="sm">
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setTemplateToDelete(template);
+                            setShowDeleteModal(true);
+                          }}
+                          variant="destructive"
+                          size="sm"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       {/* Create/Edit Modal */}

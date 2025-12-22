@@ -24,49 +24,50 @@ const ExamSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    subjectId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Subject',
-      required: true,
-      index: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-    },
-    startTime: {
-      type: String,
-      required: true,
-    },
-    endTime: {
-      type: String,
-      required: true,
-    },
-    duration: {
-      type: Number, // in minutes
-      required: true,
-    },
-    totalMarks: {
-      type: Number,
-      required: true,
-      default: 100,
-    },
-    passingMarks: {
-      type: Number,
-      required: true,
-    },
-    room: {
-      type: String,
-      trim: true,
-    },
-    instructions: {
-      type: String,
-      trim: true,
-    },
-    syllabus: {
-      type: String,
-      trim: true,
-    },
+    subjects: [{
+      subjectId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+        required: true,
+      },
+      date: {
+        type: Date,
+        required: true,
+      },
+      startTime: {
+        type: String,
+        required: true,
+      },
+      endTime: {
+        type: String,
+        required: true,
+      },
+      duration: {
+        type: Number, // in minutes
+        required: true,
+      },
+      totalMarks: {
+        type: Number,
+        required: true,
+        default: 100,
+      },
+      passingMarks: {
+        type: Number,
+        required: true,
+      },
+      room: {
+        type: String,
+        trim: true,
+      },
+      instructions: {
+        type: String,
+        trim: true,
+      },
+      syllabus: {
+        type: String,
+        trim: true,
+      },
+    }],
     status: {
       type: String,
       enum: ['scheduled', 'ongoing', 'completed', 'cancelled', 'postponed'],
@@ -108,8 +109,8 @@ const ExamSchema = new mongoose.Schema(
 );
 
 // Indexes
-ExamSchema.index({ branchId: 1, date: -1 });
-ExamSchema.index({ classId: 1, subjectId: 1 });
+ExamSchema.index({ branchId: 1, 'subjects.date': -1 });
+ExamSchema.index({ classId: 1 });
 ExamSchema.index({ status: 1 });
 
 const Exam = mongoose.models.Exam || mongoose.model('Exam', ExamSchema);

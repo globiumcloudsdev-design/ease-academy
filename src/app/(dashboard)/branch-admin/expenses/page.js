@@ -13,6 +13,7 @@ import { Plus, Edit, Trash2, Search, Wallet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 
 const EXPENSE_CATEGORIES = [
   { value: 'salary', label: 'Salary' },
@@ -43,6 +44,7 @@ const PAYMENT_STATUS = [
 export default function ExpensesPage() {
   const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -69,10 +71,13 @@ export default function ExpensesPage() {
       email: '',
     },
     notes: '',
+    isEventExpense: false,
+    eventId: '',
   });
 
   useEffect(() => {
     fetchExpenses();
+    fetchEvents();
   }, [search, categoryFilter, statusFilter, pagination.page]);
 
   const fetchExpenses = async () => {
@@ -99,13 +104,31 @@ export default function ExpensesPage() {
     }
   };
 
+  const fetchEvents = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.EVENTS.LIST, { limit: 200 });
+      if (response.success) {
+        setEvents(response.data.events || []);
+      }
+    } catch (error) {
+      console.error('Error fetching events:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     if (name.startsWith('vendor.')) {
       const field = name.split('.')[1];
       setFormData((prev) => ({
         ...prev,
         vendor: { ...prev.vendor, [field]: value },
+      }));
+    } else if (name === 'isEventExpense') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+        eventId: checked ? prev.eventId : '', // Clear eventId if not event expense
+        category: checked ? 'other' : prev.category, // Reset category for event expenses
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -114,29 +137,65 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validation
+    if (!formData.title || !formData.amount) {
+      toast.warning('Please fill in all required fields');
+      return;
+    }
+
+    if (formData.isEventExpense && !formData.eventId) {
+      toast.warning('Please select an event for event expenses');
+      return;
+    }
+
+    if (!formData.isEventExpense && !formData.category) {
+      toast.warning('Please select a category for regular expenses');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      const submitData = { ...formData };
+
+      // If it's an event expense, populate event details
+      if (formData.isEventExpense && formData.eventId) {
+        const selectedEvent = events.find(e => e._id === formData.eventId);
+        if (selectedEvent) {
+          submitData.eventDetails = {
+            title: selectedEvent.title,
+            eventType: selectedEvent.eventType,
+            startDate: selectedEvent.startDate,
+            endDate: selectedEvent.endDate,
+          };
+        }
+      } else {
+        // Remove eventId and eventDetails for non-event expenses
+        delete submitData.eventId;
+        delete submitData.eventDetails;
+      }
+
       if (isEditMode) {
         const response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.EXPENSES.UPDATE.replace(':id', currentExpense._id),
-          formData
+          submitData
         );
         if (response.success) {
-          alert('Expense updated successfully!');
+          toast.success('Expense updated successfully!');
           setIsModalOpen(false);
           fetchExpenses();
         }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.EXPENSES.CREATE, formData);
+        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.EXPENSES.CREATE, submitData);
         if (response.success) {
-          alert('Expense created successfully!');
+          toast.success(response.data.message || 'Expense created successfully!');
           setIsModalOpen(false);
           fetchExpenses();
         }
       }
     } catch (error) {
-      alert(error.message || 'Failed to save expense');
+      toast.error(error.message || 'Failed to save expense');
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +214,8 @@ export default function ExpensesPage() {
       paidAmount: expense.paidAmount || 0,
       vendor: expense.vendor || { name: '', contact: '', email: '' },
       notes: expense.notes || '',
+      isEventExpense: expense.isEventExpense || false,
+      eventId: expense.eventId?._id || expense.eventId || '',
     });
     setIsEditMode(true);
     setIsModalOpen(true);
@@ -166,11 +227,11 @@ export default function ExpensesPage() {
     try {
       const response = await apiClient.delete(API_ENDPOINTS.BRANCH_ADMIN.EXPENSES.DELETE.replace(':id', id));
       if (response.success) {
-        alert('Expense deleted successfully!');
+        toast.success('Expense deleted successfully!');
         fetchExpenses();
       }
     } catch (error) {
-      alert(error.message || 'Failed to delete expense');
+      toast.error(error.message || 'Failed to delete expense');
     }
   };
 
@@ -187,6 +248,8 @@ export default function ExpensesPage() {
       paidAmount: 0,
       vendor: { name: '', contact: '', email: '' },
       notes: '',
+      isEventExpense: false,
+      eventId: '',
     });
     setIsEditMode(false);
     setIsModalOpen(true);
@@ -276,7 +339,8 @@ export default function ExpensesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Category/Event</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Paid</TableHead>
                 <TableHead>Date</TableHead>
@@ -287,21 +351,48 @@ export default function ExpensesPage() {
             <TableBody>
               {expenses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500">
+                  <TableCell colSpan={8} className="text-center text-gray-500">
                     No expenses found
                   </TableCell>
                 </TableRow>
               ) : (
                 expenses.map((expense) => (
                   <TableRow key={expense._id}>
-                    <TableCell className="font-medium">{expense.title}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                        {expense.category}
-                      </span>
+                    <TableCell className="font-medium">
+                      <div>
+                        {expense.title}
+                        {expense.isEventExpense && expense.eventId && (
+                          <div className="text-xs text-purple-600 mt-1">
+                            Event: {expense.eventId.title}
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>${expense.amount?.toLocaleString()}</TableCell>
-                    <TableCell className="text-green-600">${expense.paidAmount?.toLocaleString()}</TableCell>
+                    <TableCell>
+                      {expense.isEventExpense ? (
+                        <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700">
+                          Event
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                          Regular
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {expense.isEventExpense ? (
+                        <div className="text-sm">
+                          <div className="font-medium text-purple-700">{expense.eventId?.title}</div>
+                          <div className="text-xs text-gray-500">{expense.eventId?.eventType}</div>
+                        </div>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 capitalize">
+                          {expense.category}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>PKR {expense.amount?.toLocaleString()}</TableCell>
+                    <TableCell className="text-green-600">PKR {expense.paidAmount?.toLocaleString()}</TableCell>
                     <TableCell>{new Date(expense.date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <span
@@ -315,7 +406,7 @@ export default function ExpensesPage() {
                             : 'bg-gray-100 text-gray-700'
                         }`}
                       >
-                        {expense.paymentStatus}
+                        {expense.paymentStatus.replace('_', ' ')}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -436,6 +527,7 @@ export default function ExpensesPage() {
                 value={formData.category}
                 onChange={handleInputChange}
                 options={EXPENSE_CATEGORIES}
+                disabled={formData.isEventExpense}
               />
             </div>
             <div>
@@ -450,6 +542,57 @@ export default function ExpensesPage() {
               />
             </div>
           </div>
+
+          {/* Event Expense Toggle */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isEventExpense"
+              name="isEventExpense"
+              checked={formData.isEventExpense}
+              onChange={handleInputChange}
+              className="rounded"
+            />
+            <label htmlFor="isEventExpense" className="text-sm font-medium">
+              This is an event expense
+            </label>
+          </div>
+
+          {/* Event Selection */}
+          {formData.isEventExpense && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Select Event *</label>
+              <Dropdown
+                name="eventId"
+                value={formData.eventId}
+                onChange={handleInputChange}
+                options={[
+                  { value: '', label: 'Select Event' },
+                  ...events.map(event => ({
+                    value: event._id,
+                    label: `${event.title} (${event.eventType}) - ${new Date(event.startDate).toLocaleDateString()}`
+                  }))
+                ]}
+                placeholder="Select Event"
+              />
+              {formData.eventId && (
+                <div className="mt-2 p-3 bg-purple-50 rounded-lg">
+                  {(() => {
+                    const selectedEvent = events.find(e => e._id === formData.eventId);
+                    return selectedEvent ? (
+                      <div className="text-sm">
+                        <div className="font-medium text-purple-700">{selectedEvent.title}</div>
+                        <div className="text-purple-600">Type: {selectedEvent.eventType}</div>
+                        <div className="text-purple-600">
+                          Date: {new Date(selectedEvent.startDate).toLocaleDateString()} - {new Date(selectedEvent.endDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

@@ -19,8 +19,10 @@ async function getAttendanceRecord(request, authenticatedUser, userDoc, { params
 
     await connectDB();
 
+    const { id } = await params;
+
     const attendance = await Attendance.findOne({
-      _id: params.id,
+      _id: id,
       branchId: authenticatedUser.branchId,
     })
       .populate('classId', 'name code')
@@ -61,10 +63,12 @@ async function updateAttendance(request, authenticatedUser, userDoc, { params })
 
     await connectDB();
 
+    const { id } = await params;
+
     const body = await request.json();
 
     const attendance = await Attendance.findOneAndUpdate(
-      { _id: params.id, branchId: authenticatedUser.branchId },
+      { _id: id, branchId: authenticatedUser.branchId },
       { $set: body },
       { new: true, runValidators: true }
     )
@@ -105,8 +109,10 @@ async function deleteAttendance(request, authenticatedUser, userDoc, { params })
 
     await connectDB();
 
+    const { id } = await params;
+
     const attendance = await Attendance.findOneAndDelete({
-      _id: params.id,
+      _id: id,
       branchId: authenticatedUser.branchId,
     });
 

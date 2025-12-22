@@ -339,7 +339,7 @@ export default function CalendarViewPage() {
 
       {/* Event Modal */}
       <Modal open={showEventModal} onClose={handleCloseModal} title="Add New Event" size="lg" closeOnBackdrop>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Input label="Event Title *" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Event title" />
