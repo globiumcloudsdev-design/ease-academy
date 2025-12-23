@@ -43,6 +43,7 @@ export const generateFeeVoucherPDF = (voucher) => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
+
   doc.text(`#${voucher.voucherNumber}`, 170, 42, { align: 'center' });
 
   let yPosition = 55;

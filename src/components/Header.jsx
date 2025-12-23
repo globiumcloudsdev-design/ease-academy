@@ -1,26 +1,35 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Bell, User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, User, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const dropdownRef = useRef(null);
 
   const handleProfileClick = () => {
     setIsDropdownOpen(false);
-    router.push('/profile');
-  };
-
-  const handleSettingsClick = () => {
-    setIsDropdownOpen(false);
-    // TODO: Implement settings page navigation
+    // Directly use the correct path based on role
+    if (user?.role === 'super_admin') {
+      router.push('/super-admin/profile');
+    } else if (user?.role === 'branch_admin') {
+      router.push('/branch-admin/profile');
+    } else if (user?.role === 'teacher') {
+      router.push('/teacher/profile');
+    } else if (user?.role === 'parent') {
+      router.push('/parent/profile');
+    } else if (user?.role === 'student') {
+      router.push('/student/profile');
+    } else {
+      router.push('/profile');
+    }
   };
 
   const handleLogoutClick = () => {
@@ -28,8 +37,47 @@ export default function Header() {
     logout();
   };
 
-  const toggleDropdown = () => {
+  const toggleDropdown = (e) => {
+    e.stopPropagation();
     setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  // Get page title based on pathname
+  const getPageTitle = () => {
+    if (pathname.includes('/super-admin')) {
+      return pathname.includes('/profile') 
+        ? 'My Profile' 
+        : 'Super Admin Dashboard';
+    }
+    if (pathname.includes('/branch-admin')) {
+      return pathname.includes('/profile')
+        ? 'My Profile'
+        : 'Branch Dashboard';
+    }
+    if (pathname.includes('/teacher')) {
+      return pathname.includes('/profile')
+        ? 'My Profile'
+        : 'Teacher Dashboard';
+    }
+    if (pathname.includes('/parent')) {
+      return pathname.includes('/profile')
+        ? 'My Profile'
+        : 'Parent Dashboard';
+    }
+    if (pathname.includes('/student')) {
+      return pathname.includes('/profile')
+        ? 'My Profile'
+        : 'Student Dashboard';
+    }
+    
+    const role = user?.role || '';
+    return `${role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ')} Dashboard`;
+  };
+
+  // Get welcome message
+  const getWelcomeMessage = () => {
+    const firstName = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || 'User';
+    return `Welcome back, ${firstName}`;
   };
 
   // Close dropdown when clicking outside
@@ -46,93 +94,120 @@ export default function Header() {
     };
   }, []);
 
+  // Get user initials
+  const getUserInitials = () => {
+    if (user?.fullName) {
+      return user.fullName.charAt(0).toUpperCase();
+    }
+    if (user?.name) {
+      return user.name.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
-    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800 sticky z-10 transition-all duration-300 shadow-sm md:top-0 top-16">
-      <div className="flex items-center justify-between px-4 md:px-6 py-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Dashboard
-          </h2>
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="flex items-center justify-between px-6 py-4">
+        {/* Page Title */}
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">
+            {getPageTitle()}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {getWelcomeMessage()}
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          {/* Search - Hidden on mobile, shown on md+ */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="pl-10 pr-4 py-2 w-48 lg:w-64 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
-            />
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-4">
+          {/* Search */}
+          <div className="hidden md:block">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 transition-colors"
+              />
+            </div>
           </div>
 
           {/* Mobile Search Button */}
-          <Button variant="ghost" size="icon" className="md:hidden hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <Search className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden hover:bg-gray-100"
+          >
+            <Search className="h-5 w-5 text-gray-600" />
           </Button>
 
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 hover:scale-105">
-            <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 animate-pulse"></span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative hover:bg-gray-100"
+          >
+            <Bell className="h-5 w-5 text-gray-600" />
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
           </Button>
 
-          {/* Profile Dropdown - Mobile responsive */}
+          {/* Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={toggleDropdown}
-              className="flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg px-2 md:px-3 py-2 transition-colors group"
+              className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
             >
-              {/* Mobile: Show only avatar and chevron */}
-              <div className="md:hidden">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                  {(user?.fullName || user?.name || 'U').charAt(0).toUpperCase()}
-                </div>
+              {/* User Avatar */}
+              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {getUserInitials()}
+              </div>
+              
+              {/* User Info - Hidden on mobile */}
+              <div className="hidden md:block text-left">
+                <p className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
+                  {user?.fullName || user?.name || 'User'}
+                </p>
+                <p className="text-xs text-gray-500 capitalize">
+                  {user?.role?.replace('_', ' ') || 'Role'}
+                </p>
               </div>
 
-              {/* Desktop: Show full user info */}
-              <div className="hidden md:block text-right">
-                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{user?.fullName || user?.name || 'User'}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role?.replace('_', ' ') || 'Role'}</p>
-              </div>
-
-              <div className="hidden md:block w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold shadow-sm">
-                {(user?.fullName || user?.name || 'U').charAt(0).toUpperCase()}
-              </div>
-              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown 
+                className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                  isDropdownOpen ? 'rotate-180' : ''
+                }`} 
+              />
             </button>
 
+            {/* Dropdown Menu */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
-                <div className="py-2">
-                  <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user?.fullName || user?.name || 'User'}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role?.replace('_', ' ') || 'Role'}</p>
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
+                {/* Profile Option - Using Link instead of router.push */}
+                <Link
+                  href="/profile"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="w-5 h-5 mr-3 text-gray-500">
+                    <User className="h-4 w-4" />
                   </div>
-                  <button
-                    onClick={handleProfileClick}
-                    className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <User className="h-4 w-4 mr-3 text-gray-500 dark:text-gray-400" />
-                    Profile
-                  </button>
-                  <button
-                    onClick={handleSettingsClick}
-                    className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Settings className="h-4 w-4 mr-3 text-gray-500 dark:text-gray-400" />
-                    Settings
-                  </button>
-                  <div className="border-t border-gray-200 dark:border-gray-700 mt-1">
-                    <button
-                      onClick={handleLogoutClick}
-                      className="flex items-center w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <LogOut className="h-4 w-4 mr-3" />
-                      Logout
-                    </button>
+                  <span className="font-medium">Profile</span>
+                </Link>
+                
+                {/* Divider */}
+                <div className="border-t border-gray-100 mx-3 my-1"></div>
+                
+                <button
+                  onClick={handleLogoutClick}
+                  className="flex items-center w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <div className="w-5 h-5 mr-3">
+                    <svg className="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
                   </div>
-                </div>
+                  <span className="font-medium">Logout</span>
+                </button>
               </div>
             )}
           </div>

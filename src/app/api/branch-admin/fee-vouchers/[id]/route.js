@@ -6,6 +6,7 @@ import Counter from '@/backend/models/Counter';
 import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Class from '@/backend/models/Class';
+import Branch from '@/backend/models/Branch';
 
 // GET /api/branch-admin/fee-vouchers/[id] - Get single voucher
 export const GET = withAuth(async (request, user, userDoc, { params }) => {

@@ -10,6 +10,7 @@ import Class from '@/backend/models/Class';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 import { getParentEmailTemplate } from '@/backend/templates/parentEmail';
+import Branch from '@/backend/models/Branch';
 
 // GET /api/branch-admin/fee-vouchers - Get all vouchers
 export const GET = withAuth(async (request, user, userDoc) => {

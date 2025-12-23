@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import FeeVoucher from '@/backend/models/FeeVoucher';
 import connectDB from '@/lib/database';
 import { generateFeeVoucherPDF } from '@/lib/pdf-generator';
+import Branch from '@/backend/models/Branch';
+import Class from '@/backend/models/Class';
+import Counter from '@/backend/models/Counter';
+import User from '@/backend/models/User';
 
 // GET /api/super-admin/fee-vouchers/[id]/download - Download PDF (public endpoint for emails)
 export async function GET(request, { params }) {

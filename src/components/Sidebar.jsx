@@ -116,11 +116,6 @@ const ROLE_MENUS = {
           path: "/super-admin/student-management/students",
           icon: Users,
         },
-        // {
-        //   name: "Admissions",
-        //   path: "/super-admin/student-management/admissions",
-        //   icon: UserPlus,
-        // },
       ],
     },
     {
@@ -148,53 +143,17 @@ const ROLE_MENUS = {
           path: "/super-admin/fee-vouchers",
           icon: Receipt,
         },
-        // {
-        //   name: "Branch Fees",
-        //   path: "/super-admin/fee-management/branch-fees",
-        //   icon: Wallet,
-        // },
-        // {
-        //   name: "Fee Reports",
-        //   path: "/super-admin/fee-management/reports",
-        //   icon: FileText,
-        // },
       ],
     },
-    // {
-    //   category: "Salary Management",
-    //   isCollapsible: true,
-    //   items: [
-    //     {
-    //       name: "Salary Templates",
-    //       path: "/super-admin/salary-management/salary-templates",
-    //       icon: DollarSign,
-    //     },
-    //     {
-    //       name: "Payroll Processing",
-    //       path: "/super-admin/salary-management/payroll",
-    //       icon: Banknote,
-    //     },
-    //     {
-    //       name: "Salary Reports",
-    //       path: "/super-admin/salary-management/reports",
-    //       icon: BarChart3,
-    //     },
-    //   ],
-    // },
     {
       category: "Attendance",
       isCollapsible: true,
       items: [
-        // { name: 'Student Attendance', path: '/super-admin/attendance-management/student', icon: GraduationCap },
-        // { name: 'Teacher Attendance', path: '/super-admin/attendance-management/teacher', icon: LayoutDashboardIcon },
-        // { name: 'Manual Entry', path: '/super-admin/attendance-management/manual-entry', icon: Keyboard },
-        // { name: 'QR Code Scanner', path: '/super-admin/attendance-management/qr-scanner', icon: QrCode },
         {
           name: "Attendance QR Code",
           path: "/super-admin/attendance",
           icon: QrCode,
         },
-        // { name: 'Staff Attendance', path: '/super-admin/attendance-management/staff', icon: UserCheck },
       ],
     },
     {
@@ -213,74 +172,6 @@ const ROLE_MENUS = {
         },
       ],
     },
-    // {
-    //   category: "System Analytics",
-    //   isCollapsible: true,
-    //   items: [
-    //     {
-    //       name: "Financial Reports",
-    //       path: "/super-admin/analytics/financial",
-    //       icon: TrendingUp,
-    //     },
-    //     {
-    //       name: "Academic Reports",
-    //       path: "/super-admin/analytics/academic",
-    //       icon: BookOpen,
-    //     },
-    //     {
-    //       name: "Operational Reports",
-    //       path: "/super-admin/analytics/operational",
-    //       icon: BarChart3,
-    //     },
-    //   ],
-    // },
-    // {
-    //   category: "Configuration",
-    //   isCollapsible: true,
-    //   items: [
-    //     {
-    //       name: "General Settings",
-    //       path: "/super-admin/configuration/general",
-    //       icon: Settings,
-    //     },
-    //     {
-    //       name: "Academic Settings",
-    //       path: "/super-admin/configuration/academic-settings",
-    //       icon: School,
-    //     },
-    //     {
-    //       name: "Security Settings",
-    //       path: "/super-admin/configuration/security",
-    //       icon: Shield,
-    //     },
-    //     {
-    //       name: "Notifications",
-    //       path: "/super-admin/configuration/notifications",
-    //       icon: Bell,
-    //     },
-    //   ],
-    // },
-    // {
-    //   category: "Audit & Logs",
-    //   isCollapsible: true,
-    //   items: [
-    //     {
-    //       name: "Activity Logs",
-    //       path: "/super-admin/audit-logs/activity",
-    //       icon: Activity,
-    //     },
-    //     {
-    //       name: "System Logs",
-    //       path: "/super-admin/audit-logs/system",
-    //       icon: Cog,
-    //     },
-    //     {
-    //       name: "Login History",
-    //       path: "/super-admin/audit-logs/login-history",
-    //       icon: Users,
-    //     },
-    //   ],
-    // },
   ],
 
   branch_admin: [
@@ -323,11 +214,8 @@ const ROLE_MENUS = {
     },
     {
       category: "Academic Structure",
-      isCollapsible: true,
       items: [
-        { name: "Levels", path: "/branch-admin/levels", icon: BarChart3 },
-        { name: "Grades", path: "/branch-admin/grades", icon: TrendingUp },
-        { name: "Streams", path: "/branch-admin/streams", icon: FolderOpen },
+        { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
       ],
     },
     {
@@ -347,16 +235,6 @@ const ROLE_MENUS = {
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
       ],
     },
-    // {
-    //   category: "Settings",
-    //   items: [
-    //     {
-    //       name: "Branch Settings",
-    //       path: "/branch-admin/settings",
-    //       icon: Settings,
-    //     },
-    //   ],
-    // },
   ],
 
   teacher: [
@@ -411,15 +289,6 @@ const ROLE_MENUS = {
         { name: "Fee Status", path: "/parent/fees", icon: DollarSign },
       ],
     },
-    // {
-    //   category: "Account",
-    //   isCollapsible: true,
-    //   items: [
-    //     { name: "Profile", path: "/parent/profile", icon: Users },
-    //     { name: "Messages", path: "/parent/messages", icon: FileText },
-    //     { name: "Settings", path: "/parent/settings", icon: Settings },
-    //   ],
-    // },
   ],
 
   student: [
@@ -529,29 +398,34 @@ export default function Sidebar() {
     const hasActiveItem = isCurrentSection(group.items);
 
     return (
-      <div key={groupIndex} className="px-3 py-2">
+      <div key={groupIndex} className="px-2 py-1">
         <button
           onClick={() => toggleSection(group.category)}
           className={cn(
-            "flex items-center justify-between w-full px-3 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100",
+            "flex items-center justify-between w-full px-2 py-2 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
             hasActiveItem
               ? "bg-blue-50 text-blue-600 font-medium"
               : "text-gray-700"
           )}
         >
-          <div className="flex items-center gap-3">
-            <Icon className="h-5 w-5 shrink-0" />
-            <span className="text-sm font-medium">{group.category}</span>
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 shrink-0 transition-all duration-200 group-hover:h-5 group-hover:w-5" />
+            <span className="text-base font-medium hover:text-blue-600 transition-colors duration-200">{group.category}</span>
           </div>
           {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-3 w-3 transition-all duration-200 group-hover:h-4 group-hover:w-4" />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3 w-3 transition-all duration-200 group-hover:h-4 group-hover:w-4" />
           )}
         </button>
 
-        {isExpanded && (
-          <div className="mt-1 ml-8 space-y-1">
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="ml-6 space-y-1">
             {group.items.map((item) => {
               const ItemIcon = item.icon;
               const isItemActive =
@@ -563,19 +437,19 @@ export default function Sidebar() {
                   href={item.path}
                   onClick={() => setIsMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm hover:bg-gray-100",
+                    "flex items-center gap-2 px-2 py-1 rounded-lg transition-all duration-200 text-base hover:bg-gray-100 cursor-pointer",
                     isItemActive
                       ? "bg-blue-50 text-blue-600 font-medium"
                       : "text-gray-600 hover:text-gray-900"
                   )}
                 >
-                  <ItemIcon className="h-4 w-4 shrink-0" />
+                  <ItemIcon className="h-3 w-3 shrink-0 transition-all duration-200 hover:h-4 hover:w-4" />
                   <span>{item.name}</span>
                 </Link>
               );
             })}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -594,12 +468,12 @@ export default function Sidebar() {
           href={item.path}
           onClick={() => setIsMobileOpen(false)}
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100",
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
             isActive ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"
           )}
         >
-          <Icon className="h-5 w-5 shrink-0" />
-          <span className="text-sm font-medium">{item.name}</span>
+          <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
+          <span className="text-base font-medium">{item.name}</span>
         </Link>
       </div>
     );
@@ -621,14 +495,14 @@ export default function Sidebar() {
                 href={item.path}
                 onClick={() => setIsMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100",
+                  "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
                   isActive
                     ? "bg-blue-50 text-blue-600 font-medium"
                     : "text-gray-700"
                 )}
                 title={item.name}
               >
-                <Icon className="h-5 w-5 shrink-0" />
+                <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
               </Link>
             );
           })}
@@ -648,12 +522,12 @@ export default function Sidebar() {
           href={item.path}
           onClick={() => setIsMobileOpen(false)}
           className={cn(
-            "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors mb-1 hover:bg-gray-100",
+            "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
             isActive ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"
           )}
           title={item.name}
         >
-          <Icon className="h-5 w-5 shrink-0" />
+          <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
         </Link>
       </div>
     );
@@ -696,13 +570,13 @@ export default function Sidebar() {
         <div
           className={cn(
             "border-b border-gray-200 flex items-center justify-between",
-            isOpen ? "p-6" : "p-3"
+            isOpen ? "p-4" : "p-2"
           )}
         >
           {isOpen && (
             <div>
               <h1 className="text-xl font-bold text-gray-900">Ease</h1>
-              <p className="text-xs text-gray-500">Academy</p>
+              <p className="text-sm text-gray-500">Academy</p>
             </div>
           )}
           <Button
@@ -711,14 +585,14 @@ export default function Sidebar() {
             onClick={() => setIsOpen(!isOpen)}
             className="hidden md:flex"
           >
-            <Menu className="h-4 w-4" />
+            <Menu className="h-3 w-3" />
           </Button>
         </div>
 
         {/* User Info */}
-        <div className={cn("border-b border-gray-200", isOpen ? "p-4" : "p-2")}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold shrink-0">
+        <div className={cn("border-b border-gray-200", isOpen ? "p-3" : "p-2")}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold shrink-0 text-sm">
               {user.fullName?.charAt(0).toUpperCase()}
             </div>
             {isOpen && (
@@ -726,7 +600,7 @@ export default function Sidebar() {
                 <p className="text-sm font-medium text-gray-900 truncate">
                   {user.fullName}
                 </p>
-                <p className="text-xs text-gray-500 capitalize">
+                <p className="text-sm text-gray-500 capitalize">
                   {user.role?.replace("_", " ")}
                 </p>
               </div>
@@ -771,7 +645,8 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer - Logout */}
-        <div className={cn("border-t border-gray-200", isOpen ? "p-4" : "p-2")}>
+        <div className={cn("border-t border-gray-200", isOpen ? "p-3" : "p-2")}>
+
           <Button
             onClick={handleLogout}
             variant="ghost"
@@ -780,8 +655,8 @@ export default function Sidebar() {
               isOpen ? "" : "px-2"
             )}
           >
-            <LogOut className="h-5 w-5" />
-            {isOpen && <span className="ml-3">Logout</span>}
+            <LogOut className="h-4 w-4" />
+            {isOpen && <span className="ml-2">Logout</span>}
           </Button>
         </div>
       </aside>

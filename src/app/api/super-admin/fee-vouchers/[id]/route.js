@@ -6,6 +6,7 @@ import FeeTemplate from '@/backend/models/FeeTemplate';
 import User from '@/backend/models/User';
 import Counter from '@/backend/models/Counter';
 import Class from '@/backend/models/Class';
+import Branch from '@/backend/models/Branch';
 import { generateFeeVoucherPDF } from '@/lib/pdf-generator';
 
 // GET /api/super-admin/fee-vouchers/[id]

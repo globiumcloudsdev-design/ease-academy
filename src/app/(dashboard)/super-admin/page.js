@@ -579,9 +579,10 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Recent Activities & System Alerts */}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activities */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
@@ -613,10 +614,10 @@ export default function SuperAdminDashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* System Alerts */}
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
@@ -655,10 +656,10 @@ export default function SuperAdminDashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
-      {/* Quick Actions */}
+    
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
