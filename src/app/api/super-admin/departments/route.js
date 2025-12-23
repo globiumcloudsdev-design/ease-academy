@@ -4,6 +4,8 @@ import Department from '@/backend/models/Department';
 import User from '@/backend/models/User';
 import Subject from '@/backend/models/Subject';
 import { withAuth } from '@/backend/middleware/auth';
+import Branch from '@/backend/models/Branch';
+import Class from '@/backend/models/Class';
 
 // GET - List all departments with filters
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {

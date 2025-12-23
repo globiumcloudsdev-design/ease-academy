@@ -1,6 +1,21 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const MONTHS = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
 export const generateFeeVoucherPDF = (voucher) => {
   const doc = new jsPDF();
 
@@ -82,7 +97,8 @@ export const generateFeeVoucherPDF = (voucher) => {
   doc.setTextColor(0, 0, 0);
 
   doc.text(`Template: ${voucher.templateId?.name || 'N/A'}`, 20, yPosition);
-  doc.text(`Month/Year: ${voucher.month}/${voucher.year}`, 110, yPosition);
+  const monthName = MONTHS.find(m => m.value === voucher.month.toString())?.label || voucher.month;
+  doc.text(`Month/Year: ${monthName} ${voucher.year}`, 110, yPosition);
   yPosition += 8;
 
   const dueDate = voucher.dueDate ? new Date(voucher.dueDate).toLocaleDateString('en-PK') : 'N/A';

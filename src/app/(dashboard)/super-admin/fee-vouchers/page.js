@@ -295,10 +295,24 @@ export default function SuperAdminFeeVouchersPage() {
       if (!voucher.studentId?.fullName && !voucher.studentId?.firstName) {
         const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.FEE_VOUCHERS.GET.replace(':id', voucher._id));
         if (res?.success) {
-          generateFeeVoucherPDF(res.data);
+          const pdfBuffer = generateFeeVoucherPDF(res.data);
+          const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `fee-voucher-${res.data.voucherNumber}.pdf`;
+          a.click();
+          URL.revokeObjectURL(url);
         }
       } else {
-        generateFeeVoucherPDF(voucher);
+        const pdfBuffer = generateFeeVoucherPDF(voucher);
+        const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fee-voucher-${voucher.voucherNumber}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
       }
     } catch (error) {
       toast.error('Failed to generate PDF');
