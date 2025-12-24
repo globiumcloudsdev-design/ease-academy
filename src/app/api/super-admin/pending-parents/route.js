@@ -11,12 +11,14 @@ export const GET = withAuth(async (request, user) => {
     const pendingParents = await User.find({
       role: 'parent',
       status: 'pending',
-    }).populate({
-      path: 'parentProfile.children.id',
-      select: 'fullName studentProfile.registrationNumber studentProfile.classId branchId'
     }).sort({ createdAt: -1 });
 
-    return NextResponse.json({ parents: pendingParents });
+    // Filter to only include parents who have children to match
+    const parentsWithChildren = pendingParents.filter(parent =>
+      parent.parentProfile?.children?.length > 0
+    );
+
+    return NextResponse.json({ parents: parentsWithChildren });
   } catch (error) {
     console.error('Get pending parents error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

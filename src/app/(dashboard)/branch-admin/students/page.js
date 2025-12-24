@@ -38,6 +38,13 @@ export default function StudentsPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Helper function to get student class name
+  const getStudentClassName = (student) => {
+    const classId = student.studentProfile?.classId?._id || student.studentProfile?.classId || student.classId;
+    const classObj = classes.find(c => c._id === classId);
+    return classObj?.name || student.studentProfile?.classId?.name || student.classId?.name || 'Not Assigned';
+  };
+
   // Current branch ID from user context
   const currentBranchId = user?.branchId?._id;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -147,7 +154,7 @@ export default function StudentsPage() {
       const studentData = {
         id: selectedStudent.studentProfile?.registrationNumber || selectedStudent.admissionNumber || 'Not Assigned',
         name: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-        class: selectedStudent.studentProfile?.classId?.name || selectedStudent.classId?.name || 'Not Assigned',
+        class: getStudentClassName(selectedStudent),
         email: selectedStudent.email,
         phone: selectedStudent.phone,
         dob: selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString() : 'N/A',
@@ -168,6 +175,7 @@ export default function StudentsPage() {
         page: pagination.page,
         limit: pagination.limit,
         search,
+        populate: 'classId'
       };
       if (statusFilter) params.status = statusFilter;
       if (classFilter) params.classId = classFilter;
@@ -425,7 +433,7 @@ export default function StudentsPage() {
     if (!selectedStudent) return;
 
     try {
-      const blob = await pdf(<StudentCardPDF student={selectedStudent} qrCodeUrl={qrCodeUrl} />).toBlob();
+      const blob = await pdf(<StudentCardPDF student={selectedStudent} qrCodeUrl={qrCodeUrl} classes={classes} />).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -460,7 +468,7 @@ export default function StudentsPage() {
         'Last Name': student.lastName,
         'Email': student.email,
         'Phone': student.phone,
-        'Class': student.classId?.name || 'Not Assigned',
+        'Class': getStudentClassName(student),
         'Status': student.status,
         'Gender': student.gender,
         'Date of Birth': student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : '',
@@ -647,7 +655,7 @@ export default function StudentsPage() {
                         {student.email}
                       </div>
                     </TableCell>
-                    <TableCell>{student.studentProfile?.classId?.name || 'Not Assigned'}</TableCell>
+                    <TableCell>{getStudentClassName(student)}</TableCell>
                     <TableCell>
                       <div className="text-sm">
                         <div>{student.parentInfo?.fatherName || student.guardianInfo?.name || '-'}</div>
@@ -1559,11 +1567,11 @@ export default function StudentsPage() {
                 {/* Front Side */}
                 <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '340px' }}>
                   {/* Left border line */}
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 via-green-500 to-blue-600 z-10"></div>
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 z-10"></div>
 
                   {/* Header with curved accents */}
                   <div className="relative bg-white">
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-blue-600 rounded-b-full"></div>
                     <div className="relative p-1 text-center pt-3">
                       {/* Institute Logo - Larger Size */}
                       <div className="w-16 h-16 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border-2 border-blue-300 shadow-sm">
@@ -1610,7 +1618,7 @@ export default function StudentsPage() {
                         </div>
                         <div className="mb-1">
                           <p className="text-[12px] text-gray-700 leading-tight">
-                            <span className="font-semibold">Class:</span> {selectedStudent.studentProfile?.classId?.name || selectedStudent.classId?.name || 'Not Assigned'}
+                            <span className="font-semibold">Class:</span> {getStudentClassName(selectedStudent)}
                           </p>
                         </div>
                         <div className="mb-2">
@@ -1642,7 +1650,7 @@ export default function StudentsPage() {
                   </div>
 
                   {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-600 to-green-600 rounded-t-full"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-600 rounded-t-full"></div>
                 </div>
 
                 {/* Fold Line */}
@@ -1654,11 +1662,11 @@ export default function StudentsPage() {
                 {/* Back Side */}
                 <div className="bg-white border-2 border-gray-300 rounded-lg overflow-hidden relative shadow-lg" style={{ width: '204px', height: '340px' }}>
                   {/* Right border line */}
-                  <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-600 via-green-500 to-blue-600 z-10"></div>
+                  <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-600 z-10"></div>
 
                   {/* Header with curved accents */}
                   <div className="relative bg-white">
-                    <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-b-full"></div>
+                    <div className="absolute top-0 left-0 right-0 h-8 bg-blue-600 rounded-b-full"></div>
                     <div className="relative p-1 text-center pt-3">
                       {/* School Logo - Larger Size */}
                       <div className="w-14 h-14 bg-white rounded-full mx-auto mb-1 flex items-center justify-center border-2 border-blue-300">
@@ -1685,9 +1693,15 @@ export default function StudentsPage() {
                         <p className="text-[10px] font-bold text-gray-800 mb-1">Student Details</p>
                         <div className="text-[9px] text-gray-700 space-y-1">
                           <div className="flex items-center gap-1">
-                            <span className="font-semibold">Father:</span>
+                            <span className="font-semibold">{(() => {
+                              const guardianName = selectedStudent.guardianInfo?.name || selectedStudent.studentProfile?.guardian?.name;
+                              const fatherName = selectedStudent.parentInfo?.fatherName || selectedStudent.studentProfile?.father?.name;
+                              if (guardianName) return 'Guardian:';
+                              if (fatherName) return 'Father:';
+                              return 'Parent:';
+                            })()}:</span>
                             <div className="flex-1 border-b border-dashed border-gray-400 min-h-[12px]">
-                              <span className="px-1">{selectedStudent.parentInfo?.fatherName || ''}</span>
+                              <span className="px-1">{selectedStudent.parentInfo?.fatherName || selectedStudent.guardianInfo?.name || selectedStudent.studentProfile?.father?.name || selectedStudent.studentProfile?.guardian?.name || ''}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1727,7 +1741,7 @@ export default function StudentsPage() {
                   </div>
 
                   {/* Bottom accent */}
-                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-blue-600 to-green-600 rounded-t-full"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-3 bg-blue-600 rounded-t-full"></div>
                 </div>
               </div>
             </div>

@@ -220,6 +220,8 @@ export const API_ENDPOINTS = {
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
+    PARENTS: '/api/super-admin/parents',
+    CHECK_CHILDREN_MATCHES: '/api/super-admin/check-children-matches',
     APPROVE_PARENT: '/api/super-admin/approve-parent/:id',
     REJECT_PARENT: '/api/super-admin/reject-parent/:id',
   },
@@ -408,6 +410,8 @@ export const API_ENDPOINTS = {
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/branch-admin/pending-parents',
+    PARENTS: '/api/branch-admin/parents',
+    CHECK_CHILDREN_MATCHES: '/api/branch-admin/check-children-matches',
     APPROVE_PARENT: '/api/branch-admin/approve-parent/:id',
     REJECT_PARENT: '/api/branch-admin/reject-parent/:id',
   },

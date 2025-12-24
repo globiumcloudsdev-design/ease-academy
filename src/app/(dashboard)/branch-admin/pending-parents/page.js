@@ -21,6 +21,10 @@ export default function PendingParentsPage() {
   const [rejecting, setRejecting] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [checkingMatches, setCheckingMatches] = useState(null);
+  const [childrenMatches, setChildrenMatches] = useState({});
+  const [showClassSelection, setShowClassSelection] = useState(null);
+  const [classSelections, setClassSelections] = useState({});
   const { execute } = useApi();
 
   useEffect(() => {
@@ -53,15 +57,33 @@ export default function PendingParentsPage() {
   const handleApprove = async (parentId) => {
     try {
       setApproving(parentId);
+
+      // Prepare approval data with class selections
+      const approvalData = {};
+      if (classSelections[parentId]) {
+        approvalData.childrenMappings = classSelections[parentId];
+      }
+
       const response = await execute({
         url: API_ENDPOINTS.BRANCH_ADMIN.APPROVE_PARENT.replace(':id', parentId),
-        method: 'POST'
+        method: 'POST',
+        data: approvalData
       });
 
       if (response?.success) {
         toast.success('Parent approved successfully');
         setParents(parents.filter(p => p._id !== parentId));
         setSelectedParents(selectedParents.filter(id => id !== parentId));
+        setChildrenMatches(prev => {
+          const newMatches = { ...prev };
+          delete newMatches[parentId];
+          return newMatches;
+        });
+        setClassSelections(prev => {
+          const newSelections = { ...prev };
+          delete newSelections[parentId];
+          return newSelections;
+        });
       } else {
         toast.error(response?.error || 'Failed to approve parent');
       }
@@ -145,20 +167,58 @@ export default function PendingParentsPage() {
     );
   };
 
-  const handleSelectAll = () => {
-    if (selectedParents.length === filteredParents.length) {
-      setSelectedParents([]);
-    } else {
-      setSelectedParents(filteredParents.map(p => p._id));
-    }
+  const handleClassSelection = (parentId, childIndex, selectedClassId, studentId) => {
+    setClassSelections(prev => ({
+      ...prev,
+      [parentId]: {
+        ...prev[parentId],
+        [childIndex]: {
+          childIndex,
+          studentId,
+          selectedClassId
+        }
+      }
+    }));
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  const handleOpenClassSelection = (parentId, childMatch) => {
+    setShowClassSelection({ parentId, childMatch });
+  };
+
+  const handleCheckChildrenMatches = async (parentId) => {
+    try {
+      setCheckingMatches(parentId);
+      const response = await execute({
+        url: API_ENDPOINTS.BRANCH_ADMIN.CHECK_CHILDREN_MATCHES,
+        method: 'POST',
+        data: { parentId }
+      });
+
+      if (response?.matches) {
+        setChildrenMatches(prev => ({
+          ...prev,
+          [parentId]: response.matches
+        }));
+
+        // Check if any child has multiple available classes
+        const hasMultipleClasses = response.matches.some(childMatch =>
+          childMatch.availableClasses && childMatch.availableClasses.length > 1
+        );
+
+        if (hasMultipleClasses) {
+          toast.info('Multiple classes found for some children. Please select appropriate classes.');
+        } else {
+          toast.success('Children matches found successfully');
+        }
+      } else {
+        toast.error('No matches found for children');
+      }
+    } catch (error) {
+      console.error('Failed to check children matches:', error);
+      toast.error('Failed to check children matches');
+    } finally {
+      setCheckingMatches(null);
+    }
   };
 
   if (loading) {
@@ -386,18 +446,111 @@ export default function PendingParentsPage() {
 
                                   {/* Children */}
                                   <div>
-                                    <h4 className="font-semibold mb-3 text-sm">Children ({selectedParent.parentProfile?.children?.length || 0})</h4>
+                                    <div className="flex items-center justify-between mb-3">
+                                      <h4 className="font-semibold text-sm">Children ({selectedParent.parentProfile?.children?.length || 0})</h4>
+                                      <Button
+                                        onClick={() => handleCheckChildrenMatches(selectedParent._id)}
+                                        disabled={checkingMatches === selectedParent._id}
+                                        size="sm"
+                                        variant="outline"
+                                        className="text-xs"
+                                      >
+                                        {checkingMatches === selectedParent._id ? (
+                                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-gray-600 mr-2"></div>
+                                        ) : (
+                                          <Search className="h-3 w-3 mr-2" />
+                                        )}
+                                        Check Matches
+                                      </Button>
+                                    </div>
                                     <div className="space-y-2">
-                                      {selectedParent.parentProfile?.children?.map((child, index) => (
-                                        <div key={index} className="border rounded p-3 bg-gray-50 dark:bg-gray-800">
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                            <div><strong>Name:</strong> {child.name}</div>
-                                            <div><strong>Registration:</strong> {child.registrationNumber}</div>
-                                            <div><strong>Class:</strong> {child.classId?.name || 'N/A'}</div>
-                                            <div><strong>Section:</strong> {child.section}</div>
+                                      {selectedParent.parentProfile?.children?.map((child, index) => {
+                                        const childMatches = childrenMatches[selectedParent._id]?.find(cm => cm.childName === child.name);
+                                        const selectedClass = classSelections[selectedParent._id]?.[index];
+
+                                        return (
+                                          <div key={index} className="border rounded p-3 bg-gray-50 dark:bg-gray-800">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
+                                              <div><strong>Name:</strong> {child.name}</div>
+                                              <div><strong>Registration:</strong> {child.registrationNumber || 'N/A'}</div>
+                                              <div><strong>Class Name:</strong> {child.className || 'N/A'}</div>
+                                              <div><strong>Status:</strong>
+                                                {childMatches ? (
+                                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                                    {childMatches.matches.length} match(es) found
+                                                  </Badge>
+                                                ) : (
+                                                  <span className="text-gray-500 ml-2">Not checked</span>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Show matches if available */}
+                                            {childMatches && childMatches.matches.length > 0 && (
+                                              <div className="mt-2 space-y-1">
+                                                <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Possible Matches:</p>
+                                                {childMatches.matches.map((match, matchIndex) => (
+                                                  <div key={matchIndex} className="bg-white dark:bg-gray-700 p-2 rounded text-xs">
+                                                    <div className="flex items-center justify-between">
+                                                      <div>
+                                                        <span className="font-medium">{match.student.fullName}</span>
+                                                        <span className="text-gray-500 ml-2">({match.matchReason})</span>
+                                                        <Badge variant={match.confidence >= 70 ? "default" : "secondary"} className="ml-2 text-xs">
+                                                          {match.confidence}% confidence
+                                                        </Badge>
+                                                      </div>
+                                                      {childMatches.availableClasses && childMatches.availableClasses.length > 1 && (
+                                                        <Button
+                                                          onClick={() => handleOpenClassSelection(selectedParent._id, childMatches)}
+                                                          size="sm"
+                                                          variant="outline"
+                                                          className="text-xs h-6"
+                                                        >
+                                                          Select Class
+                                                        </Button>
+                                                      )}
+                                                    </div>
+                                                    {selectedClass && selectedClass.studentId === match.student.id && (
+                                                      <div className="mt-1 text-green-600 text-xs">
+                                                        ✓ Selected: {childMatches.availableClasses?.find(cls => cls.id === selectedClass.selectedClassId)?.name || 'Class selected'}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            )}
+
+                                            {/* Show available classes if multiple */}
+                                            {childMatches && childMatches.availableClasses && childMatches.availableClasses.length > 1 && (
+                                              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+                                                <p className="font-medium text-blue-800 dark:text-blue-200">Multiple classes found with name "{child.className}":</p>
+                                                <div className="mt-1 space-y-1">
+                                                  {childMatches.availableClasses.map((cls, clsIndex) => (
+                                                    <div key={clsIndex} className="flex items-center space-x-2">
+                                                      <input
+                                                        type="radio"
+                                                        name={`class-${selectedParent._id}-${index}`}
+                                                        value={cls.id}
+                                                        checked={selectedClass?.selectedClassId === cls.id}
+                                                        onChange={() => {
+                                                          // Find the best matching student for this class
+                                                          const bestMatch = childMatches.matches.find(m =>
+                                                            m.student.classId === cls.id ||
+                                                            m.matchReason.includes(cls.name)
+                                                          );
+                                                          handleClassSelection(selectedParent._id, index, cls.id, bestMatch?.student.id);
+                                                        }}
+                                                        className="text-blue-600"
+                                                      />
+                                                      <span>{cls.name} - {cls.branchName}</span>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
                                           </div>
-                                        </div>
-                                      ))}
+                                        );
+                                      })}
                                     </div>
                                   </div>
 
@@ -514,6 +667,63 @@ export default function PendingParentsPage() {
                               )}
                               Approve
                             </Button>
+                            <Modal
+                              open={showClassSelection !== null}
+                              onClose={() => setShowClassSelection(null)}
+                              title="Select Class for Child"
+                            >
+                              {showClassSelection && (
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Child: {showClassSelection.childMatch.childName}</h4>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                      Multiple classes found with name "{showClassSelection.childMatch.childClassName}".
+                                      Please select the appropriate class for this child.
+                                    </p>
+                                    <div className="space-y-2">
+                                      {showClassSelection.childMatch.availableClasses.map((cls, index) => (
+                                        <div key={index} className="border rounded p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                          <div className="flex items-center space-x-3">
+                                            <input
+                                              type="radio"
+                                              name="class-selection"
+                                              value={cls.id}
+                                              onChange={() => {
+                                                // Find child index
+                                                const parent = parents.find(p => p._id === showClassSelection.parentId);
+                                                const childIndex = parent?.parentProfile?.children?.findIndex(c => c.name === showClassSelection.childMatch.childName);
+                                                if (childIndex !== -1) {
+                                                  // Find best matching student for this class
+                                                  const bestMatch = showClassSelection.childMatch.matches.find(m =>
+                                                    m.student.classId === cls.id ||
+                                                    m.matchReason.includes(cls.name)
+                                                  );
+                                                  handleClassSelection(showClassSelection.parentId, childIndex, cls.id, bestMatch?.student.id);
+                                                }
+                                              }}
+                                              className="text-blue-600"
+                                            />
+                                            <div>
+                                              <div className="font-medium">{cls.name}</div>
+                                              <div className="text-sm text-gray-500">{cls.branchName} • Code: {cls.code}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end space-x-2">
+                                    <Button
+                                      onClick={() => setShowClassSelection(null)}
+                                      variant="outline"
+                                      size="sm"
+                                    >
+                                      Done
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </Modal>
                           </div>
                         </td>
                       </tr>

@@ -4,16 +4,9 @@ import { withAuth, requireRole } from '@/backend/middleware/auth';
 import { ROLES } from '@/constants/roles';
 import User from '@/backend/models/User';
 
-export const POST = withAuth(async (request, user) => {
+export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
-    const params = (request && request.params) || undefined;
-    // In withAuth handler, context is third arg; but some Next handlers pass params differently. Use context later if needed.
-    // Many routes call withAuth(handler) where handler receives (request, authUser, userDoc, context).
-    // However Next passes dynamic route params via the context arg, available as the 4th param. To be safe, check request by trying to read json body first and handle context fallback in middleware.
-
-    // Context fallback will be handled by reading the body and expecting id to be present in params from context
-    const contextParams = (arguments && arguments[2] && arguments[2].params) || (arguments && arguments[3] && arguments[3].params);
-    const id = contextParams?.id || (params && params.id);
+    const { id } = await context.params;
 
     const { reason } = await request.json();
 

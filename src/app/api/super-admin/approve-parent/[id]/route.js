@@ -8,6 +8,8 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
     const { params } = context || {};
     const id = params?.id;
+    const body = await request.json();
+    const { childrenMapping } = body; // { childIndex: studentId }
 
     await connectDB();
 
@@ -20,11 +22,28 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ error: 'Parent already approved' }, { status: 400 });
     }
 
+    // Update parent status
     parent.approved = true;
     parent.isActive = true;
     parent.status = 'approved';
     parent.approvedBy = user.userId;
     parent.approvedAt = new Date();
+
+    // Link matched children if provided
+    if (childrenMapping && typeof childrenMapping === 'object') {
+      if (!parent.parentProfile) {
+        parent.parentProfile = { children: [] };
+      }
+      
+      // Update children array with matched student IDs
+      for (const [childIndex, studentId] of Object.entries(childrenMapping)) {
+        const idx = parseInt(childIndex);
+        if (parent.parentProfile.children[idx]) {
+          parent.parentProfile.children[idx].id = studentId;
+        }
+      }
+    }
+
     await parent.save();
 
     return NextResponse.json({

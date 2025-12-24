@@ -497,6 +497,10 @@ const userSchema = new mongoose.Schema(
           type: String,
           enum: ['male', 'female', 'other'],
         },
+        className: {
+          type: String,
+          trim: true,
+        },
         classId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Class',

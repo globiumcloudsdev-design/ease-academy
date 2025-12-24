@@ -69,8 +69,8 @@ const ROLE_MENUS = {
           icon: UserCog,
         },
         {
-          name: "Pending Parents",
-          path: "/super-admin/pending-parents",
+          name: "Parents",
+          path: "/super-admin/user-management/parents",
           icon: UserCheck,
         },
       ],
@@ -197,8 +197,8 @@ const ROLE_MENUS = {
         },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
         {
-          name: "Pending Parents",
-          path: "/branch-admin/pending-parents",
+          name: "Parents",
+          path: "/branch-admin/parents",
           icon: UserCheck,
         },
       ],

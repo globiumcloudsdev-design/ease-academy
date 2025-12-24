@@ -6,8 +6,7 @@ import User from '@/backend/models/User';
 
 export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
-    const { params } = context || {};
-    const id = params?.id;
+    const { id } = await context.params;
     const { reason } = await request.json();
 
     if (!reason || !reason.trim()) {
