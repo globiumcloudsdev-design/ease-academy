@@ -63,6 +63,7 @@ async function getFeeTemplates(request, authenticatedUser, userDoc) {
 
     const [templates, total] = await Promise.all([
       FeeTemplate.find(query)
+        .populate('category', 'name code color icon')
         .populate('createdBy', 'fullName email')
         .sort({ createdAt: -1 })
         .skip(skip)

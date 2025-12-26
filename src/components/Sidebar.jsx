@@ -134,6 +134,11 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         {
+          name: "Fee Categories",
+          path: "/super-admin/fee-management/categories",
+          icon: DollarSign,
+        },
+        {
           name: "Fee Templates",
           path: "/super-admin/fee-management/templates",
           icon: Receipt,
@@ -169,6 +174,22 @@ const ROLE_MENUS = {
           name: "All Events",
           path: "/super-admin/event-management/events",
           icon: Calendar,
+        },
+      ],
+    },
+    {
+      category: "Salary Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Payroll",
+          path: "/super-admin/salary-management/payroll",
+          icon: Wallet,
+        },
+        {
+          name: "Employee Attendance",
+          path: "/super-admin/salary-management/employee-attendance",
+          icon: UserCheck,
         },
       ],
     },
@@ -228,11 +249,32 @@ const ROLE_MENUS = {
           icon: Receipt,
         },
         {
+          name: "Fee Categories",
+          path: "/branch-admin/fee-categories",
+          icon: DollarSign,
+        },
+        {
           name: "Fee Templates",
           path: "/branch-admin/fee-templates",
           icon: Receipt,
         },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
+      ],
+    },
+    {
+      category: "Salary Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Payroll",
+          path: "/branch-admin/salary-management/payroll",
+          icon: Wallet,
+        },
+        {
+          name: "Employee Attendance",
+          path: "/branch-admin/salary-management/employee-attendance",
+          icon: UserCheck,
+        },
       ],
     },
   ],

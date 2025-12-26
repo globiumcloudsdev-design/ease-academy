@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/backend/middleware/auth';
 import User from '@/backend/models/User';
-import dbConnect from '@/lib/database';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getAdminEmailTemplate } from '@/backend/templates/adminEmail';
 import Branch from '@/backend/models/Branch';
 import Department from '@/backend/models/Department';
 import Class from '@/backend/models/Class';
+import Subject from '@/backend/models/Subject';
+import connectDB from '@/lib/database';
 /**
  * GET - List all users with role-based filtering
  * Query params: role, branchId, departmentId, classId, status, search, page, limit
  */
 export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const { searchParams } = new URL(request.url);
     
@@ -106,7 +107,7 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
  */
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const body = await request.json();
     const { role, password, ...userData } = body;
@@ -173,6 +174,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       ...userData,
       passwordHash: defaultPassword, // Will be hashed by pre-save middleware
       emailVerified: true, // Auto-verify for admin-created accounts
+      status: role === 'parent' ? 'pending' : 'active', // Parents start as pending
       createdBy: userDoc._id,
       updatedBy: userDoc._id,
     });

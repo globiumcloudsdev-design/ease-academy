@@ -17,7 +17,7 @@ async function getFeeTemplate(request, authenticatedUser, userDoc, { params }) {
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const template = await FeeTemplate.findOne({
       _id: id,
@@ -26,6 +26,7 @@ async function getFeeTemplate(request, authenticatedUser, userDoc, { params }) {
         { branchId: null }
       ]
     })
+      .populate('category', 'name code color icon')
       .populate('createdBy', 'fullName email')
       .lean();
 
@@ -61,7 +62,7 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc, { params }
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updates = await request.json();
 
     // Find template and verify it belongs to admin's branch (can't update school-wide)
@@ -89,6 +90,9 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc, { params }
 
     template.updatedBy = authenticatedUser.userId;
     await template.save();
+
+    // Populate category after save
+    await template.populate('category', 'name code color icon');
 
     return NextResponse.json({
       success: true,

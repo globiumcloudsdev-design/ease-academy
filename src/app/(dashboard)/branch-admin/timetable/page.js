@@ -117,9 +117,9 @@ export default function BranchTimetablePage() {
       const url = `${API_ENDPOINTS.BRANCH_ADMIN.TIMETABLES.LIST}?branchId=${encodeURIComponent(branchIdParam)}&classId=${encodeURIComponent(classId)}&academicYear=${encodeURIComponent(academicYear)}`;
       const response = await apiClient.get(url);
       if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-        // try to find exact section match first
+        // Only return if exact section match found
         const bySection = response.data.find(t => (t.section || '') === (section || ''));
-        return bySection || response.data[0];
+        return bySection || null;
       }
       return null;
     } catch (error) {
@@ -130,6 +130,8 @@ export default function BranchTimetablePage() {
 
   const handleSectionChange = (e) => {
     const sec = e.target.value;
+    setSelectedSection(sec);
+    
     const sRoom = getSectionByName(sec)?.roomNumber || '';
     setFormData(prev => ({
       ...prev,
@@ -141,6 +143,7 @@ export default function BranchTimetablePage() {
     (async () => {
       const existing = await fetchExistingTimetable(branchId, formData.classId, sec, formData.academicYear);
       if (existing) {
+        // Found existing timetable for this exact section
         setEditingTimetable(existing);
         setFormData(prev => ({
           ...prev,
@@ -154,6 +157,22 @@ export default function BranchTimetablePage() {
           status: existing.status,
           periods: normalizePeriods(existing.periods, sec),
           timeSettings: existing.timeSettings || prev.timeSettings,
+        }));
+      } else {
+        // No timetable found for this section - clear periods
+        setEditingTimetable(null);
+        setFormData(prev => ({
+          ...prev,
+          section: sec,
+          periods: [],
+          timeSettings: {
+            periodDuration: 40,
+            firstPeriodDuration: 50,
+            breakDuration: 10,
+            lunchDuration: 30,
+            schoolStartTime: '08:00',
+            schoolEndTime: '14:00',
+          },
         }));
       }
     })();

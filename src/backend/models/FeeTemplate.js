@@ -17,9 +17,9 @@ const feeTemplateSchema = new mongoose.Schema(
       trim: true,
     },
     category: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FeeCategory',
       required: [true, 'Fee category is required'],
-      enum: ['tuition', 'admission', 'examination', 'transport', 'library', 'laboratory', 'sports', 'hostel', 'miscellaneous', 'monthlyFee', 'activity', 'other'],
     },
     description: {
       type: String,

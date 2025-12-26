@@ -10,11 +10,11 @@ import Grade from '@/backend/models/Grade';
 import Stream from '@/backend/models/Stream';
 
 // GET - Get single syllabus
-export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
+export const GET = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
+    const { id } = await context.params;
     
     const syllabus = await Syllabus.findById(id)
       .populate('subjectId', 'name code grade')
@@ -55,12 +55,25 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
 });
 
 // PUT - Update syllabus
-export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
+export const PUT = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
-    const body = await request.json();
+    const { id } = await context.params;
+    
+    // Parse JSON with error handling
+    let body;
+    try {
+      body = await request.json();
+    } catch (jsonError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Invalid JSON in request body',
+        },
+        { status: 400 }
+      );
+    }
     
     const syllabus = await Syllabus.findById(id);
     
@@ -112,11 +125,11 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
 });
 
 // DELETE - Archive syllabus
-export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
+export const DELETE = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
+    const { id } = await context.params;
     
     const syllabus = await Syllabus.findById(id);
     

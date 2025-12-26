@@ -465,13 +465,14 @@ const StudentFormModal = ({
     }
   };
 
-  const handleDocumentUpload = (file, type = 'other') => {
+  const handleDocumentUpload = (file, customName = '') => {
     if (!file) return;
 
     const newDocument = {
       file,
-      type,
-      name: file.name,
+      type: customName || 'other',
+      name: customName || file.name,
+      customName: customName,
       size: file.size,
       preview: URL.createObjectURL(file),
     };
@@ -1387,66 +1388,47 @@ const StudentFormModal = ({
         <h3 className="text-lg font-semibold">Documents</h3>
       </div>
 
-      {/* Document Upload Area */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
-        <input
-          type="file"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          onChange={(e) => {
-            const file = e.target.files[0];
-            if (file) {
-              handleDocumentUpload(file, 'other');
-            }
-          }}
-          className="hidden"
-          id="document-upload"
-          multiple
-        />
-        <label htmlFor="document-upload" className="cursor-pointer">
-          <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg font-medium text-gray-700">Upload Documents</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Drag & drop files here or click to browse
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            Supported: PDF, DOC, DOCX, JPG, PNG (Max 5MB per file)
-          </p>
-        </label>
-      </div>
-
-      {/* Document Type Selection */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { value: 'b_form', label: 'B-Form' },
-          { value: 'birth_certificate', label: 'Birth Certificate' },
-          { value: 'previous_result', label: 'Previous Result' },
-          { value: 'leaving_certificate', label: 'Leaving Certificate' },
-          { value: 'medical_certificate', label: 'Medical Certificate' },
-          { value: 'photo', label: 'Passport Photo' },
-          { value: 'cnic_parent', label: 'Parent CNIC' },
-          { value: 'other', label: 'Other' },
-        ].map((docType) => (
-          <button
-            key={docType.value}
+      {/* Document Name Input */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Document Name</label>
+          <Input
+            type="text"
+            placeholder="Enter document name (e.g., B-Form, Birth Certificate, etc.)"
+            value={formData.documentName || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, documentName: e.target.value }))}
+            className="mb-4"
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <Button
             type="button"
             onClick={() => {
+              if (!formData.documentName?.trim()) {
+                toast.error('Please enter a document name first');
+                return;
+              }
               const input = document.createElement('input');
               input.type = 'file';
               input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
               input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                  handleDocumentUpload(file, docType.value);
+                  handleDocumentUpload(file, formData.documentName.trim());
+                  setFormData(prev => ({ ...prev, documentName: '' })); // Clear the input after upload
                 }
               };
               input.click();
             }}
-            className="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            className="flex items-center gap-2"
           >
-            <FileText className="w-6 h-6 text-gray-400 mb-2" />
-            <span className="text-sm font-medium text-gray-700">{docType.label}</span>
-          </button>
-        ))}
+            <Upload className="w-4 h-4" />
+            Upload Document
+          </Button>
+          <p className="text-sm text-gray-500">
+            Supported: PDF, DOC, DOCX, JPG, PNG (Max 5MB per file)
+          </p>
+        </div>
       </div>
 
       {/* Uploaded Documents List */}
@@ -1495,7 +1477,7 @@ const StudentFormModal = ({
                   <FileText className="w-5 h-5 text-gray-500" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {doc.name || doc.type}
+                      {doc.name || doc.type || 'Document'}
                     </p>
                     <p className="text-xs text-gray-500">
                       {doc.type} • {doc.uploadedAt ?

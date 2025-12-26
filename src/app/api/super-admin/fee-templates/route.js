@@ -35,6 +35,7 @@ async function getFeeTemplates(request, authenticatedUser) {
 
     // Get templates with pagination
     const templates = await FeeTemplate.find(query)
+      .populate('category', 'name code color icon')
       .populate('branchId', 'name code city')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
@@ -132,6 +133,7 @@ async function createFeeTemplate(request, authenticatedUser, userDoc) {
     });
 
     const populatedTemplate = await FeeTemplate.findById(template._id)
+      .populate('category', 'name code color icon')
       .populate('branchId', 'name code city')
       .populate('createdBy', 'name email');
 

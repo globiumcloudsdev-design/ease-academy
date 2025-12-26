@@ -20,7 +20,7 @@ export const GET = asyncHandler(async (request) => {
       upcomingExams: 3,
     },
     myClasses: [
-      { id: 1, name: 'Class 10A', subject: 'Mathematics', students: 35 },
+      { id: 1, name: 'Class 10A', subject: 'eng', students: 35 },
       { id: 2, name: 'Class 10B', subject: 'Mathematics', students: 32 },
       { id: 3, name: 'Class 9A', subject: 'Mathematics', students: 40 },
     ],

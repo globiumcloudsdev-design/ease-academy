@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import {
-  DollarSign,
   Plus,
   Search,
   Edit,
@@ -12,6 +11,7 @@ import {
   TrendingUp,
   X,
   AlertCircle,
+  DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,6 +32,7 @@ export default function FeeTemplatesPage() {
   const [templates, setTemplates] = useState([]);
   const [branches, setBranches] = useState([]);
   const [classesList, setClassesList] = useState([]);
+  const [feeCategories, setFeeCategories] = useState([]); // Now fetched from API
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -42,18 +43,6 @@ export default function FeeTemplatesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
-
-  const feeCategories = [
-    { value: 'tuition', label: 'Tuition Fee', color: 'blue' },
-    { value: 'admission', label: 'Admission Fee', color: 'green' },
-    { value: 'examination', label: 'Examination Fee', color: 'purple' },
-    { value: 'transport', label: 'Transport Fee', color: 'yellow' },
-    { value: 'library', label: 'Library Fee', color: 'pink' },
-    { value: 'laboratory', label: 'Laboratory Fee', color: 'indigo' },
-    { value: 'sports', label: 'Sports Fee', color: 'orange' },
-    { value: 'hostel', label: 'Hostel Fee', color: 'red' },
-    { value: 'miscellaneous', label: 'Miscellaneous', color: 'gray' },
-  ];
 
   const STATUS_OPTIONS = [
     { value: '', label: 'All Status' },
@@ -119,11 +108,31 @@ export default function FeeTemplatesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadTemplates(), loadBranches()]);
+      await Promise.all([loadTemplates(), loadBranches(), loadCategories()]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const res = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.FEE_CATEGORIES.LIST, { limit: 100, isActive: true });
+      if (res && res.success) {
+        // Transform categories to match the expected format
+        const transformedCategories = res.data.map(cat => ({
+          value: cat._id, // Use _id as value since FeeTemplate now references category by ObjectId
+          label: cat.name,
+          color: cat.color || 'gray',
+          icon: cat.icon,
+          code: cat.code,
+        }));
+        setFeeCategories(transformedCategories);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      toast.error('Failed to load fee categories');
     }
   };
 
@@ -201,7 +210,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: '',
       code: '',
-      category: 'tuition',
+      category: feeCategories.length > 0 ? feeCategories[0].value : '', // Use first category ID
       description: '',
       amount: '',
       frequency: 'monthly',
@@ -239,7 +248,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: template.name,
       code: template.code,
-      category: template.category,
+      category: typeof template.category === 'object' ? template.category?._id : template.category, // Extract category ID
       description: template.description || '',
       amount: (template.amount || 0).toString(),
       frequency: template.frequency,
@@ -359,10 +368,20 @@ export default function FeeTemplatesPage() {
   };
 
   const getCategoryColor = (category) => {
+    // If category is an object (populated from DB), use its color directly
+    if (typeof category === 'object' && category?.color) {
+      return category.color;
+    }
+    // Otherwise, look it up in feeCategories array
     return feeCategories.find(c => c.value === category)?.color || 'gray';
   };
 
   const getCategoryLabel = (category) => {
+    // If category is an object (populated from DB), use its name directly
+    if (typeof category === 'object' && category?.name) {
+      return category.name;
+    }
+    // Otherwise, look it up in feeCategories array
     return feeCategories.find(c => c.value === category)?.label || category;
   };
 
@@ -372,7 +391,11 @@ export default function FeeTemplatesPage() {
   const totalRevenue = templates.reduce((sum, t) => sum + (t.amount || 0), 0);
   const categoryCounts = feeCategories.map(cat => ({
     ...cat,
-    count: templates.filter(t => t.category === cat.value).length,
+    count: templates.filter(t => {
+      // Handle both object (populated) and string category
+      const categoryId = typeof t.category === 'object' ? t.category?._id : t.category;
+      return categoryId === cat.value;
+    }).length,
   }));
 
   if (loading) return <FullPageLoader message="Loading fee templates..." />;

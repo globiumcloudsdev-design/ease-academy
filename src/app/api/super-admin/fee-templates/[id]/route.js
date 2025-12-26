@@ -15,6 +15,7 @@ async function getFeeTemplate(request) {
 
     const template = await FeeTemplate.findById(id)
       .populate('branchId', 'name code city')
+      .populate('category', 'name code color icon')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email');
 
@@ -71,6 +72,7 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc) {
       { new: true, runValidators: true }
     )
       .populate('branchId', 'name code city')
+      .populate('category', 'name code color icon')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email');
 

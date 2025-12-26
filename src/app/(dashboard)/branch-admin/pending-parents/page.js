@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useApi } from '@/hooks/useApi';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import ButtonLoader from '@/components/ui/button-loader';
+import FullPageLoader from '@/components/ui/full-page-loader';
+import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { CheckCircle, Eye, User, Phone, Mail, MapPin, Calendar, Search, Filter, RefreshCw, Users, Clock, CheckCircle2, CheckSquare, Square, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,7 +28,6 @@ export default function PendingParentsPage() {
   const [childrenMatches, setChildrenMatches] = useState({});
   const [showClassSelection, setShowClassSelection] = useState(null);
   const [classSelections, setClassSelections] = useState({});
-  const { execute } = useApi();
 
   useEffect(() => {
     loadPendingParents();
@@ -42,7 +44,7 @@ export default function PendingParentsPage() {
   const loadPendingParents = async () => {
     try {
       setLoading(true);
-      const response = await execute({ url: API_ENDPOINTS.BRANCH_ADMIN.PENDING_PARENTS });
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.PENDING_PARENTS);
       if (response) {
         setParents(response.parents || []);
       }
@@ -64,11 +66,10 @@ export default function PendingParentsPage() {
         approvalData.childrenMappings = classSelections[parentId];
       }
 
-      const response = await execute({
-        url: API_ENDPOINTS.BRANCH_ADMIN.APPROVE_PARENT.replace(':id', parentId),
-        method: 'POST',
-        data: approvalData
-      });
+      const response = await apiClient.post(
+        API_ENDPOINTS.BRANCH_ADMIN.APPROVE_PARENT.replace(':id', parentId),
+        approvalData
+      );
 
       if (response?.success) {
         toast.success('Parent approved successfully');
@@ -104,10 +105,9 @@ export default function PendingParentsPage() {
     try {
       setApproving('bulk');
       const promises = selectedParents.map(parentId =>
-        execute({
-          url: API_ENDPOINTS.BRANCH_ADMIN.APPROVE_PARENT.replace(':id', parentId),
-          method: 'POST'
-        })
+        apiClient.post(
+          API_ENDPOINTS.BRANCH_ADMIN.APPROVE_PARENT.replace(':id', parentId)
+        )
       );
 
       const results = await Promise.all(promises);
@@ -136,11 +136,10 @@ export default function PendingParentsPage() {
 
     try {
       setRejecting(parentId);
-      const response = await execute({
-        url: API_ENDPOINTS.BRANCH_ADMIN.REJECT_PARENT.replace(':id', parentId),
-        method: 'POST',
-        data: { reason: rejectReason }
-      });
+      const response = await apiClient.post(
+        API_ENDPOINTS.BRANCH_ADMIN.REJECT_PARENT.replace(':id', parentId),
+        { reason: rejectReason }
+      );
 
       if (response?.success) {
         toast.success('Parent rejected successfully');
@@ -188,11 +187,10 @@ export default function PendingParentsPage() {
   const handleCheckChildrenMatches = async (parentId) => {
     try {
       setCheckingMatches(parentId);
-      const response = await execute({
-        url: API_ENDPOINTS.BRANCH_ADMIN.CHECK_CHILDREN_MATCHES,
-        method: 'POST',
-        data: { parentId }
-      });
+      const response = await apiClient.post(
+        API_ENDPOINTS.BRANCH_ADMIN.CHECK_CHILDREN_MATCHES,
+        { parentId }
+      );
 
       if (response?.matches) {
         setChildrenMatches(prev => ({
@@ -222,11 +220,7 @@ export default function PendingParentsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <FullPageLoader message="Loading pending parents..." />;
   }
 
   return (
@@ -330,7 +324,7 @@ export default function PendingParentsPage() {
                         size="sm"
                       >
                         {approving === 'bulk' ? (
-                          <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-white mr-2"></div>
+                          <ButtonLoader size={4} />
                         ) : (
                           <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         )}
@@ -456,7 +450,7 @@ export default function PendingParentsPage() {
                                         className="text-xs"
                                       >
                                         {checkingMatches === selectedParent._id ? (
-                                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-gray-600 mr-2"></div>
+                                          <ButtonLoader size={3} />
                                         ) : (
                                           <Search className="h-3 w-3 mr-2" />
                                         )}
@@ -563,7 +557,7 @@ export default function PendingParentsPage() {
                                       size="sm"
                                     >
                                       {approving === selectedParent._id ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                                        <ButtonLoader size={4} />
                                       ) : (
                                         <CheckCircle className="h-4 w-4 mr-2" />
                                       )}
@@ -580,7 +574,7 @@ export default function PendingParentsPage() {
                                       size="sm"
                                     >
                                       {rejecting === selectedParent._id ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-red-700 mr-2"></div>
+                                        <ButtonLoader size={4} />
                                       ) : (
                                         <X className="h-4 w-4 mr-2" />
                                       )}
@@ -648,7 +642,7 @@ export default function PendingParentsPage() {
                               className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700 text-xs h-8"
                             >
                               {rejecting === parent._id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-red-700 mr-2"></div>
+                                  <ButtonLoader size={4} />
                               ) : (
                                 <X className="h-4 w-4 mr-2" />
                               )}
@@ -661,7 +655,7 @@ export default function PendingParentsPage() {
                               className="bg-green-600 hover:bg-green-700 text-xs h-8"
                             >
                               {approving === parent._id ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                                  <ButtonLoader size={4} />
                               ) : (
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
                               )}

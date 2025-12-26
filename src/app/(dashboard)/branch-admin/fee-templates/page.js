@@ -24,23 +24,11 @@ const FEE_FREQUENCIES = [
   { value: 'one-time', label: 'One-Time' },
 ];
 
-const FEE_TYPES = [
-  { value: 'tuition', label: 'Tuition Fee' },
-  { value: 'admission', label: 'Admission Fee' },
-  { value: 'exam', label: 'Exam Fee' },
-  { value: 'library', label: 'Library Fee' },
-  { value: 'transport', label: 'Transport Fee' },
-  { value: 'activity', label: 'Activity Fee' },
-  { value: 'monthlyFee', label: 'Monthly Fee' },
-  { value: 'lab', label: 'Lab Fee' },
-  { value: 'hostel', label: 'Hostel Fee' },
-  { value: 'other', label: 'Other' },
-];
-
 export default function FeeTemplatesPage() {
   const { user } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [feeCategories, setFeeCategories] = useState([]); // Fetched from API
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -77,6 +65,7 @@ export default function FeeTemplatesPage() {
   useEffect(() => {
     fetchTemplates();
     fetchClasses();
+    fetchCategories();
   }, [search, typeFilter, pagination.page]);
 
   // Close class dropdown when clicking outside
@@ -102,6 +91,25 @@ export default function FeeTemplatesPage() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_CATEGORIES.LIST, { limit: 100, isActive: true });
+      if (response.success) {
+        // Transform categories to match expected format
+        const transformed = response.data.map(cat => ({
+          value: cat._id,
+          label: cat.name,
+          color: cat.color || 'blue',
+          code: cat.code,
+        }));
+        setFeeCategories(transformed);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load fee categories');
+    }
+  };
+
   const fetchTemplates = async () => {
     try {
       setLoading(true);
@@ -119,7 +127,12 @@ export default function FeeTemplatesPage() {
         setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      // Enhanced error logging for debugging
+      if (error && typeof error === 'object') {
+        console.error('Error fetching templates:', error.message, error.response || error);
+      } else {
+        console.error('Error fetching templates:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -217,7 +230,7 @@ export default function FeeTemplatesPage() {
       name: template.name || '',
       code: template.code || '',
       description: template.description || '',
-      feeType: template.category || 'tuition',
+      feeType: typeof template.category === 'object' ? template.category?._id : template.category || (feeCategories.length > 0 ? feeCategories[0].value : ''),
       amount: template.amount !== undefined ? String(template.amount) : '',
       frequency: template.frequency || 'monthly',
       isActive: template.status === 'active',
@@ -252,7 +265,7 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: template.name + ' (Copy)',
       description: template.description || '',
-      feeType: template.feeType || 'tuition',
+      feeType: typeof template.category === 'object' ? template.category?._id : template.category || (feeCategories.length > 0 ? feeCategories[0].value : ''),
       baseAmount: template.baseAmount || '',
       frequency: template.frequency || 'monthly',
       isActive: true,
@@ -270,7 +283,7 @@ export default function FeeTemplatesPage() {
       name: '',
       code: '',
       description: '',
-      feeType: 'tuition',
+      feeType: feeCategories.length > 0 ? feeCategories[0].value : '',
       amount: '',
       frequency: 'monthly',
       isActive: true,
@@ -333,7 +346,7 @@ export default function FeeTemplatesPage() {
               placeholder="Filter by type"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              options={[{ value: '', label: 'All Types' }, ...FEE_TYPES]}
+              options={[{ value: '', label: 'All Types' }, ...feeCategories]}
             />
           </div>
 
@@ -366,7 +379,11 @@ export default function FeeTemplatesPage() {
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell className="text-xs text-gray-600">{template.code}</TableCell>
                     <TableCell>
-                      <span className="capitalize">{template.category || template.feeType}</span>
+                      <span className="capitalize">
+                        {typeof template.category === 'object' && template.category?.name 
+                          ? template.category.name 
+                          : template.category || template.feeType}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <span className="capitalize">{template.frequency}</span>
@@ -527,7 +544,7 @@ export default function FeeTemplatesPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Category *</label>
-              <Dropdown name="feeType" value={formData.feeType} onChange={handleInputChange} options={FEE_TYPES} />
+              <Dropdown name="feeType" value={formData.feeType} onChange={handleInputChange} options={feeCategories} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Frequency *</label>
@@ -654,7 +671,7 @@ export default function FeeTemplatesPage() {
             <input
               type="text"
               placeholder="Enter sections separated by commas (e.g., A, B, C)"
-              value={formData.sections.join(', ')}
+              value={Array.isArray(formData.sections) ? formData.sections.join(', ') : ''}
               onChange={(e) => {
                 const sections = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
                 setFormData((prev) => ({ ...prev, sections }));
@@ -696,7 +713,7 @@ export default function FeeTemplatesPage() {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={formData.lateFee.enabled}
+                  checked={formData.lateFee && typeof formData.lateFee === 'object' ? formData.lateFee.enabled : false}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     lateFee: { ...prev.lateFee, enabled: e.target.checked }
@@ -707,7 +724,7 @@ export default function FeeTemplatesPage() {
               </label>
             </div>
 
-            {formData.lateFee.enabled && (
+            {formData.lateFee && typeof formData.lateFee === 'object' && formData.lateFee.enabled && (
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Type</label>
@@ -764,7 +781,7 @@ export default function FeeTemplatesPage() {
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={formData.discount.enabled}
+                  checked={formData.discount && typeof formData.discount === 'object' ? formData.discount.enabled : false}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
                     discount: { ...prev.discount, enabled: e.target.checked }
@@ -775,7 +792,7 @@ export default function FeeTemplatesPage() {
               </label>
             </div>
 
-            {formData.discount.enabled && (
+            {formData.discount && typeof formData.discount === 'object' && formData.discount.enabled && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-4">
                     <div>

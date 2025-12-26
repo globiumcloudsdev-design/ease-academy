@@ -93,6 +93,43 @@ export const API_ENDPOINTS = {
       PROCESS: '/api/super-admin/salaries/:id/process',
     },
 
+    // Payroll Management
+    PAYROLL: {
+      PROCESS: '/api/payroll/process',
+      LIST: '/api/payroll/list',
+      GET: (id) => `/api/payroll/${id}`,
+      SLIP: (id) => `/api/payroll/slip/${id}`,
+      MARK_PAID: (id) => `/api/payroll/${id}/mark-paid`,
+      REPORTS: {
+        SUMMARY: '/api/payroll/reports/summary',
+      },
+    },
+
+    // Employee Attendance Management
+    EMPLOYEE_ATTENDANCE: {
+      CHECK_IN: '/api/employee-attendance/check-in',
+      CHECK_OUT: '/api/employee-attendance/check-out',
+      MARK: '/api/employee-attendance/mark',
+      LIST: '/api/employee-attendance/list',
+      SUMMARY: '/api/employee-attendance/summary',
+      TODAY: '/api/employee-attendance/today',
+      REPORTS: '/api/employee-attendance/reports',
+    },
+
+    // Users Management (Super Admin)
+    USERS: {
+      LIST: '/api/super-admin/users',
+      GET: '/api/super-admin/users/:id',
+      CREATE: '/api/super-admin/users',
+      UPDATE: '/api/super-admin/users/:id',
+      DELETE: '/api/super-admin/users/:id',
+    },
+
+    // Employees Management (Teachers & Staff only)
+    EMPLOYEES: {
+      LIST: '/api/super-admin/employees',
+    },
+
     // Teachers Management
     TEACHERS: {
       CREATE: '/api/super-admin/teachers',
@@ -128,6 +165,15 @@ export const API_ENDPOINTS = {
       GET: '/api/super-admin/fee-templates/:id',
       UPDATE: '/api/super-admin/fee-templates/:id',
       DELETE: '/api/super-admin/fee-templates/:id',
+    },
+
+    // Fee Categories
+    FEE_CATEGORIES: {
+      CREATE: '/api/super-admin/fee-categories',
+      LIST: '/api/super-admin/fee-categories',
+      GET: '/api/super-admin/fee-categories/:id',
+      UPDATE: '/api/super-admin/fee-categories/:id',
+      DELETE: '/api/super-admin/fee-categories/:id',
     },
 
     // Fee Vouchers
@@ -218,6 +264,9 @@ export const API_ENDPOINTS = {
       EXPORT: '/api/super-admin/users/export',
     },
 
+    // Employees Management
+    EMPLOYEES: '/api/super-admin/employees',
+
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
     PARENTS: '/api/super-admin/parents',
@@ -229,6 +278,21 @@ export const API_ENDPOINTS = {
   // Branch Admin Endpoints
   BRANCH_ADMIN: {
     DASHBOARD: '/api/branch-admin/dashboard',
+
+    // Users Management (Branch Admin - restricted to their branch)
+    USERS: {
+      LIST: '/api/branch-admin/users',
+      GET: '/api/branch-admin/users/:id',
+      CREATE: '/api/branch-admin/users',
+      UPDATE: '/api/branch-admin/users/:id',
+      DELETE: '/api/branch-admin/users/:id',
+    },
+
+    // Employees Management (Teachers & Staff only from their branch)
+    EMPLOYEES: {
+      LIST: '/api/branch-admin/employees',
+    },
+
     // Timetables Management for branch admin (branch-limited)
     TIMETABLES: {
       CREATE: '/api/branch-admin/timetables',
@@ -360,6 +424,15 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/fee-templates/:id',
       DELETE: '/api/branch-admin/fee-templates/:id',
     },
+
+    // Fee Categories
+    FEE_CATEGORIES: {
+      CREATE: '/api/branch-admin/fee-categories',
+      LIST: '/api/branch-admin/fee-categories',
+      GET: '/api/branch-admin/fee-categories/:id',
+      UPDATE: '/api/branch-admin/fee-categories/:id',
+      DELETE: '/api/branch-admin/fee-categories/:id',
+    },
     
     // Fee Vouchers
     FEE_VOUCHERS: {
@@ -408,6 +481,32 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/branch-admin/finance/summary',
     },
 
+    // Employees Management
+    EMPLOYEES: '/api/branch-admin/employees',
+
+    // Payroll Management
+    PAYROLL: {
+      PROCESS: '/api/payroll/process',
+      LIST: '/api/payroll/list',
+      GET: (id) => `/api/payroll/${id}`,
+      SLIP: (id) => `/api/payroll/slip/${id}`,
+      MARK_PAID: (id) => `/api/payroll/${id}/mark-paid`,
+      REPORTS: {
+        SUMMARY: '/api/payroll/reports/summary',
+      },
+    },
+
+    // Employee Attendance Management
+    EMPLOYEE_ATTENDANCE: {
+      CHECK_IN: '/api/employee-attendance/check-in',
+      CHECK_OUT: '/api/employee-attendance/check-out',
+      MARK: '/api/employee-attendance/mark',
+      LIST: '/api/employee-attendance/list',
+      SUMMARY: '/api/employee-attendance/summary',
+      TODAY: '/api/employee-attendance/today',
+      REPORTS: '/api/employee-attendance/reports',
+    },
+
     // Parent Approval Management
     PENDING_PARENTS: '/api/branch-admin/pending-parents',
     PARENTS: '/api/branch-admin/parents',
@@ -418,68 +517,75 @@ export const API_ENDPOINTS = {
 
   // Teacher Endpoints
   TEACHER: {
-    DASHBOARD: '/teacher/dashboard',
-    
+    DASHBOARD: '/api/teacher/dashboard',
+
+    // My Classes (app route: src/app/api/teacher/my-classes)
+    MY_CLASSES: {
+      LIST: '/api/teacher/my-classes',
+      GET: '/api/teacher/my-classes/:id',
+    },
+
     // Classes
     CLASSES: {
-      LIST: '/teacher/classes',
-      GET: '/teacher/classes/:id',
-      STUDENTS: '/teacher/classes/:id/students',
-      TIMETABLE: '/teacher/classes/:id/timetable',
+      LIST: '/api/teacher/classes',
+      GET: '/api/teacher/classes/:id',
+      STUDENTS: '/api/teacher/classes/:id/students',
+      TIMETABLE: '/api/teacher/classes/:id/timetable',
     },
-    
+
     // Students
     STUDENTS: {
-      LIST: '/teacher/students',
-      GET: '/teacher/students/:id',
-      PERFORMANCE: '/teacher/students/:id/performance',
+      LIST: '/api/teacher/students',
+      GET: '/api/teacher/students/:id',
+      DETAILS: '/api/teacher/student/details',
+      PERFORMANCE: '/api/student/details/:id/performance',
     },
-    
+
     // Attendance
     ATTENDANCE: {
-      MARK: '/teacher/attendance/mark',
-      VIEW: '/teacher/attendance/view',
-      HISTORY: '/teacher/attendance/history',
-      REPORT: '/teacher/attendance/report',
-      BULK_MARK: '/teacher/attendance/bulk-mark',
+      MARK: '/api/teacher/attendance/mark',
+      VIEW: '/api/teacher/attendance/view',
+      HISTORY: '/api/teacher/attendance/history',
+      REPORT: '/api/teacher/attendance/report',
+      BULK_MARK: '/api/teacher/attendance/bulk-mark',
     },
-    
+
     // Assignments
     ASSIGNMENTS: {
-      CREATE: '/teacher/assignments',
-      LIST: '/teacher/assignments',
-      GET: '/teacher/assignments/:id',
-      UPDATE: '/teacher/assignments/:id',
-      DELETE: '/teacher/assignments/:id',
-      SUBMISSIONS: '/teacher/assignments/:id/submissions',
-      GRADE: '/teacher/assignments/:id/grade',
+      CREATE: '/api/teacher/assignments',
+      LIST: '/api/teacher/assignments',
+      GET: '/api/teacher/assignments/:id',
+      UPDATE: '/api/teacher/assignments/:id',
+      DELETE: '/api/teacher/assignments/:id',
+      SUBMISSIONS: '/api/teacher/assignments/:id/submissions',
+      GRADE: '/api/teacher/assignments/:id/grade',
     },
-    
+
     // Exams
     EXAMS: {
-      CREATE: '/teacher/exams',
-      LIST: '/teacher/exams',
-      GET: '/teacher/exams/:id',
-      UPDATE: '/teacher/exams/:id',
-      DELETE: '/teacher/exams/:id',
-      SCHEDULE: '/teacher/exams/:id/schedule',
+      CREATE: '/api/teacher/exams',
+      LIST: '/api/teacher/exams',
+      GET: '/api/teacher/exams/:id',
+      UPDATE: '/api/teacher/exams/:id',
+      DELETE: '/api/teacher/exams/:id',
+      SCHEDULE: '/api/teacher/exams/:id/schedule',
     },
-    
+
     // Grades
     GRADES: {
-      CREATE: '/teacher/grades',
-      LIST: '/teacher/grades',
-      UPDATE: '/teacher/grades/:id',
-      BULK_UPLOAD: '/teacher/grades/bulk-upload',
-      PUBLISH: '/teacher/grades/publish',
+      CREATE: '/api/teacher/grades',
+      LIST: '/api/teacher/grades',
+      UPDATE: '/api/teacher/grades/:id',
+      BULK_UPLOAD: '/api/teacher/grades/bulk-upload',
+      PUBLISH: '/api/teacher/grades/publish',
     },
-    
+
     // Leave Management
     LEAVE: {
-      APPLY: '/teacher/leave/apply',
-      LIST: '/teacher/leave',
-      CANCEL: '/teacher/leave/:id/cancel',
-      HISTORY: '/teacher/leave/history',
+      APPLY: '/api/teacher/leave/apply',
+      LIST: '/api/teacher/leave',
+      CANCEL: '/api/teacher/leave/:id/cancel',
+      HISTORY: '/api/teacher/leave/history',
     },
   },
 

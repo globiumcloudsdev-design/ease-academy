@@ -11,7 +11,15 @@ const parentSignupSchema = z.object({
   email: z.string().email('Invalid email'),
   phone: z.string().min(1, 'Phone is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  cnic: z.string().min(13, 'CNIC must be at least 13 characters').optional(),
   role: z.literal('parent'),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().min(1, 'City is required'),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().default('Pakistan'),
+  }).optional(),
   parentProfile: z.object({
     children: z.array(z.object({
       name: z.string().min(1, 'Child name is required'),
@@ -68,16 +76,21 @@ export async function POST(request) {
       fullName: validatedData.fullName,
       email: validatedData.email,
       phone: validatedData.phone,
+      cnic: validatedData.cnic,
       branchId: branchId,
       passwordHash: hashedPassword,
       isActive: false,
       approved: false,
       status: 'pending',
+      address: validatedData.address || {
+        street: '',
+        city: '',
+        state: '',
+        postalCode: '',
+        country: 'Pakistan'
+      },
       parentProfile: {
         children: children,
-        address: {
-          country: 'Pakistan' // Default, can be updated later
-        },
       },
     });
 

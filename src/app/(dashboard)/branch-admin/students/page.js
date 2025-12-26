@@ -14,6 +14,7 @@ import ButtonLoader from '@/components/ui/button-loader';
 import BloodGroupSelect from '@/components/ui/blood-group';
 import GenderSelect from '@/components/ui/gender-select';
 import ClassSelect from '@/components/ui/class-select';
+import StudentViewModal from '@/components/modals/StudentViewModal';
 import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -35,14 +36,16 @@ const STUDENT_STATUS = [
 export default function StudentsPage() {
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Helper function to get student class name
   const getStudentClassName = (student) => {
-    const classId = student.studentProfile?.classId?._id || student.studentProfile?.classId || student.classId;
+    const classId = student.classId?._id || student.classId || student.studentProfile?.classId?._id || student.studentProfile?.classId || '';
     const classObj = classes.find(c => c._id === classId);
-    return classObj?.name || student.studentProfile?.classId?.name || student.classId?.name || 'Not Assigned';
+    return classObj?.name || 'Not Assigned';
   };
 
   // Current branch ID from user context
@@ -145,8 +148,11 @@ export default function StudentsPage() {
   });
 
   useEffect(() => {
-    fetchStudents();
     fetchClasses();
+  }, []);
+
+  useEffect(() => {
+    fetchStudents();
   }, [search, statusFilter, classFilter, pagination.page]);
 
   useEffect(() => {
@@ -203,6 +209,17 @@ export default function StudentsPage() {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.BRANCHES.LIST, { limit: 100 });
+      if (response.success) {
+        setBranches(response.data.branches);
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -251,37 +268,19 @@ export default function StudentsPage() {
     }
   };
 
-  const handleDocumentUpload = async (file, documentType = 'other') => {
+  const handleDocumentUpload = (file, documentName = '') => {
     if (!file) return;
 
-    try {
-      setUploading(true);
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      uploadFormData.append('folder', 'students/documents');
+    const newDocument = {
+      file,
+      type: documentName || 'other',
+      name: documentName || file.name,
+      customName: documentName,
+      size: file.size,
+      preview: URL.createObjectURL(file),
+    };
 
-      const response = await apiClient.post('/api/upload', uploadFormData);
-
-      if (response.success) {
-        const newDoc = {
-          type: documentType,
-          name: file.name,
-          url: response.data.url,
-          publicId: response.data.publicId,
-          uploadedAt: new Date().toISOString(),
-        };
-
-        setFormData((prev) => ({
-          ...prev,
-          documents: [...(prev.documents || []), newDoc],
-        }));
-        alert('Document uploaded successfully!');
-      }
-    } catch (error) {
-      alert('Failed to upload document');
-    } finally {
-      setUploading(false);
-    }
+    setPendingDocuments(prev => [...prev, newDocument]);
   };
 
   const removeDocument = (index) => {
@@ -296,23 +295,70 @@ export default function StudentsPage() {
     setSubmitting(true);
 
     try {
+      // Prepare data to send (exclude pending files)
+      const dataToSend = {
+        ...formData,
+        pendingProfileFile: undefined,
+        pendingDocuments: undefined,
+      };
+
+      let response;
       if (isEditMode) {
-        const response = await apiClient.put(
+        response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.UPDATE.replace(':id', currentStudent._id),
-          formData
+          dataToSend
         );
-        if (response.success) {
-          alert('Student updated successfully!');
-          setIsModalOpen(false);
-          fetchStudents();
-        }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.CREATE, formData);
-        if (response.success) {
-          alert('Student created successfully!');
-          setIsModalOpen(false);
-          fetchStudents();
+        response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.CREATE, dataToSend);
+      }
+
+      if (response.success) {
+        const studentId = response.data._id || currentStudent._id;
+
+        // Upload profile photo if exists
+        if (pendingProfileFile && studentId) {
+          try {
+            const profileFormData = new FormData();
+            profileFormData.append('file', pendingProfileFile);
+            profileFormData.append('fileType', 'profile');
+            profileFormData.append('userId', studentId);
+
+            await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            });
+          } catch (uploadError) {
+            console.error('Failed to upload profile photo:', uploadError);
+            alert('Student saved but failed to upload profile photo');
+          }
         }
+
+        // Upload documents if any
+        if (pendingDocuments.length > 0 && studentId) {
+          for (const doc of pendingDocuments) {
+            try {
+              const docFormData = new FormData();
+              docFormData.append('file', doc.file);
+              docFormData.append('fileType', 'student_document');
+              docFormData.append('documentType', doc.type);
+              docFormData.append('userId', studentId);
+
+              await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+              });
+            } catch (uploadError) {
+              console.error('Failed to upload document:', uploadError);
+              alert(`Student saved but failed to upload document: ${doc.name}`);
+            }
+          }
+        }
+
+        alert(isEditMode ? 'Student updated successfully!' : 'Student created successfully!');
+        setIsModalOpen(false);
+        fetchStudents();
+
+        // Reset pending files
+        setPendingProfileFile(null);
+        setPendingDocuments([]);
       }
     } catch (error) {
       alert(error.message || 'Failed to save student');
@@ -322,7 +368,7 @@ export default function StudentsPage() {
   };
 
   const handleEdit = (student) => {
-    setCurrentStudent(student);
+    setCurrentStudent({...student, documents: student.studentProfile?.documents || []});
     setFormData({
       firstName: student.firstName || '',
       lastName: student.lastName || '',
@@ -335,7 +381,7 @@ export default function StudentsPage() {
       nationality: student.nationality || 'Pakistani',
       religion: student.religion || '',
       cnic: student.cnic || '',
-      classId: student.classId?._id || '',
+      classId: student.classId?._id || student.classId || null,
       admissionNumber: student.admissionNumber || '',
       enrollmentDate: student.enrollmentDate ? student.enrollmentDate.split('T')[0] : '',
       status: student.status || 'active',
@@ -390,8 +436,10 @@ export default function StudentsPage() {
         url: '',
         publicId: '',
       },
-      documents: student.documents || [],
+      documents: student.studentProfile?.documents || [],
     });
+    setPendingProfileFile(null);
+    setPendingDocuments([]);
     setIsEditMode(true);
     setActiveTab('personal');
     setIsModalOpen(true);
@@ -1318,47 +1366,122 @@ export default function StudentsPage() {
 
             {/* Documents Tab */}
             {activeTab === 'documents' && (
-              <div className="space-y-4">
-                <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    onChange={(e) => handleDocumentUpload(e.target.files[0])}
-                    className="hidden"
-                    id="document-upload"
-                  />
-                  <label htmlFor="document-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                    <p className="text-sm text-gray-600">
-                      {uploading ? 'Uploading...' : 'Click to upload documents'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      PDF, DOC, DOCX, JPG, PNG (Max 5MB)
-                    </p>
-                  </label>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Documents</h3>
                 </div>
 
-                {formData.documents && formData.documents.length > 0 && (
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Uploaded Documents</h4>
-                    {formData.documents.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-gray-500" />
-                          <div>
-                            <p className="text-sm font-medium">{doc.name}</p>
-                            <p className="text-xs text-gray-500">{doc.type}</p>
+                {/* Document Name Input */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Document Name</label>
+                    <Input
+                      type="text"
+                      placeholder="Enter document name (e.g., B-Form, Birth Certificate, etc.)"
+                      value={formData.documentName || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, documentName: e.target.value }))}
+                      className="mb-4"
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!formData.documentName?.trim()) {
+                          alert('Please enter a document name first');
+                          return;
+                        }
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+                        input.onchange = (e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            handleDocumentUpload(file, formData.documentName.trim());
+                            setFormData(prev => ({ ...prev, documentName: '' })); // Clear the input after upload
+                          }
+                        };
+                        input.click();
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Document
+                    </Button>
+                    <p className="text-sm text-gray-500">
+                      Supported: PDF, DOC, DOCX, JPG, PNG (Max 5MB per file)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Uploaded Documents List */}
+                {pendingDocuments.length > 0 && (
+                  <div className="border-t pt-6">
+                    <h4 className="text-md font-semibold mb-4">Documents to Upload</h4>
+                    <div className="space-y-3">
+                      {pendingDocuments.map((doc, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-gray-500" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{doc.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {doc.type} • {(doc.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removePendingDocument(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Documents (for edit mode) */}
+                {currentStudent?.studentProfile?.documents?.length > 0 && (
+                  <div className="border-t pt-6">
+                    <h4 className="text-md font-semibold mb-4">Existing Documents</h4>
+                    <div className="space-y-3">
+                      {currentStudent.studentProfile.documents.map((doc, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
+                        >
+                          <div className="flex items-center gap-3">
+                            <FileText className="w-5 h-5 text-gray-500" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {doc.name || doc.type || 'Document'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {doc.type} • {doc.uploadedAt ?
+                                  new Date(doc.uploadedAt).toLocaleDateString() :
+                                  'Recently uploaded'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-700 text-sm"
+                            >
+                              View
+                            </a>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeDocument(index)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1369,115 +1492,14 @@ export default function StudentsPage() {
       </Modal>
 
       {/* View Modal */}
-      <Modal
-        open={isViewModalOpen}
+      <StudentViewModal
+        isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
-        title="Student Details"
-        size="lg"
-        footer={
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setIsViewModalOpen(false)}>
-              Close
-            </Button>
-          </div>
-        }
-      >
-        {currentStudent && (
-          <div className="space-y-6 overflow-y-auto">
-            <div className="flex items-center gap-4">
-              {currentStudent.profilePhoto?.url ? (
-                <img
-                  src={currentStudent.profilePhoto.url}
-                  alt={`${currentStudent.firstName} ${currentStudent.lastName}`}
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center">
-                  <User className="w-12 h-12 text-gray-400" />
-                </div>
-              )}
-              <div>
-                <h3 className="text-xl font-bold">
-                  {currentStudent.firstName} {currentStudent.lastName}
-                </h3>
-                <p className="text-gray-600">{currentStudent.admissionNumber}</p>
-                <p className="text-sm text-gray-500">{currentStudent.email}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="text-sm font-medium text-gray-500">Class</label>
-                <p className="font-semibold">{currentStudent.classId?.name || 'Not Assigned'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Status</label>
-                <p className="capitalize font-semibold">{currentStudent.status}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Gender</label>
-                <p className="capitalize">{currentStudent.gender}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Blood Group</label>
-                <p>{currentStudent.bloodGroup || '-'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Date of Birth</label>
-                <p>
-                  {currentStudent.dateOfBirth
-                    ? new Date(currentStudent.dateOfBirth).toLocaleDateString()
-                    : '-'}
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-500">Enrollment Date</label>
-                <p>
-                  {currentStudent.enrollmentDate
-                    ? new Date(currentStudent.enrollmentDate).toLocaleDateString()
-                    : '-'}
-                </p>
-              </div>
-            </div>
-
-            {currentStudent.parentInfo && (
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-3">Parent Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Father Name</label>
-                    <p>{currentStudent.parentInfo.fatherName || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Father Phone</label>
-                    <p>{currentStudent.parentInfo.fatherPhone || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Mother Name</label>
-                    <p>{currentStudent.parentInfo.motherName || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Mother Phone</label>
-                    <p>{currentStudent.parentInfo.motherPhone || '-'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {currentStudent.address && (
-              <div className="border-t pt-4">
-                <label className="text-sm font-medium text-gray-500">Address</label>
-                <p>
-                  {currentStudent.address.street && `${currentStudent.address.street}, `}
-                  {currentStudent.address.city && `${currentStudent.address.city}, `}
-                  {currentStudent.address.state && `${currentStudent.address.state} `}
-                  {currentStudent.address.postalCode}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
+        student={currentStudent}
+        branches={branches}
+        classes={classes}
+        departments={departments}
+      />
 
       {/* Download Modal */}
       <Modal
@@ -1752,3 +1774,10 @@ export default function StudentsPage() {
     </div>
   );
 }
+
+
+
+
+
+
+

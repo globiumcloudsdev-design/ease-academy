@@ -209,7 +209,7 @@ const userSchema = new mongoose.Schema(
       documents: [{
         type: {
           type: String,
-          enum: ['b_form', 'birth_certificate', 'photo', 'previous_result', 'leaving_certificate', 'medical_certificate', 'other'],
+          // enum: ['b_form', 'birth_certificate', 'photo', 'previous_result', 'leaving_certificate', 'medical_certificate', 'other'],
         },
         name: { type: String, trim: true },
         url: { type: String },
@@ -545,7 +545,7 @@ const userSchema = new mongoose.Schema(
     // ==================== METADATA ====================
     status: {
       type: String,
-      enum: ['pending', 'rejected', 'active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
+      enum: ['pending', 'approved', 'rejected', 'active', 'inactive', 'graduated', 'transferred', 'expelled', 'on_leave', 'terminated', 'resigned'],
       default: 'active',
     },
     remarks: {

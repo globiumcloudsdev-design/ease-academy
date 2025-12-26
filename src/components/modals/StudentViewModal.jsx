@@ -641,37 +641,34 @@ const StudentViewModal = ({
         </div>
 
         {student.studentProfile?.documents?.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {student.studentProfile.documents.map((doc, index) => (
               <div
                 key={doc._id || index}
-                className="flex items-center justify-between p-3 bg-white rounded-lg border hover:bg-gray-50 transition-colors"
+                className="bg-white p-4 rounded-lg border hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {doc.name || doc.type.replace('_', ' ')}
                     </p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-gray-500 capitalize">
-                        {doc.type.replace('_', ' ')}
-                      </span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-500">
-                        {doc.uploadedAt ? formatDate(doc.uploadedAt) : 'Recent'}
-                      </span>
-                    </div>
+                    <p className="text-xs text-gray-500 capitalize mt-1">
+                      {(doc.type === 'other' ? doc.name : doc.type).replace('_', ' ')}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {doc.uploadedAt ? formatDate(doc.uploadedAt) : 'Recent'}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex gap-2">
                   <a
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                    className="flex-1 px-3 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors text-center"
                   >
                     <Eye className="w-4 h-4 inline mr-1" />
                     View
@@ -679,7 +676,7 @@ const StudentViewModal = ({
                   <a
                     href={doc.url}
                     download
-                    className="px-3 py-1 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
+                    className="flex-1 px-3 py-2 text-sm text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors text-center"
                   >
                     <Download className="w-4 h-4 inline mr-1" />
                     Download

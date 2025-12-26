@@ -73,6 +73,14 @@ export const POST = withAuth(async (request, user, userDoc) => {
     const template = await FeeTemplate.findById(templateId).populate('classes').lean();
     if (!template) return NextResponse.json({ success: false, message: 'Template not found' }, { status: 404 });
 
+    // Fetch FeeCategory name for email
+    let categoryName = '';
+    if (template.category) {
+      const FeeCategory = (await import('@/backend/models/FeeCategory')).default;
+      const cat = await FeeCategory.findById(template.category).lean();
+      categoryName = cat?.name || '';
+    }
+
     // Auto-select students based on template applicableTo
     let studentQuery = { role: 'student', branchId, status: 'active' };
 
@@ -193,7 +201,7 @@ export const POST = withAuth(async (request, user, userDoc) => {
             dueDate,
             month,
             year,
-            category: template.category
+            category: categoryName
           });
           await sendEmail(student.email, `Fee Voucher Generated - ${voucherNumber}`, studentEmailHtml);
         }
@@ -214,7 +222,7 @@ export const POST = withAuth(async (request, user, userDoc) => {
             dueDate,
             month,
             year,
-            category: template.category,
+            category: categoryName,
             className: ''
           });
           await sendEmail(parentEmail, `Fee Voucher for ${studentName} - ${voucherNumber}`, parentEmailHtml);

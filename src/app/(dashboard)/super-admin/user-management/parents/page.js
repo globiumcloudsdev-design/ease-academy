@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import ButtonLoader from '@/components/ui/button-loader';
+import FullPageLoader from '@/components/ui/full-page-loader';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { CheckCircle, Eye, User, Phone, Mail, MapPin, Calendar, Search, Filter, RefreshCw, Users, Clock, CheckCircle2, CheckSquare, Square, X } from 'lucide-react';
@@ -88,7 +91,9 @@ export default function ParentsPage() {
 
       if (response?.success) {
         toast.success('Parent approved successfully');
-        setAllParents(allParents.map(p => p._id === parentId ? { ...p, status: 'approved' } : p));
+        setAllParents(prev => prev.map(p => 
+          p._id === parentId ? { ...p, approved: true } : p
+        ));
         setPendingParents(pendingParents.filter(p => p._id !== parentId));
         setSelectedParents(selectedParents.filter(id => id !== parentId));
         setSelectedParent(null); // Close modal
@@ -136,7 +141,7 @@ export default function ParentsPage() {
 
       if (successCount > 0) {
         toast.success(`${successCount} parent(s) approved successfully`);
-        setAllParents(allParents.map(p => selectedParents.includes(p._id) ? { ...p, status: 'approved' } : p));
+        setAllParents(prev => prev.map(p => selectedParents.includes(p._id) ? { ...p, approved: true } : p));
         setPendingParents(pendingParents.filter(p => !selectedParents.includes(p._id)));
         setSelectedParents([]);
         
@@ -271,18 +276,14 @@ export default function ParentsPage() {
         Pending
       </Badge>;
     }
-    return <Badge variant={parent.status === 'approved' ? 'default' : 'secondary'} className="inline-flex items-center text-xs">
-      {parent.status === 'approved' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
-      {parent.status === 'approved' ? 'Approved' : 'Pending'}
+    return <Badge variant={parent.approved ? 'default' : 'secondary'} className="inline-flex items-center text-xs">
+      {parent.approved ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+      {parent.approved ? 'Approved' : 'Pending'}
     </Badge>;
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <FullPageLoader message="Loading parents..." />;
   }
 
   return (
@@ -392,7 +393,7 @@ export default function ParentsPage() {
                           size="sm"
                         >
                           {approving === 'bulk' ? (
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-white mr-2"></div>
+                            <ButtonLoader size={4} />
                           ) : (
                             <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                           )}
@@ -411,39 +412,36 @@ export default function ParentsPage() {
                   </div>
                 )}
                 {/* Table View */}
-                <div className="overflow-x-auto">
-                  <table className="w-full table-auto">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                        {activeTab === 'pending' && (
-                          <th className="text-left py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={selectedParents.length === filteredParents.length && filteredParents.length > 0}
-                                onChange={handleSelectAll}
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                              />
-                              <span className="text-xs sm:text-sm">Parent</span>
-                            </div>
-                          </th>
-                        )}
-                        {activeTab !== 'pending' && (
-                          <th className="text-left py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Parent</th>
-                        )}
-                        <th className="text-left py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Email</th>
-                        <th className="text-left py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Phone</th>
-                        <th className="text-left py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Applied Date</th>
-                        <th className="text-center py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Status</th>
-                        {activeTab === 'pending' && (
-                          <th className="text-center py-3 px-4 sm:px-6 font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredParents.map((parent) => (
-                        <tr key={parent._id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          <td className="min-w-0 py-3 px-4 sm:px-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {activeTab === 'pending' && (
+                        <TableHead>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedParents.length === filteredParents.length && filteredParents.length > 0}
+                              onChange={handleSelectAll}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>Parent</span>
+                          </div>
+                        </TableHead>
+                      )}
+                      {activeTab !== 'pending' && (
+                        <TableHead>Parent</TableHead>
+                      )}
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Applied Date</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredParents.map((parent) => (
+                      <TableRow key={parent._id}>
+                        <TableCell>
                             <div className="flex items-center space-x-3">
                               {activeTab === 'pending' && (
                                 <input
@@ -463,24 +461,23 @@ export default function ParentsPage() {
                                 </p>
                               </div>
                             </div>
-                          </td>
-                          <td className="min-w-0 py-3 px-4 sm:px-6 text-sm text-gray-900 dark:text-gray-100">
+                          </TableCell>
+                          <TableCell>
                             <span className="truncate block max-w-xs" title={parent.email}>
                               {parent.email}
                             </span>
-                          </td>
-                          <td className="min-w-0 py-3 px-4 sm:px-6 text-sm text-gray-900 dark:text-gray-100">{parent.phone || 'N/A'}</td>
-                          <td className="min-w-0 py-3 px-4 sm:px-6 text-sm text-gray-900 dark:text-gray-100">{formatDate(parent.createdAt)}</td>
-                          <td className="py-3 px-4 sm:px-6 text-center">
+                          </TableCell>
+                          <TableCell>{parent.phone || 'N/A'}</TableCell>
+                          <TableCell>{formatDate(parent.createdAt)}</TableCell>
+                          <TableCell className="text-center">
                             {getStatusBadge(parent)}
-                          </td>
-                          {activeTab === 'pending' && (
-                            <td className="py-3 px-4 sm:px-6">
-                              <div className="flex items-center justify-center space-x-2">
-                                <Modal
-                                  open={selectedParent && selectedParent._id === parent._id}
-                                  onClose={() => setSelectedParent(null)}
-                                  title="Parent Details"
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center space-x-2">
+                              <Modal
+                                open={selectedParent && selectedParent._id === parent._id}
+                                onClose={() => setSelectedParent(null)}
+                                title="Parent Details"
                                 >
                                   {selectedParent && (
                                     <div className="space-y-6">
@@ -517,34 +514,57 @@ export default function ParentsPage() {
                                       <div>
                                         <div className="flex items-center justify-between mb-3">
                                           <h4 className="font-semibold text-sm">Children ({selectedParent.parentProfile?.children?.length || 0})</h4>
-                                          <Button
-                                            onClick={() => handleCheckChildrenMatches(selectedParent._id)}
-                                            disabled={checkingMatches === selectedParent._id}
-                                            variant="outline"
-                                            size="sm"
-                                            className="text-xs"
-                                          >
-                                            {checkingMatches === selectedParent._id ? (
-                                              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-blue-600 mr-2"></div>
-                                            ) : (
-                                              <Search className="h-3 w-3 mr-2" />
-                                            )}
-                                            Check Matches
-                                          </Button>
+                                          {selectedParent.status === 'pending' && (
+                                            <Button
+                                              onClick={() => handleCheckChildrenMatches(selectedParent._id)}
+                                              disabled={checkingMatches === selectedParent._id}
+                                              variant="outline"
+                                              size="sm"
+                                              className="text-xs"
+                                            >
+                                              {checkingMatches === selectedParent._id ? (
+                                              <ButtonLoader size={3} />
+                                              ) : (
+                                                <Search className="h-3 w-3 mr-2" />
+                                              )}
+                                              Check Matches
+                                            </Button>
+                                          )}
                                         </div>
                                         <div className="space-y-3">
                                           {selectedParent.parentProfile?.children?.map((child, index) => {
                                             const matchInfo = childrenMatches[selectedParent._id]?.[index];
                                             const hasMatches = matchInfo?.matched && matchInfo?.matchedStudents?.length > 0;
+                                            const isLinkedStudent = child.id && typeof child.id === 'object';
+                                            const linkedStudent = isLinkedStudent ? child.id : null;
                                             
                                             return (
-                                              <div key={index} className={`border rounded p-3 ${hasMatches ? 'bg-green-50 dark:bg-green-900/20 border-green-300' : 'bg-gray-50 dark:bg-gray-800'}`}>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
-                                                  <div><strong>Name:</strong> {child.name}</div>
-                                                  <div><strong>Registration:</strong> {child.registrationNumber || 'N/A'}</div>
-                                                  <div><strong>Class:</strong> {child.className || 'N/A'}</div>
-                                                  <div><strong>Section:</strong> {child.section || 'N/A'}</div>
-                                                </div>
+                                              <div key={index} className={`border rounded p-3 ${isLinkedStudent ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : hasMatches ? 'bg-green-50 dark:bg-green-900/20 border-green-300' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                                                {isLinkedStudent && linkedStudent ? (
+                                                  <div>
+                                                    <div className="flex items-center space-x-2 mb-2">
+                                                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                                                      <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Linked to Student Account</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                                      <div><strong>Name:</strong> {linkedStudent.fullName || child.name}</div>
+                                                      <div><strong>Registration:</strong> {linkedStudent.registrationNumber || 'N/A'}</div>
+                                                      <div><strong>Class:</strong> {linkedStudent.className || 'N/A'}</div>
+                                                      <div><strong>Section:</strong> {linkedStudent.section || 'N/A'}</div>
+                                                      <div><strong>Branch:</strong> {linkedStudent.branchName || 'N/A'}</div>
+                                                      <div><strong>Guardian:</strong> {linkedStudent.guardianName || 'N/A'}</div>
+                                                      {linkedStudent.email && <div><strong>Email:</strong> {linkedStudent.email}</div>}
+                                                      {linkedStudent.phone && <div><strong>Phone:</strong> {linkedStudent.phone}</div>}
+                                                    </div>
+                                                  </div>
+                                                ) : (
+                                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs mb-2">
+                                                    <div><strong>Name:</strong> {child.name}</div>
+                                                    <div><strong>Registration:</strong> {child.registrationNumber || 'N/A'}</div>
+                                                    <div><strong>Class:</strong> {child.className || 'N/A'}</div>
+                                                    <div><strong>Section:</strong> {child.section || 'N/A'}</div>
+                                                  </div>
+                                                )}
                                                 
                                                 {/* Matching Status */}
                                                 {matchInfo && (
@@ -602,38 +622,40 @@ export default function ParentsPage() {
                                       </div>
 
                                       {/* Action */}
-                                      <div className="flex justify-end space-x-2">
-                                        <Button
-                                          onClick={() => handleApprove(selectedParent._id)}
-                                          disabled={approving === selectedParent._id}
-                                          className="bg-green-600 hover:bg-green-700 text-sm"
-                                          size="sm"
-                                        >
-                                          {approving === selectedParent._id ? (
-                                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
-                                          ) : (
-                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                          )}
-                                          Approve Parent
-                                        </Button>
-                                        <Button
-                                          onClick={() => {
-                                            setShowRejectInput(selectedParent._id);
-                                            setRejectReason('');
-                                          }}
-                                          disabled={rejecting === selectedParent._id}
-                                          variant="outline"
-                                          className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
-                                          size="sm"
-                                        >
-                                          {rejecting === selectedParent._id ? (
-                                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-red-700 mr-2"></div>
-                                          ) : (
-                                            <X className="h-4 w-4 mr-2" />
-                                          )}
-                                          Reject Parent
-                                        </Button>
-                                      </div>
+                                      {selectedParent.status === 'pending' && (
+                                        <div className="flex justify-end space-x-2">
+                                          <Button
+                                            onClick={() => handleApprove(selectedParent._id)}
+                            disabled={approving === selectedParent._id}
+                                            className="bg-green-600 hover:bg-green-700 text-sm"
+                                            size="sm"
+                                          >
+                                            {approving === selectedParent._id ? (
+                                            <ButtonLoader size={4} />
+                                            ) : (
+                                              <CheckCircle className="h-4 w-4 mr-2" />
+                                            )}
+                                            Approve Parent
+                                          </Button>
+                                          <Button
+                                            onClick={() => {
+                                              setShowRejectInput(selectedParent._id);
+                                              setRejectReason('');
+                                            }}
+                                            disabled={rejecting === selectedParent._id}
+                                            variant="outline"
+                                            className="bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
+                                            size="sm"
+                                          >
+                                            {rejecting === selectedParent._id ? (
+                                              <ButtonLoader size={4} />
+                                            ) : (
+                                              <X className="h-4 w-4 mr-2" />
+                                            )}
+                                            Reject Parent
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </Modal>
@@ -671,7 +693,7 @@ export default function ParentsPage() {
                                         size="sm"
                                       >
                                         {rejecting === parent._id ? (
-                                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
+                                          <ButtonLoader size={4} />
                                         ) : (
                                           <X className="h-4 w-4 mr-2" />
                                         )}
@@ -684,27 +706,27 @@ export default function ParentsPage() {
                                   <Eye className="h-4 w-4 mr-2" />
                                   View Details
                                 </Button>
-                                <Button
-                                  onClick={() => handleApprove(parent._id)}
-                                  disabled={approving === parent._id}
-                                  size="sm"
-                                  className="bg-green-600 hover:bg-green-700 text-xs h-8"
-                                >
-                                  {approving === parent._id ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-white mr-2"></div>
-                                  ) : (
-                                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  )}
-                                  Approve
-                                </Button>
+                                {activeTab === 'pending' && (
+                                  <Button
+                                    onClick={() => handleApprove(parent._id)}
+                                    disabled={approving === parent._id}
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700 text-xs h-8"
+                                  >
+                                    {approving === parent._id ? (
+                                      <ButtonLoader size={4} />
+                                    ) : (
+                                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                                    )}
+                                    Approve
+                                  </Button>
+                                )}
                               </div>
-                            </td>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
               </>
             )}
           </CardContent>

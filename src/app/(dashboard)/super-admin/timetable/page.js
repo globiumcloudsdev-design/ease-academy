@@ -205,9 +205,9 @@ export default function TimetablePage() {
             const url = `${API_ENDPOINTS.SUPER_ADMIN.TIMETABLES.LIST}?branchId=${encodeURIComponent(branchId)}&classId=${encodeURIComponent(classId)}&academicYear=${encodeURIComponent(academicYear)}`;
             const response = await apiClient.get(url);
             if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-                // try to find exact section match first
+                // Only return if exact section match found
                 const bySection = response.data.find(t => (t.section || '') === (section || ''));
-                return bySection || response.data[0];
+                return bySection || null;
             }
             return null;
         } catch (error) {

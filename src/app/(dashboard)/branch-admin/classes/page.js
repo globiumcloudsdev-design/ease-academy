@@ -116,10 +116,24 @@ export default function ClassesPage() {
     setSubmitting(true);
 
     try {
+      // Parse sections from comma-separated string
+      const sections = formData.section
+        ? formData.section.split(',').map(s => ({
+            name: s.trim(),
+            capacity: 40, // default capacity
+            roomNumber: '',
+          }))
+        : [];
+
+      const submitData = {
+        ...formData,
+        sections,
+      };
+
       if (isEditMode) {
         const response = await apiClient.put(
           API_ENDPOINTS.BRANCH_ADMIN.CLASSES.UPDATE.replace(':id', currentClass._id),
-          formData
+          submitData
         );
         if (response.success) {
           alert('Class updated successfully!');
@@ -127,7 +141,7 @@ export default function ClassesPage() {
           fetchClasses();
         }
       } else {
-        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.CLASSES.CREATE, formData);
+        const response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.CLASSES.CREATE, submitData);
         if (response.success) {
           alert('Class created successfully!');
           setIsModalOpen(false);
@@ -147,7 +161,7 @@ export default function ClassesPage() {
       name: classItem.name || '',
       code: classItem.code || '',
       grade: classItem.grade?._id || '',
-      section: classItem.section || '',
+      section: classItem.sections?.map(s => s.name).join(', ') || '',
       capacity: classItem.capacity || '',
       room: classItem.room || '',
       status: classItem.status || 'active',
@@ -263,7 +277,7 @@ export default function ClassesPage() {
                     </TableCell>
                     <TableCell>{classItem.code}</TableCell>
                     <TableCell>{classItem.grade?.name || 'N/A'}</TableCell>
-                    <TableCell>{classItem.section || '-'}</TableCell>
+                    <TableCell>{classItem.sections?.map(s => s.name).join(', ') || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4" />
