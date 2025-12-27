@@ -8,7 +8,7 @@ import {
   deleteFromCloudinary,
 } from '@/lib/cloudinary';
 import User from '@/backend/models/User';
-import dbConnect from '@/lib/database';
+import connectDB from '@/lib/database';
 // Ensure Node runtime so Buffer is available for binary handling
 export const runtime = 'nodejs';
 
@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
  */
 export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const formData = await request.formData();
     const file = formData.get('file');
@@ -236,7 +236,7 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
  */
 export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
   try {
-    await dbConnect();
+    await connectDB();
 
     const { searchParams } = new URL(request.url);
     const publicId = searchParams.get('publicId');

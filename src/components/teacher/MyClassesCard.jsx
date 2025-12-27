@@ -101,7 +101,34 @@ export default function MyClassesCard({ classes = [] }) {
                           </span>
                         </div>
                       )}
+                      
+                      {classItem.schedule && classItem.schedule.length > 0 && (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium text-blue-600">
+                            {classItem.schedule.length}
+                          </span>
+                          <span className="text-muted-foreground">
+                            periods/week
+                          </span>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Schedule Days */}
+                    {classItem.schedule && classItem.schedule.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {[...new Set(classItem.schedule.map(s => s.day))].map((day) => (
+                          <Badge 
+                            key={day} 
+                            variant="outline" 
+                            className="text-xs py-0 px-2"
+                          >
+                            {day.substring(0, 3)}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Next Class Time */}
                     {classItem.nextClass && (

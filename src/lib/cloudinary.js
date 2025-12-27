@@ -140,6 +140,20 @@ export async function uploadStaffDocument(file, staffId, documentType) {
 }
 
 /**
+ * Upload QR code
+ * @param {string} dataUrl - QR code data URL
+ * @param {string} userId - User ID
+ * @param {string} type - User type (student, teacher, staff)
+ * @returns {Promise<Object>} Upload result
+ */
+export async function uploadQR(dataUrl, userId, type) {
+  return uploadToCloudinary(dataUrl, {
+    folder: `ease-academy/${type}s/${userId}/qr`,
+    resourceType: 'image',
+  });
+}
+
+/**
  * Get cloudinary URL with transformations
  * @param {string} publicId - Public ID of the file
  * @param {Object} transformations - Transformation options

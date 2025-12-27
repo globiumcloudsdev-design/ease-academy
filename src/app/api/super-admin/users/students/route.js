@@ -5,6 +5,7 @@ import connectDB from '@/lib/database';
 import Branch from '@/backend/models/Branch';
 import Department from '@/backend/models/Department';
 import Class from '@/backend/models/Class';
+import { uploadStudentDocument } from '@/lib/cloudinary';
 
 /**
  * GET - List all students
@@ -168,6 +169,42 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
 
     await student.save();
 
+    // Handle profile photo upload if provided as base64
+    if (body.pendingProfileFile && typeof body.pendingProfileFile === 'string' && body.pendingProfileFile.startsWith('data:image')) {
+      try {
+        const { uploadToCloudinary } = await import('@/lib/cloudinary');
+        const uploadResult = await uploadToCloudinary(body.pendingProfileFile, `students/profiles/${student._id}`);
+        student.profilePhoto = {
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        };
+        await student.save();
+      } catch (err) {
+        console.error('Failed to upload profile photo:', err);
+      }
+    }
+
+    // Generate QR payload and upload to Cloudinary
+    try {
+      const { generateStudentQR } = await import('@/lib/qr-generator');
+      const { uploadQR } = await import('@/lib/cloudinary');
+      
+      const qrDataUrl = await generateStudentQR(student);
+      if (qrDataUrl) {
+        const uploadResult = await uploadQR(qrDataUrl, student._id, 'student');
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.qr = {
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        };
+        await student.save();
+      }
+    } catch (err) {
+      console.error('Failed to generate/upload QR for student:', err);
+    }
+
     // Populate
     await student.populate([
       { path: 'branchId', select: 'name code city' },
@@ -175,6 +212,33 @@ export const POST = withAuth(async (request, authenticatedUser, userDoc) => {
       { path: 'studentProfile.departmentId', select: 'name code' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    // Handle document uploads
+    if (body.pendingDocuments && Array.isArray(body.pendingDocuments) && body.pendingDocuments.length > 0) {
+      try {
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.documents = student.studentProfile.documents || [];
+
+        for (const doc of body.pendingDocuments) {
+          if (doc.file && typeof doc.file === 'string' && doc.file.startsWith('data:')) {
+            const uploadResult = await uploadStudentDocument(doc.file, student._id, doc.type || 'other');
+
+            student.studentProfile.documents.push({
+              type: doc.type || 'other',
+              name: doc.name || 'Document',
+              url: uploadResult.url,
+              publicId: uploadResult.publicId,
+              uploadedAt: new Date(),
+            });
+          }
+        }
+
+        await student.save();
+      } catch (err) {
+        console.error('Failed to upload documents for student:', err);
+        // Don't fail the entire operation for document upload errors
+      }
+    }
 
     return NextResponse.json(
       {

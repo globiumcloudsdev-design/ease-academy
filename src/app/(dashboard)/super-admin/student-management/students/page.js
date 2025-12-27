@@ -20,12 +20,14 @@ import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import StudentFormModal from '@/components/forms/StudentFormModal';
 import StudentViewModal from '@/components/modals/StudentViewModal';
+import { toast } from 'sonner';
 
 const SuperAdminStudentsPage = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState([]);
   const [branches, setBranches] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [modalClasses, setModalClasses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -57,6 +59,7 @@ const SuperAdminStudentsPage = () => {
     fetchStudents();
     fetchBranches();
     fetchClasses();
+    fetchModalClasses();
     fetchDepartments();
   }, [search, branchFilter, classFilter, statusFilter, pagination.page]);
 
@@ -89,6 +92,7 @@ const SuperAdminStudentsPage = () => {
         role: 'student',
         populate: 'branchId,studentProfile.classId,studentProfile.departmentId'
       };
+      
       if (branchFilter) params.branchId = branchFilter;
       if (classFilter) params.classId = classFilter;
       if (statusFilter) params.status = statusFilter;
@@ -120,12 +124,24 @@ const SuperAdminStudentsPage = () => {
     try {
       const params = { limit: 200 };
       if (branchFilter) params.branchId = branchFilter;
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { params });
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, params);
       if (response.success) {
         setClasses(response.data.classes || response.data || []);
       }
     } catch (error) {
       console.error('Error fetching classes:', error);
+    }
+  };
+
+  const fetchModalClasses = async () => {
+    try {
+      // Fetch all classes for the modal to filter internally
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.CLASSES.LIST, { limit: 1000 });
+      if (response.success) {
+        setModalClasses(response.data.classes || response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching modal classes:', error);
     }
   };
 
@@ -151,70 +167,31 @@ const SuperAdminStudentsPage = () => {
       
       let response;
       
-      if (submissionData.isEditMode) {
-        // Update student
+      if (editingStudent) {
+        // Update existing student
         response = await apiClient.put(
-          API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', submissionData.studentId),
-          {
-            ...submissionData,
-            pendingProfileFile: undefined,
-            pendingDocuments: undefined,
-            isEditMode: undefined,
-            studentId: undefined,
-          }
+          API_ENDPOINTS.SUPER_ADMIN.USERS.UPDATE.replace(':id', editingStudent._id),
+          submissionData
         );
       } else {
-        // Create student
+        // Create new student
         response = await apiClient.post(
           API_ENDPOINTS.SUPER_ADMIN.STUDENTS.CREATE,
-          {
-            ...submissionData,
-            pendingProfileFile: undefined,
-            pendingDocuments: undefined,
-            isEditMode: undefined,
-            studentId: undefined,
-          }
+          submissionData
         );
       }
 
       if (response.success) {
-        // Handle file uploads if any
-        const studentId = response.data._id || submissionData.studentId;
-        
-        // Upload profile photo if exists
-        if (submissionData.pendingProfileFile && studentId) {
-          const profileFormData = new FormData();
-          profileFormData.append('file', submissionData.pendingProfileFile);
-          profileFormData.append('fileType', 'profile');
-          profileFormData.append('userId', studentId);
-          
-          await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-        }
-        
-        // Upload documents if any
-        if (submissionData.pendingDocuments.length > 0 && studentId) {
-          for (const doc of submissionData.pendingDocuments) {
-            const docFormData = new FormData();
-            docFormData.append('file', doc.file);
-            docFormData.append('fileType', 'student_document');
-            docFormData.append('documentType', doc.type);
-            docFormData.append('userId', studentId);
-            
-            await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            });
-          }
-        }
-        
-        // Refresh data and close modal
-        fetchStudents();
+        toast.success(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
         setIsFormModalOpen(false);
         setEditingStudent(null);
+        fetchStudents();
+      } else {
+        toast.error(response.message || 'Operation failed');
       }
     } catch (error) {
       console.error('Error saving student:', error);
+      toast.error(error.message || 'Operation failed');
     } finally {
       setSubmitting(false);
     }
@@ -295,7 +272,7 @@ const SuperAdminStudentsPage = () => {
       console.log('Export completed successfully');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
-      alert('Failed to export students data. Please try again.');
+      toast.error('Failed to export students data. Please try again.');
     }
   };
 
@@ -348,7 +325,7 @@ const SuperAdminStudentsPage = () => {
       const qrCodeUrl = await generateQRCode(selectedStudent);
 
       if (!qrCodeUrl) {
-        alert('Failed to generate QR code');
+        toast.error('Failed to generate QR code');
         return;
       }
 
@@ -397,7 +374,7 @@ const SuperAdminStudentsPage = () => {
 
     } catch (error) {
       console.error('Error generating card:', error);
-      alert('Failed to generate student card');
+      toast.error('Failed to generate student card');
     } finally {
       setSubmitting(false);
     }
@@ -678,7 +655,7 @@ const SuperAdminStudentsPage = () => {
         editingStudent={editingStudent}
         isSubmitting={submitting}
         branches={branches}
-        classes={classes}
+        classes={modalClasses}
         departments={departments}
         userRole="super_admin"
       />

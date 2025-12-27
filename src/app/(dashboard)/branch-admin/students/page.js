@@ -14,6 +14,7 @@ import ButtonLoader from '@/components/ui/button-loader';
 import BloodGroupSelect from '@/components/ui/blood-group';
 import GenderSelect from '@/components/ui/gender-select';
 import ClassSelect from '@/components/ui/class-select';
+import StudentFormModal from '@/components/forms/StudentFormModal';
 import StudentViewModal from '@/components/modals/StudentViewModal';
 import { Plus, Edit, Trash2, Search, User, Mail, Phone, Eye, FileText, Upload, X, Calendar, MapPin, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -24,6 +25,7 @@ import StudentCardPDF from '@/components/StudentCardPDF';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 
 const STUDENT_STATUS = [
   { value: 'active', label: 'Active' },
@@ -52,7 +54,7 @@ export default function StudentsPage() {
   const currentBranchId = user?.branchId?._id;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [currentStudent, setCurrentStudent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
@@ -61,9 +63,6 @@ export default function StudentsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
   const [activeTab, setActiveTab] = useState('personal');
   const formRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
-  const [pendingProfileFile, setPendingProfileFile] = useState(null);
-  const [pendingDocuments, setPendingDocuments] = useState([]);
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadFormat, setDownloadFormat] = useState('pdf');
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
@@ -75,77 +74,6 @@ export default function StudentsPage() {
     printCount: 0,
   });
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-
-
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    alternatePhone: '',
-    dateOfBirth: '',
-    gender: 'male',
-    bloodGroup: '',
-    nationality: 'Pakistani',
-    religion: '',
-    cnic: '',
-    classId: '',
-    admissionNumber: '',
-    enrollmentDate: new Date().toISOString().split('T')[0],
-    status: 'active',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      country: 'Pakistan',
-      postalCode: '',
-    },
-    parentInfo: {
-      fatherName: '',
-      fatherOccupation: '',
-      fatherPhone: '',
-      fatherEmail: '',
-      fatherCnic: '',
-      motherName: '',
-      motherOccupation: '',
-      motherPhone: '',
-      motherEmail: '',
-      motherCnic: '',
-    },
-    guardianInfo: {
-      name: '',
-      relationship: '',
-      phone: '',
-      email: '',
-      cnic: '',
-      address: '',
-    },
-    guardianType: 'parent',
-    emergencyContact: {
-      name: '',
-      relationship: '',
-      phone: '',
-    },
-    academicInfo: {
-      previousSchool: '',
-      previousClass: '',
-      tcNumber: '',
-      remarks: '',
-    },
-    medicalInfo: {
-      bloodGroup: '',
-      allergies: '',
-      chronicConditions: '',
-      medications: '',
-      doctorName: '',
-      doctorPhone: '',
-    },
-    profilePhoto: {
-      url: '',
-      publicId: '',
-    },
-    documents: [],
-  });
 
   useEffect(() => {
     fetchClasses();
@@ -220,228 +148,13 @@ export default function StudentsPage() {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value,
-        },
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleProfileUpload = async (file) => {
-    if (!file) return;
-
-    setPendingProfileFile(file);
-
-    try {
-      setUploading(true);
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      uploadFormData.append('folder', 'students/profiles');
-
-      const response = await apiClient.post('/api/upload', uploadFormData);
-
-      if (response.success) {
-        setFormData((prev) => ({
-          ...prev,
-          profilePhoto: {
-            url: response.data.url,
-            publicId: response.data.publicId,
-          },
-        }));
-        alert('Profile photo uploaded successfully!');
-      }
-    } catch (error) {
-      alert('Failed to upload profile photo');
-    } finally {
-      setUploading(false);
-      setPendingProfileFile(null);
-    }
-  };
-
-  const handleDocumentUpload = (file, documentName = '') => {
-    if (!file) return;
-
-    const newDocument = {
-      file,
-      type: documentName || 'other',
-      name: documentName || file.name,
-      customName: documentName,
-      size: file.size,
-      preview: URL.createObjectURL(file),
-    };
-
-    setPendingDocuments(prev => [...prev, newDocument]);
-  };
-
-  const removeDocument = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      documents: prev.documents.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    try {
-      // Prepare data to send (exclude pending files)
-      const dataToSend = {
-        ...formData,
-        pendingProfileFile: undefined,
-        pendingDocuments: undefined,
-      };
-
-      let response;
-      if (isEditMode) {
-        response = await apiClient.put(
-          API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.UPDATE.replace(':id', currentStudent._id),
-          dataToSend
-        );
-      } else {
-        response = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.CREATE, dataToSend);
-      }
-
-      if (response.success) {
-        const studentId = response.data._id || currentStudent._id;
-
-        // Upload profile photo if exists
-        if (pendingProfileFile && studentId) {
-          try {
-            const profileFormData = new FormData();
-            profileFormData.append('file', pendingProfileFile);
-            profileFormData.append('fileType', 'profile');
-            profileFormData.append('userId', studentId);
-
-            await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, profileFormData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-            });
-          } catch (uploadError) {
-            console.error('Failed to upload profile photo:', uploadError);
-            alert('Student saved but failed to upload profile photo');
-          }
-        }
-
-        // Upload documents if any
-        if (pendingDocuments.length > 0 && studentId) {
-          for (const doc of pendingDocuments) {
-            try {
-              const docFormData = new FormData();
-              docFormData.append('file', doc.file);
-              docFormData.append('fileType', 'student_document');
-              docFormData.append('documentType', doc.type);
-              docFormData.append('userId', studentId);
-
-              await apiClient.post(API_ENDPOINTS.COMMON.UPLOAD, docFormData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-              });
-            } catch (uploadError) {
-              console.error('Failed to upload document:', uploadError);
-              alert(`Student saved but failed to upload document: ${doc.name}`);
-            }
-          }
-        }
-
-        alert(isEditMode ? 'Student updated successfully!' : 'Student created successfully!');
-        setIsModalOpen(false);
-        fetchStudents();
-
-        // Reset pending files
-        setPendingProfileFile(null);
-        setPendingDocuments([]);
-      }
-    } catch (error) {
-      alert(error.message || 'Failed to save student');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleEdit = (student) => {
-    setCurrentStudent({...student, documents: student.studentProfile?.documents || []});
-    setFormData({
-      firstName: student.firstName || '',
-      lastName: student.lastName || '',
-      email: student.email || '',
-      phone: student.phone || '',
-      alternatePhone: student.alternatePhone || '',
-      dateOfBirth: student.dateOfBirth ? student.dateOfBirth.split('T')[0] : '',
-      gender: student.gender || 'male',
-      bloodGroup: student.bloodGroup || '',
-      nationality: student.nationality || 'Pakistani',
-      religion: student.religion || '',
-      cnic: student.cnic || '',
-      classId: student.classId?._id || student.classId || null,
-      admissionNumber: student.admissionNumber || '',
-      enrollmentDate: student.enrollmentDate ? student.enrollmentDate.split('T')[0] : '',
-      status: student.status || 'active',
-      address: student.address || {
-        street: '',
-        city: '',
-        state: '',
-        country: 'Pakistan',
-        postalCode: '',
-      },
-      parentInfo: student.parentInfo || {
-        fatherName: '',
-        fatherOccupation: '',
-        fatherPhone: '',
-        fatherEmail: '',
-        fatherCnic: '',
-        motherName: '',
-        motherOccupation: '',
-        motherPhone: '',
-        motherEmail: '',
-        motherCnic: '',
-      },
-      guardianInfo: student.guardianInfo || {
-        name: '',
-        relationship: '',
-        phone: '',
-        email: '',
-        cnic: '',
-        address: '',
-      },
-      guardianType: student.guardianType || student.studentProfile?.guardianType || 'parent',
-      emergencyContact: student.emergencyContact || {
-        name: '',
-        relationship: '',
-        phone: '',
-      },
-      academicInfo: student.academicInfo || {
-        previousSchool: '',
-        previousClass: '',
-        tcNumber: '',
-        remarks: '',
-      },
-      medicalInfo: student.medicalInfo || {
-        bloodGroup: '',
-        allergies: '',
-        chronicConditions: '',
-        medications: '',
-        doctorName: '',
-        doctorPhone: '',
-      },
-      profilePhoto: student.profilePhoto || {
-        url: '',
-        publicId: '',
-      },
-      documents: student.studentProfile?.documents || [],
-    });
-    setPendingProfileFile(null);
-    setPendingDocuments([]);
-    setIsEditMode(true);
-    setActiveTab('personal');
+    setEditingStudent(student);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingStudent(null);
     setIsModalOpen(true);
   };
 
@@ -456,11 +169,11 @@ export default function StudentsPage() {
     try {
       const response = await apiClient.delete(API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.DELETE.replace(':id', id));
       if (response.success) {
-        alert('Student deleted successfully!');
+        toast.success('Student deleted successfully!');
         fetchStudents();
       }
     } catch (error) {
-      alert(error.message || 'Failed to delete student');
+      toast.error(error.message || 'Failed to delete student');
     }
   };
 
@@ -493,7 +206,7 @@ export default function StudentsPage() {
       setIsCardModalOpen(false);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
+      toast.error('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -531,89 +244,41 @@ export default function StudentsPage() {
     setIsDownloadModalOpen(false);
   };
 
-  const handleAddNew = () => {
-    setCurrentStudent(null);
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      alternatePhone: '',
-      dateOfBirth: '',
-      gender: 'male',
-      bloodGroup: '',
-      nationality: 'Pakistani',
-      religion: '',
-      cnic: '',
-      classId: '',
-      admissionNumber: '',
-      enrollmentDate: new Date().toISOString().split('T')[0],
-      status: 'active',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        country: 'Pakistan',
-        postalCode: '',
-      },
-      parentInfo: {
-        fatherName: '',
-        fatherOccupation: '',
-        fatherPhone: '',
-        fatherEmail: '',
-        fatherCnic: '',
-        motherName: '',
-        motherOccupation: '',
-        motherPhone: '',
-        motherEmail: '',
-        motherCnic: '',
-      },
-      guardianInfo: {
-        name: '',
-        relationship: '',
-        phone: '',
-        email: '',
-        cnic: '',
-        address: '',
-      },
-      guardianType: 'parent',
-      emergencyContact: {
-        name: '',
-        relationship: '',
-        phone: '',
-      },
-      academicInfo: {
-        previousSchool: '',
-        previousClass: '',
-        tcNumber: '',
-        remarks: '',
-      },
-      medicalInfo: {
-        bloodGroup: '',
-        allergies: '',
-        chronicConditions: '',
-        medications: '',
-        doctorName: '',
-        doctorPhone: '',
-      },
-      profilePhoto: {
-        url: '',
-        publicId: '',
-      },
-      documents: [],
-    });
-    setIsEditMode(false);
-    setActiveTab('personal');
-    setIsModalOpen(true);
-  };
+  const handleFormSubmit = async (submissionData) => {
+    try {
+      setSubmitting(true);
+      
+      let response;
+      
+      if (editingStudent) {
+        // Update existing student
+        response = await apiClient.put(
+          API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.UPDATE.replace(':id', editingStudent._id),
+          submissionData
+        );
+      } else {
+        // Create new student
+        response = await apiClient.post(
+          API_ENDPOINTS.BRANCH_ADMIN.STUDENTS.CREATE,
+          submissionData
+        );
+      }
 
-  const tabsData = [
-    { id: 'personal', label: 'Personal Info' },
-    { id: 'parent', label: 'Parent/Guardian' },
-    { id: 'academic', label: 'Academic' },
-    { id: 'medical', label: 'Medical' },
-    { id: 'documents', label: 'Documents' },
-  ];
+      if (response.success) {
+        toast.success(editingStudent ? 'Student updated successfully!' : 'Student created successfully!');
+        setIsModalOpen(false);
+        setEditingStudent(null);
+        fetchStudents();
+      } else {
+        toast.error(response.message || 'Operation failed');
+      }
+    } catch (error) {
+      console.error('Error saving student:', error);
+      toast.error(error.message || 'Operation failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading && students.length === 0) {
     return <FullPageLoader message="Loading students..." />;
@@ -778,718 +443,22 @@ export default function StudentsPage() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Modal */}
-      <Modal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? 'Edit Student' : 'Add New Student'}
-        size="xl"
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? <ButtonLoader /> : isEditMode ? 'Update' : 'Create'}
-            </Button>
-          </div>
-        }
-      >
-        <Tabs tabs={tabsData} activeTab={activeTab} onChange={setActiveTab} />
-
-        <form ref={formRef} onSubmit={handleSubmit}>
-          <div className="max-h-[60vh] overflow-y-auto space-y-4 p-1">
-
-            {/* Personal Info Tab */}
-            {activeTab === 'personal' && (
-              <div className="space-y-4">
-                {/* Profile Photo Upload */}
-                <div className="border-b pb-4">
-                  <label className="block text-sm font-medium mb-2">Profile Photo</label>
-                  <div className="flex items-center gap-4">
-                    {formData.profilePhoto?.url ? (
-                      <img src={formData.profilePhoto.url} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-10 h-10 text-gray-400" />
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleProfileUpload(e.target.files[0])}
-                      className="hidden"
-                      id="profile-upload"
-                    />
-                    <label htmlFor="profile-upload" className="cursor-pointer">
-                      <div className="px-4 py-2 border rounded-lg hover:bg-gray-50 flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
-                        {uploading ? 'Uploading...' : 'Upload Photo'}
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">First Name *</label>
-                    <Input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Last Name *</label>
-                    <Input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email *</label>
-                    <Input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      icon={Mail}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
-                    <Input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      icon={Phone}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Date of Birth</label>
-                    <Input
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onChange={handleInputChange}
-                      icon={Calendar}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Gender</label>
-                    <GenderSelect
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Blood Group</label>
-                    <BloodGroupSelect
-                      name="bloodGroup"
-                      value={formData.bloodGroup}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Nationality</label>
-                    <Input
-                      type="text"
-                      name="nationality"
-                      value={formData.nationality}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Religion</label>
-                    <Input
-                      type="text"
-                      name="religion"
-                      value={formData.religion}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Enrollment Date</label>
-                    <Input
-                      type="date"
-                      name="enrollmentDate"
-                      value={formData.enrollmentDate}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Status</label>
-                    <Dropdown
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      options={STUDENT_STATUS}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Class</label>
-                  <ClassSelect
-                    name="classId"
-                    value={formData.classId}
-                    onChange={handleInputChange}
-                    classes={classes}
-                  />
-                </div>
-
-                {/* Address Section */}
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    Address Information
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Street</label>
-                      <Input
-                        type="text"
-                        name="address.street"
-                        value={formData.address.street}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">City</label>
-                        <Input
-                          type="text"
-                          name="address.city"
-                          value={formData.address.city}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">State</label>
-                        <Input
-                          type="text"
-                          name="address.state"
-                          value={formData.address.state}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Postal Code</label>
-                        <Input
-                          type="text"
-                          name="address.postalCode"
-                          value={formData.address.postalCode}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Parent/Guardian Tab */}
-            {activeTab === 'parent' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Parent / Guardian</h3>
-                  <div className="w-44">
-                    <label className="block text-xs text-gray-500 mb-1">Select Guardian Type</label>
-                    <Dropdown
-                      name="guardianType"
-                      value={formData.guardianType}
-                      onChange={handleInputChange}
-                      options={[
-                        { value: 'parent', label: 'Parent' },
-                        { value: 'guardian', label: 'Guardian' },
-                      ]}
-                    />
-                  </div>
-                </div>
-
-                {/* Parent fields (father & mother) shown when guardianType === 'parent' */}
-                {formData.guardianType === 'parent' && (
-                  <>
-                    <div className="border-b pb-4">
-                      <h3 className="font-semibold mb-3">Father Information</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Father Name</label>
-                          <Input
-                            type="text"
-                            name="parentInfo.fatherName"
-                            value={formData.parentInfo.fatherName}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Occupation</label>
-                            <Input
-                              type="text"
-                              name="parentInfo.fatherOccupation"
-                              value={formData.parentInfo.fatherOccupation}
-                              onChange={handleInputChange}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">CNIC</label>
-                            <Input
-                              type="text"
-                              name="parentInfo.fatherCnic"
-                              value={formData.parentInfo.fatherCnic}
-                              onChange={handleInputChange}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Phone</label>
-                            <Input
-                              type="tel"
-                              name="parentInfo.fatherPhone"
-                              value={formData.parentInfo.fatherPhone}
-                              onChange={handleInputChange}
-                              icon={Phone}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Email</label>
-                            <Input
-                              type="email"
-                              name="parentInfo.fatherEmail"
-                              value={formData.parentInfo.fatherEmail}
-                              onChange={handleInputChange}
-                              icon={Mail}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="border-b pb-4">
-                      <h3 className="font-semibold mb-3">Mother Information</h3>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Mother Name</label>
-                          <Input
-                            type="text"
-                            name="parentInfo.motherName"
-                            value={formData.parentInfo.motherName}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Occupation</label>
-                            <Input
-                              type="text"
-                              name="parentInfo.motherOccupation"
-                              value={formData.parentInfo.motherOccupation}
-                              onChange={handleInputChange}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">CNIC</label>
-                            <Input
-                              type="text"
-                              name="parentInfo.motherCnic"
-                              value={formData.parentInfo.motherCnic}
-                              onChange={handleInputChange}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Phone</label>
-                            <Input
-                              type="tel"
-                              name="parentInfo.motherPhone"
-                              value={formData.parentInfo.motherPhone}
-                              onChange={handleInputChange}
-                              icon={Phone}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-1">Email</label>
-                            <Input
-                              type="email"
-                              name="parentInfo.motherEmail"
-                              value={formData.parentInfo.motherEmail}
-                              onChange={handleInputChange}
-                              icon={Mail}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Guardian fields shown when guardianType === 'guardian' */}
-                {formData.guardianType === 'guardian' && (
-                  <div className="border-b pb-4">
-                    <h3 className="font-semibold mb-3">Guardian Information</h3>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Guardian Name</label>
-                          <Input
-                            type="text"
-                            name="guardianInfo.name"
-                            value={formData.guardianInfo.name}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Relationship</label>
-                          <Input
-                            type="text"
-                            name="guardianInfo.relationship"
-                            value={formData.guardianInfo.relationship}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Phone</label>
-                          <Input
-                            type="tel"
-                            name="guardianInfo.phone"
-                            value={formData.guardianInfo.phone}
-                            onChange={handleInputChange}
-                            icon={Phone}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Email</label>
-                          <Input
-                            type="email"
-                            name="guardianInfo.email"
-                            value={formData.guardianInfo.email}
-                            onChange={handleInputChange}
-                            icon={Mail}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">CNIC</label>
-                          <Input
-                            type="text"
-                            name="guardianInfo.cnic"
-                            value={formData.guardianInfo.cnic}
-                            onChange={handleInputChange}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Address</label>
-                        <Input
-                          type="text"
-                          name="guardianInfo.address"
-                          value={formData.guardianInfo.address}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Emergency Contact */}
-                <div>
-                  <h3 className="font-semibold mb-3">Emergency Contact</h3>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Contact Name</label>
-                        <Input
-                          type="text"
-                          name="emergencyContact.name"
-                          value={formData.emergencyContact.name}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Relationship</label>
-                        <Input
-                          type="text"
-                          name="emergencyContact.relationship"
-                          value={formData.emergencyContact.relationship}
-                          onChange={handleInputChange}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Phone</label>
-                      <Input
-                        type="tel"
-                        name="emergencyContact.phone"
-                        value={formData.emergencyContact.phone}
-                        onChange={handleInputChange}
-                        icon={Phone}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Academic Tab */}
-            {activeTab === 'academic' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Previous School</label>
-                    <Input
-                      type="text"
-                      name="academicInfo.previousSchool"
-                      value={formData.academicInfo.previousSchool}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Previous Class</label>
-                    <Input
-                      type="text"
-                      name="academicInfo.previousClass"
-                      value={formData.academicInfo.previousClass}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Transfer Certificate Number</label>
-                  <Input
-                    type="text"
-                    name="academicInfo.tcNumber"
-                    value={formData.academicInfo.tcNumber}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Remarks</label>
-                  <textarea
-                    name="academicInfo.remarks"
-                    value={formData.academicInfo.remarks}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="4"
-                    placeholder="Additional academic information, achievements, etc."
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Medical Tab */}
-            {activeTab === 'medical' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Allergies</label>
-                  <textarea
-                    name="medicalInfo.allergies"
-                    value={formData.medicalInfo.allergies}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="3"
-                    placeholder="List any known allergies"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Chronic Conditions</label>
-                  <textarea
-                    name="medicalInfo.chronicConditions"
-                    value={formData.medicalInfo.chronicConditions}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="3"
-                    placeholder="List any chronic medical conditions"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Current Medications</label>
-                  <textarea
-                    name="medicalInfo.medications"
-                    value={formData.medicalInfo.medications}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-lg"
-                    rows="3"
-                    placeholder="List current medications and dosages"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Doctor Name</label>
-                    <Input
-                      type="text"
-                      name="medicalInfo.doctorName"
-                      value={formData.medicalInfo.doctorName}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Doctor Phone</label>
-                    <Input
-                      type="tel"
-                      name="medicalInfo.doctorPhone"
-                      value={formData.medicalInfo.doctorPhone}
-                      onChange={handleInputChange}
-                      icon={Phone}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Documents Tab */}
-            {activeTab === 'documents' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Documents</h3>
-                </div>
-
-                {/* Document Name Input */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Document Name</label>
-                    <Input
-                      type="text"
-                      placeholder="Enter document name (e.g., B-Form, Birth Certificate, etc.)"
-                      value={formData.documentName || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, documentName: e.target.value }))}
-                      className="mb-4"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        if (!formData.documentName?.trim()) {
-                          alert('Please enter a document name first');
-                          return;
-                        }
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
-                        input.onchange = (e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            handleDocumentUpload(file, formData.documentName.trim());
-                            setFormData(prev => ({ ...prev, documentName: '' })); // Clear the input after upload
-                          }
-                        };
-                        input.click();
-                      }}
-                      className="flex items-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Document
-                    </Button>
-                    <p className="text-sm text-gray-500">
-                      Supported: PDF, DOC, DOCX, JPG, PNG (Max 5MB per file)
-                    </p>
-                  </div>
-                </div>
-
-                {/* Uploaded Documents List */}
-                {pendingDocuments.length > 0 && (
-                  <div className="border-t pt-6">
-                    <h4 className="text-md font-semibold mb-4">Documents to Upload</h4>
-                    <div className="space-y-3">
-                      {pendingDocuments.map((doc, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-gray-500" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{doc.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {doc.type} • {(doc.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removePendingDocument(index)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Existing Documents (for edit mode) */}
-                {currentStudent?.studentProfile?.documents?.length > 0 && (
-                  <div className="border-t pt-6">
-                    <h4 className="text-md font-semibold mb-4">Existing Documents</h4>
-                    <div className="space-y-3">
-                      {currentStudent.studentProfile.documents.map((doc, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                        >
-                          <div className="flex items-center gap-3">
-                            <FileText className="w-5 h-5 text-gray-500" />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {doc.name || doc.type || 'Document'}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {doc.type} • {doc.uploadedAt ?
-                                  new Date(doc.uploadedAt).toLocaleDateString() :
-                                  'Recently uploaded'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-700 text-sm"
-                            >
-                              View
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-          </div>
-        </form>
-      </Modal>
+      {/* Student Form Modal */}
+      <StudentFormModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingStudent(null);
+        }}
+        onSubmit={handleFormSubmit}
+        editingStudent={editingStudent}
+        isSubmitting={submitting}
+        branches={branches}
+        classes={classes}
+        departments={departments}
+        userRole="branch_admin"
+        currentBranchId={currentBranchId}
+      />
 
       {/* View Modal */}
       <StudentViewModal

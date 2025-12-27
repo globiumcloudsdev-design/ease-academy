@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
 import Tabs, { TabPanel } from "@/components/ui/tabs";
+import apiClient from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
 import {
   BookOpen,
   Users,
@@ -47,13 +49,18 @@ export default function TeacherClassesPage() {
   const loadClasses = async () => {
     try {
       setLoading(true);
-      // Import centralized mock data
-      const { mockClasses: classes } = await import("@/data/teacher");
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      setClasses(classes);
+      // Use apiClient to fetch data (automatic token handling)
+      const result = await apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST);
+      
+      if (result.success) {
+        setClasses(result.data || []);
+      } else {
+        console.error('Failed to load classes:', result.error);
+        setClasses([]);
+      }
     } catch (error) {
       console.error("Error loading classes:", error);
+      setClasses([]);
     } finally {
       setLoading(false);
     }
@@ -348,21 +355,17 @@ export default function TeacherClassesPage() {
                       <div className="md:col-span-1">
                         <div className="border rounded-xl p-6 bg-gradient-to-br from-primary/5 to-transparent text-center space-y-4">
                           <div className="w-20 h-20 rounded-full bg-primary mx-auto flex items-center justify-center text-white text-2xl font-semibold shadow-lg">
-                            {selectedStudent.avatar}
+                            {selectedStudent.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <h4 className="text-xl font-semibold">
                               {selectedStudent.name}
                             </h4>
                             <p className="text-sm text-muted-foreground mt-1">
-                              Roll No: {selectedStudent.roll}
+                              Roll No: {selectedStudent.rollNumber || selectedStudent.registrationNumber}
                             </p>
-                            <Badge
-                              className={`mt-3 ${getPerformanceColor(
-                                selectedStudent.performance
-                              )} border-0`}
-                            >
-                              {selectedStudent.performance}
+                            <Badge className="mt-3 bg-blue-50 text-blue-700 border-0">
+                              Active Student
                             </Badge>
                           </div>
                         </div>
@@ -372,46 +375,46 @@ export default function TeacherClassesPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
                             <div className="flex items-center gap-2 mb-2">
-                              <Activity className="w-4 h-4 text-green-600" />
+                              <Mail className="w-4 h-4 text-primary" />
                               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                Attendance
+                                Email
                               </p>
                             </div>
-                            <p className="text-2xl font-semibold text-green-600">
-                              {selectedStudent.attendance}
+                            <p className="text-sm font-medium text-primary">
+                              {selectedStudent.email}
                             </p>
                           </div>
                           <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
                             <div className="flex items-center gap-2 mb-2">
-                              <GraduationCap className="w-4 h-4 text-primary" />
+                              <Phone className="w-4 h-4 text-green-600" />
                               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                Grade
+                                Phone
                               </p>
                             </div>
-                            <p className="text-2xl font-semibold text-primary">
-                              {selectedStudent.grade}
+                            <p className="text-sm font-medium text-green-600">
+                              {selectedStudent.phone || 'Not provided'}
                             </p>
                           </div>
                           <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
                             <div className="flex items-center gap-2 mb-2">
-                              <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                              <GraduationCap className="w-4 h-4 text-blue-600" />
                               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                Behavior
+                                Registration
                               </p>
                             </div>
                             <p className="text-sm font-medium text-blue-600">
-                              {selectedStudent.behavior}
+                              {selectedStudent.registrationNumber}
                             </p>
                           </div>
                           <div className="p-4 border rounded-lg bg-background hover:shadow-sm transition-shadow">
                             <div className="flex items-center gap-2 mb-2">
-                              <TrendingUp className="w-4 h-4 text-amber-600" />
+                              <CheckCircle2 className="w-4 h-4 text-amber-600" />
                               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                Performance
+                                Status
                               </p>
                             </div>
                             <p className="text-sm font-medium text-amber-600">
-                              {selectedStudent.performance}
+                              Active Student
                             </p>
                           </div>
                         </div>
@@ -438,24 +441,156 @@ export default function TeacherClassesPage() {
                                 {selectedStudent.phone}
                               </span>
                             </div>
-                            {selectedStudent.parentName && (
-                              <div className="flex justify-between p-3 hover:bg-background transition-colors bg-primary/5">
-                                <span className="text-sm text-muted-foreground">
-                                  Parent Name
-                                </span>
-                                <span className="text-sm font-medium text-primary">
-                                  {selectedStudent.parentName}
-                                </span>
+                          </div>
+                        </div>
+
+                        {/* Parent/Guardian Information */}
+                        <div className="space-y-3">
+                          <h5 className="font-semibold text-sm flex items-center gap-2">
+                            <Users className="w-4 h-4 text-primary" />
+                            Parent & Guardian Details
+                          </h5>
+                          <div className="space-y-4">
+                            {/* Father Details */}
+                            {selectedStudent.studentProfile?.father?.name && (
+                              <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">
+                                <h6 className="font-medium text-sm text-blue-900 mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  Father Information
+                                </h6>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Name:</span>
+                                    <span className="font-medium">{selectedStudent.studentProfile.father.name}</span>
+                                  </div>
+                                  {selectedStudent.studentProfile.father.occupation && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Occupation:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.father.occupation}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.father.phone && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.father.phone}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.father.email && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.father.email}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.father.cnic && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">CNIC:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.father.cnic}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.father.income && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Income:</span>
+                                      <span className="font-medium">Rs. {selectedStudent.studentProfile.father.income.toLocaleString()}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
-                            {selectedStudent.parentPhone && (
-                              <div className="flex justify-between p-3 hover:bg-background transition-colors bg-primary/5">
-                                <span className="text-sm text-muted-foreground">
-                                  Parent Phone
-                                </span>
-                                <span className="text-sm font-medium text-primary">
-                                  {selectedStudent.parentPhone}
-                                </span>
+
+                            {/* Mother Details */}
+                            {selectedStudent.studentProfile?.mother?.name && (
+                              <div className="border rounded-lg p-4 bg-pink-50/50 border-pink-200">
+                                <h6 className="font-medium text-sm text-pink-900 mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  Mother Information
+                                </h6>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Name:</span>
+                                    <span className="font-medium">{selectedStudent.studentProfile.mother.name}</span>
+                                  </div>
+                                  {selectedStudent.studentProfile.mother.occupation && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Occupation:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.mother.occupation}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.mother.phone && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.mother.phone}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.mother.email && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.mother.email}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.mother.cnic && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">CNIC:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.mother.cnic}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Guardian Details */}
+                            {selectedStudent.studentProfile?.guardian?.name && (
+                              <div className="border rounded-lg p-4 bg-purple-50/50 border-purple-200">
+                                <h6 className="font-medium text-sm text-purple-900 mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  Guardian Information
+                                  {selectedStudent.studentProfile.guardianType && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {selectedStudent.studentProfile.guardianType}
+                                    </Badge>
+                                  )}
+                                </h6>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Name:</span>
+                                    <span className="font-medium">{selectedStudent.studentProfile.guardian.name}</span>
+                                  </div>
+                                  {selectedStudent.studentProfile.guardian.relation && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Relation:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.guardian.relation}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.guardian.phone && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.guardian.phone}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.guardian.email && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.guardian.email}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.studentProfile.guardian.cnic && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">CNIC:</span>
+                                      <span className="font-medium">{selectedStudent.studentProfile.guardian.cnic}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* No Parent/Guardian Info */}
+                            {!selectedStudent.studentProfile?.father?.name &&
+                             !selectedStudent.studentProfile?.mother?.name &&
+                             !selectedStudent.studentProfile?.guardian?.name && (
+                              <div className="border rounded-lg p-4 bg-muted/20 text-center">
+                                <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm text-muted-foreground">
+                                  No parent or guardian information available
+                                </p>
                               </div>
                             )}
                           </div>
@@ -761,9 +896,22 @@ export default function TeacherClassesPage() {
                                     key={i}
                                     className="flex justify-between items-center p-2.5 bg-muted/40 rounded-lg hover:bg-muted/60 transition-colors"
                                   >
-                                    <span className="text-sm font-medium">
-                                      {sch.day}
-                                    </span>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium">
+                                          {sch.day}
+                                        </span>
+                                        <Badge variant="outline" className="text-xs">
+                                          Period {sch.periodNumber}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        <span className="font-medium">{sch.subjectName}</span>
+                                        {sch.roomNumber && (
+                                          <span className="ml-2">• Room {sch.roomNumber}</span>
+                                        )}
+                                      </div>
+                                    </div>
                                     <span className="text-xs text-muted-foreground font-medium">
                                       {sch.startTime} - {sch.endTime}
                                     </span>
@@ -779,10 +927,10 @@ export default function TeacherClassesPage() {
                               <div className="space-y-2 text-sm">
                                 <div className="flex justify-between py-1">
                                   <span className="text-muted-foreground">
-                                    Room
+                                    Rooms
                                   </span>
                                   <span className="font-medium">
-                                    {selectedClass.room}
+                                    {[...new Set(selectedClass.schedule.map(s => s.roomNumber).filter(r => r))].join(', ') || 'Not assigned'}
                                   </span>
                                 </div>
                                 <div className="flex justify-between py-1">
@@ -793,14 +941,7 @@ export default function TeacherClassesPage() {
                                     {selectedClass.section}
                                   </span>
                                 </div>
-                                <div className="flex justify-between py-1">
-                                  <span className="text-muted-foreground">
-                                    Subject
-                                  </span>
-                                  <span className="font-medium">
-                                    {selectedClass.subject}
-                                  </span>
-                                </div>
+
                               </div>
                             </div>
                           </div>
@@ -903,14 +1044,14 @@ export default function TeacherClassesPage() {
                             <tbody className="divide-y">
                               {selectedClass.students?.map((student) => (
                                 <tr
-                                  key={student.id}
+                                  key={student._id}
                                   onClick={() => setSelectedStudent(student)}
                                   className="hover:bg-muted/30 transition-colors cursor-pointer group"
                                 >
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-3">
                                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white text-xs font-semibold shrink-0">
-                                        {student.avatar}
+                                        {student.name.charAt(0).toUpperCase()}
                                       </div>
                                       <span className="font-medium group-hover:text-primary transition-colors">
                                         {student.name}
@@ -918,20 +1059,16 @@ export default function TeacherClassesPage() {
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-center text-muted-foreground font-medium">
-                                    {student.roll}
+                                    {student.rollNumber || student.registrationNumber}
                                   </td>
                                   <td className="px-4 py-3 text-center">
                                     <span className="font-semibold text-green-600">
-                                      {student.attendance}
+                                      --
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    <Badge
-                                      className={`${getPerformanceColor(
-                                        student.performance
-                                      )} border-0 text-[10px] font-medium`}
-                                    >
-                                      {student.performance}
+                                    <Badge className="bg-blue-50 text-blue-700 border-0 text-[10px] font-medium">
+                                      Active
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-3 text-right">

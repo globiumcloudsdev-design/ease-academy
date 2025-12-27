@@ -5,8 +5,7 @@ import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
-import { generateQRCode } from '@/lib/qr-generator';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { uploadStudentDocument, deleteFromCloudinary } from '@/lib/cloudinary';
 
 // GET - Get single student
 async function getStudent(request, authenticatedUser, userDoc, { params }) {
@@ -93,6 +92,21 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
         uploadedAt: updates.profilePhoto.uploadedAt || new Date(),
       };
       delete updates.profilePhoto;
+    }
+
+    // Handle profile photo upload if provided as base64
+    if (updates.pendingProfileFile && typeof updates.pendingProfileFile === 'string' && updates.pendingProfileFile.startsWith('data:image')) {
+      try {
+        const { uploadToCloudinary } = await import('@/lib/cloudinary');
+        const uploadResult = await uploadToCloudinary(updates.pendingProfileFile, `students/profiles/${student._id}`);
+        student.profilePhoto = {
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        };
+      } catch (err) {
+        console.error('Failed to upload profile photo:', err);
+      }
     }
 
     // Initialize studentProfile if it doesn't exist
@@ -188,13 +202,72 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
 
     // Update top-level user fields
     Object.keys(updates).forEach((key) => {
-      if (updates[key] !== undefined && !key.startsWith('pending')) {
+      if (updates[key] !== undefined && !key.startsWith('pending') && key !== 'studentProfile') {
         student[key] = updates[key];
       }
     });
 
+    // Ensure registration number and roll number are generated if missing
+    if (!student.studentProfile.registrationNumber && student.branchId) {
+      const Branch = (await import('@/backend/models/Branch')).default;
+      const branch = await Branch.findById(student.branchId);
+      if (branch) {
+        if (typeof student.generateRegistrationNumber === 'function') {
+          student.studentProfile.registrationNumber = await student.generateRegistrationNumber(branch.code);
+        } else {
+          const year = new Date().getFullYear().toString().slice(-2);
+          const count = await User.countDocuments({
+            role: 'student',
+            branchId: student.branchId,
+          });
+          student.studentProfile.registrationNumber = `${branch.code}-${year}-${String(count + 1).padStart(4, '0')}`;
+        }
+      }
+    }
+    
+    if (!student.studentProfile.rollNumber && student.branchId && student.studentProfile.classId) {
+      if (typeof student.generateRollNumber === 'function') {
+        student.studentProfile.rollNumber = await student.generateRollNumber();
+      } else {
+        let rollNumber;
+        let exists = true;
+        while (exists) {
+          rollNumber = Math.floor(100000 + Math.random() * 900000).toString();
+          const existing = await User.findOne({
+            role: 'student',
+            branchId: student.branchId,
+            'studentProfile.classId': student.studentProfile.classId,
+            'studentProfile.rollNumber': rollNumber
+          });
+          if (!existing) exists = false;
+        }
+        student.studentProfile.rollNumber = rollNumber;
+      }
+    }
+
     student.updatedBy = authenticatedUser.userId;
     await student.save();
+
+    // Ensure student has a QR code; generate and upload if missing
+    try {
+      const hasQr = !!(student.studentProfile && student.studentProfile.qr && student.studentProfile.qr.url);
+      if (!hasQr) {
+        const { generateStudentQR } = await import('@/lib/qr-generator');
+        const { uploadQR } = await import('@/lib/cloudinary');
+        const qrDataUrl = await generateStudentQR(student);
+        if (qrDataUrl) {
+          const uploadResult = await uploadQR(qrDataUrl, student._id, 'student');
+          student.studentProfile.qr = {
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+            uploadedAt: new Date()
+          };
+          await student.save();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to generate/upload QR for student (update):', err);
+    }
 
     // Send update or status-change email
     try {
@@ -215,37 +288,76 @@ async function updateStudent(request, authenticatedUser, userDoc, { params }) {
     try {
       const hasQr = !!(student.studentProfile && student.studentProfile.qr && student.studentProfile.qr.url);
       if (!hasQr) {
-        const qrPayload = {
-          id: student._id,
-          registrationNumber: student.studentProfile?.registrationNumber || null,
-          rollNumber: student.studentProfile?.rollNumber || null,
-          firstName: student.firstName,
-          lastName: student.lastName,
-          branchId: student.branchId,
-          classId: student.studentProfile?.classId || null,
-        };
-
-        const qrDataUrl = await generateQRCode(JSON.stringify(qrPayload), {
-          errorCorrectionLevel: 'H',
-          type: 'image/png',
-          // width: 350,
-        });
-
-        const uploadResult = await uploadToCloudinary(qrDataUrl, {
-          folder: `ease-academy/students/${student._id}/qr`,
-          resourceType: 'image',
-        });
-
-        student.studentProfile = student.studentProfile || {};
-        student.studentProfile.qr = {
-          url: uploadResult.url || uploadResult.secure_url || '',
-          publicId: uploadResult.publicId || uploadResult.public_id || '',
-          uploadedAt: new Date(),
-        };
-        await student.save();
+        const { generateStudentQR } = await import('@/lib/qr-generator');
+        const { uploadQR } = await import('@/lib/cloudinary');
+        
+        const qrDataUrl = await generateStudentQR(student);
+        if (qrDataUrl) {
+          const uploadResult = await uploadQR(qrDataUrl, student._id, 'student');
+          student.studentProfile = student.studentProfile || {};
+          student.studentProfile.qr = {
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+            uploadedAt: new Date(),
+          };
+          await student.save();
+        }
       }
     } catch (err) {
       console.error('Failed to generate/upload QR for student (update):', err);
+    }
+
+    // Handle document deletions
+    if (updates.documentsToDelete && Array.isArray(updates.documentsToDelete) && updates.documentsToDelete.length > 0) {
+      try {
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.documents = student.studentProfile.documents || [];
+
+        for (const docToDelete of updates.documentsToDelete) {
+          // Remove from documents array
+          student.studentProfile.documents = student.studentProfile.documents.filter(
+            doc => doc.publicId !== docToDelete.publicId
+          );
+
+          // Delete from Cloudinary
+          try {
+            await deleteFromCloudinary(docToDelete.publicId);
+          } catch (cloudErr) {
+            console.error('Failed to delete document from Cloudinary:', cloudErr);
+          }
+        }
+
+        await student.save();
+      } catch (err) {
+        console.error('Failed to delete documents for student:', err);
+      }
+    }
+
+    // Handle document uploads
+    if (updates.pendingDocuments && Array.isArray(updates.pendingDocuments) && updates.pendingDocuments.length > 0) {
+      try {
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.documents = student.studentProfile.documents || [];
+
+        for (const doc of updates.pendingDocuments) {
+          if (doc.file && typeof doc.file === 'string' && doc.file.startsWith('data:')) {
+            const uploadResult = await uploadStudentDocument(doc.file, student._id, doc.type || 'other');
+
+            student.studentProfile.documents.push({
+              type: doc.type || 'other',
+              name: doc.name || 'Document',
+              url: uploadResult.url,
+              publicId: uploadResult.publicId,
+              uploadedAt: new Date(),
+            });
+          }
+        }
+
+        await student.save();
+      } catch (err) {
+        console.error('Failed to upload documents for student:', err);
+        // Don't fail the entire operation for document upload errors
+      }
     }
 
     return NextResponse.json({

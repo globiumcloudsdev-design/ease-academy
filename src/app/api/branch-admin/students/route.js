@@ -5,8 +5,7 @@ import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import { sendEmail } from '@/backend/utils/emailService';
 import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
-import { generateQRCode } from '@/lib/qr-generator';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { uploadStudentDocument, deleteFromCloudinary } from '@/lib/cloudinary';
 import Class from '@/backend/models/Class';
 
 // GET - Get all students for branch admin's branch
@@ -236,6 +235,22 @@ async function createStudent(request, authenticatedUser, userDoc) {
     const student = new User(userData);
     await student.save();
 
+    // Handle profile photo upload if provided as base64
+    if (body.pendingProfileFile && typeof body.pendingProfileFile === 'string' && body.pendingProfileFile.startsWith('data:image')) {
+      try {
+        const { uploadToCloudinary } = await import('@/lib/cloudinary');
+        const uploadResult = await uploadToCloudinary(body.pendingProfileFile, `students/profiles/${student._id}`);
+        student.profilePhoto = {
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        };
+        await student.save();
+      } catch (err) {
+        console.error('Failed to upload profile photo:', err);
+      }
+    }
+
     // Send enrollment email to student's email if available
     try {
       if (student.email) {
@@ -248,36 +263,49 @@ async function createStudent(request, authenticatedUser, userDoc) {
 
     // Generate QR payload and upload to Cloudinary
     try {
-      const qrPayload = {
-        id: student._id,
-        registrationNumber: student.studentProfile?.registrationNumber || null,
-        rollNumber: student.studentProfile?.rollNumber || null,
-        firstName: student.firstName,
-        lastName: student.lastName,
-        branchId: student.branchId,
-        classId: student.studentProfile?.classId || null,
-      };
-
-      const qrDataUrl = await generateQRCode(JSON.stringify(qrPayload), {
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        width: 350,
-      });
-
-      const uploadResult = await uploadToCloudinary(qrDataUrl, {
-        folder: `ease-academy/students/${student._id}/qr`,
-        resourceType: 'image',
-      });
-
-      student.studentProfile = student.studentProfile || {};
-      student.studentProfile.qr = {
-        url: uploadResult.url || uploadResult.secure_url || '',
-        publicId: uploadResult.publicId || uploadResult.public_id || '',
-        uploadedAt: new Date(),
-      };
-      await student.save();
+      const { generateStudentQR } = await import('@/lib/qr-generator');
+      const { uploadQR } = await import('@/lib/cloudinary');
+      
+      const qrDataUrl = await generateStudentQR(student);
+      if (qrDataUrl) {
+        const uploadResult = await uploadQR(qrDataUrl, student._id, 'student');
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.qr = {
+          url: uploadResult.url,
+          publicId: uploadResult.publicId,
+          uploadedAt: new Date(),
+        };
+        await student.save();
+      }
     } catch (err) {
       console.error('Failed to generate/upload QR for student:', err);
+    }
+
+    // Handle document uploads
+    if (body.pendingDocuments && Array.isArray(body.pendingDocuments) && body.pendingDocuments.length > 0) {
+      try {
+        student.studentProfile = student.studentProfile || {};
+        student.studentProfile.documents = student.studentProfile.documents || [];
+
+        for (const doc of body.pendingDocuments) {
+          if (doc.file && typeof doc.file === 'string' && doc.file.startsWith('data:')) {
+            const uploadResult = await uploadStudentDocument(doc.file, student._id, doc.type || 'other');
+
+            student.studentProfile.documents.push({
+              type: doc.type || 'other',
+              name: doc.name || 'Document',
+              url: uploadResult.url,
+              publicId: uploadResult.publicId,
+              uploadedAt: new Date(),
+            });
+          }
+        }
+
+        await student.save();
+      } catch (err) {
+        console.error('Failed to upload documents for student:', err);
+        // Don't fail the entire operation for document upload errors
+      }
     }
 
     return NextResponse.json({

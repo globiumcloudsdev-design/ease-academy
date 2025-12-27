@@ -46,58 +46,24 @@ export default function TeacherDashboard() {
     try {
       setLoading(true);
 
-      // MOCK DATA - Remove this when backend is ready
-      await new Promise((resolve) => setTimeout(resolve, 800)); // Simulate API delay
-
+      // Fetch real my-classes data from API (automatic token handling)
+      const classesResponse = await apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST);
+      
       const mockData = {
         stats: {
-          classes: { total: 5, active: 3, change: 2 },
-          students: { total: 150, change: 5 },
+          classes: { 
+            total: classesResponse.data?.length || 0, 
+            active: classesResponse.data?.filter(c => c.schedule?.length > 0).length || 0, 
+            change: 0 
+          },
+          students: { 
+            total: classesResponse.data?.reduce((sum, c) => sum + (c.studentCount || 0), 0) || 0, 
+            change: 0 
+          },
           attendance: { average: 92, change: 3 },
           exams: { total: 8, thisWeek: 2, change: 1 },
         },
-        myClasses: [
-          {
-            _id: "1",
-            name: "Mathematics 101",
-            code: "MATH101",
-            studentCount: 30,
-            attendanceRate: 95,
-            schedule: [
-              { day: "Monday", startTime: "09:00", endTime: "10:30" },
-              { day: "Wednesday", startTime: "14:00", endTime: "15:30" },
-            ],
-            nextClass: "Tomorrow at 9:00 AM",
-          },
-          {
-            _id: "2",
-            name: "Physics 201",
-            code: "PHY201",
-            studentCount: 25,
-            attendanceRate: 88,
-            schedule: [
-              { day: "Tuesday", startTime: "10:00", endTime: "11:30" },
-            ],
-            nextClass: "Tuesday at 10:00 AM",
-          },
-          {
-            _id: "3",
-            name: "Chemistry 301",
-            code: "CHEM301",
-            studentCount: 28,
-            attendanceRate: 91,
-            schedule: [
-              {
-                day: new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                }),
-                startTime: "09:00",
-                endTime: "10:30",
-              },
-            ],
-            nextClass: "Now",
-          },
-        ],
+        myClasses: classesResponse.data || [],
         upcomingExams: [
           {
             _id: "1",

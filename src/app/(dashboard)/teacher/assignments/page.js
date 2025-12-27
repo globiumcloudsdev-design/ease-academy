@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
-import ClassSelect from "@/components/ui/class-select";
+import AssignmentFormModal from "@/components/forms/AssignmentFormModal";
 import {
   FileText,
   Calendar,
@@ -21,205 +21,114 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  BookOpen,
 } from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
+import apiClient from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import { toast } from "sonner";
 
 export default function TeacherAssignmentsPage() {
   const [assignments, setAssignments] = useState([]);
-  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    classId: "",
-    dueDate: "",
-    totalMarks: "",
-    allowLateSubmission: false,
-    attachments: [],
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [assignmentDetails, setAssignmentDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
-    loadData();
+    fetchAssignments();
   }, []);
 
-  const loadData = async () => {
+  const fetchAssignments = async () => {
     try {
       setLoading(true);
-      const { mockClasses } = await import("@/data/teacher");
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      setClasses(mockClasses);
-
-      const mockAssignments = [
-        {
-          _id: "1",
-          title: "Quadratic Equations - Problem Set",
-          classId: "1",
-          className: "Advanced Mathematics",
-          description:
-            "Solve 20 problems on quadratic equations covering all topics",
-          dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-          totalMarks: 50,
-          totalStudents: 10,
-          allowLateSubmission: true,
-          submissions: [
-            {
-              studentId: 1,
-              studentName: "Zara Khalid",
-              roll: "701",
-              submittedAt: new Date().toISOString(),
-              status: "submitted",
-              marks: 45,
-            },
-            {
-              studentId: 2,
-              studentName: "Shahzad Ali",
-              roll: "702",
-              submittedAt: new Date().toISOString(),
-              status: "submitted",
-              marks: null,
-            },
-            {
-              studentId: 3,
-              studentName: "Maryam Noor",
-              roll: "703",
-              submittedAt: null,
-              status: "pending",
-              marks: null,
-            },
-          ],
-          status: "active",
-        },
-        {
-          _id: "2",
-          title: "Newton's Laws Lab Report",
-          classId: "2",
-          className: "Physics Fundamentals",
-          description:
-            "Write a detailed lab report on Newton's three laws of motion",
-          dueDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-          totalMarks: 100,
-          totalStudents: 8,
-          allowLateSubmission: false,
-          submissions: [
-            {
-              studentId: 1,
-              studentName: "Ahmed Khan",
-              roll: "801",
-              submittedAt: new Date().toISOString(),
-              status: "submitted",
-              marks: 85,
-            },
-          ],
-          status: "active",
-        },
-      ];
-
-      setAssignments(mockAssignments);
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.ASSIGNMENTS.LIST);
+      if (response.success) {
+        setAssignments(response.data);
+      }
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("Error fetching assignments:", error);
+      toast.error("Failed to load assignments");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateAssignment = () => {
-    if (
-      !formData.title ||
-      !formData.classId ||
-      !formData.dueDate ||
-      !formData.totalMarks
-    ) {
-      alert("Please fill all required fields");
-      return;
+  const handleCreateOrUpdate = async (formData) => {
+    try {
+      setIsSubmitting(true);
+      let response;
+      if (selectedAssignment) {
+        response = await apiClient.put(
+          API_ENDPOINTS.TEACHER.ASSIGNMENTS.UPDATE.replace(":id", selectedAssignment._id),
+          formData
+        );
+      } else {
+        response = await apiClient.post(API_ENDPOINTS.TEACHER.ASSIGNMENTS.CREATE, formData);
+      }
+
+      if (response.success) {
+        toast.success(selectedAssignment ? "Assignment updated" : "Assignment created");
+        setShowFormModal(false);
+        setSelectedAssignment(null);
+        fetchAssignments();
+      }
+    } catch (error) {
+      console.error("Error saving assignment:", error);
+      toast.error(error.message || "Failed to save assignment");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const selectedClass = classes.find((c) => c._id === formData.classId);
-
-    const newAssignment = {
-      _id: Date.now().toString(),
-      ...formData,
-      className: selectedClass?.name || "",
-      totalStudents: selectedClass?.studentCount || 0,
-      submissions: [],
-      status: "active",
-    };
-
-    setAssignments([newAssignment, ...assignments]);
-    setShowCreateModal(false);
-    resetForm();
-    alert("Assignment created successfully!");
   };
 
-  const handleEditAssignment = () => {
-    if (
-      !formData.title ||
-      !formData.classId ||
-      !formData.dueDate ||
-      !formData.totalMarks
-    ) {
-      alert("Please fill all required fields");
-      return;
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return;
+
+    try {
+      const response = await apiClient.delete(
+        API_ENDPOINTS.TEACHER.ASSIGNMENTS.DELETE.replace(":id", id)
+      );
+      if (response.success) {
+        toast.success("Assignment deleted");
+        fetchAssignments();
+      }
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment");
     }
+  };
 
-    setAssignments(
-      assignments.map((a) =>
-        a._id === selectedAssignment._id
-          ? {
-              ...a,
-              ...formData,
-              className: classes.find((c) => c._id === formData.classId)?.name,
-            }
-          : a
-      )
-    );
+  const fetchAssignmentDetails = async (id) => {
+    try {
+      setLoadingDetails(true);
+      const response = await apiClient.get(
+        API_ENDPOINTS.TEACHER.ASSIGNMENTS.GET.replace(":id", id)
+      );
+      if (response.success) {
+        setAssignmentDetails(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching details:", error);
+      toast.error("Failed to load assignment details");
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
-    setShowCreateModal(false);
-    setIsEditing(false);
-    setSelectedAssignment(null);
-    resetForm();
-    alert("Assignment updated successfully!");
+  const handleViewDetails = (assignment) => {
+    setSelectedAssignment(assignment);
+    setAssignmentDetails(null);
+    setShowDetailModal(true);
+    fetchAssignmentDetails(assignment._id);
   };
 
   const handleOpenEdit = (assignment) => {
     setSelectedAssignment(assignment);
-    setFormData({
-      title: assignment.title,
-      description: assignment.description,
-      classId: assignment.classId,
-      dueDate: assignment.dueDate.split("T")[0],
-      totalMarks: assignment.totalMarks,
-      allowLateSubmission: assignment.allowLateSubmission,
-      attachments: assignment.attachments || [],
-    });
-    setIsEditing(true);
-    setShowCreateModal(true);
-  };
-
-  const handleDelete = (id) => {
-    if (confirm("Are you sure you want to delete this assignment?")) {
-      setAssignments(assignments.filter((a) => a._id !== id));
-      alert("Assignment deleted successfully!");
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      classId: "",
-      dueDate: "",
-      totalMarks: "",
-      allowLateSubmission: false,
-      attachments: [],
-    });
+    setShowFormModal(true);
   };
 
   const getStatusInfo = (assignment) => {
@@ -227,8 +136,8 @@ export default function TeacherAssignmentsPage() {
     const now = new Date();
     const diffDays = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
 
-    if (assignment.status === "completed") {
-      return { label: "Completed", color: "bg-gray-500" };
+    if (assignment.status === "archived") {
+      return { label: "Archived", color: "bg-gray-500" };
     }
 
     if (diffDays < 0) {
@@ -272,9 +181,8 @@ export default function TeacherAssignmentsPage() {
         </div>
         <Button
           onClick={() => {
-            resetForm();
-            setIsEditing(false);
-            setShowCreateModal(true);
+            setSelectedAssignment(null);
+            setShowFormModal(true);
           }}
           className="w-full md:w-auto"
         >
@@ -313,14 +221,8 @@ export default function TeacherAssignmentsPage() {
       <div className="grid gap-4">
         {filteredAssignments.map((assignment, index) => {
           const statusInfo = getStatusInfo(assignment);
-          const submittedCount =
-            assignment.submissions?.filter((s) => s.status === "submitted")
-              .length || 0;
-          const submissionRate =
-            assignment.totalStudents > 0
-              ? Math.round((submittedCount / assignment.totalStudents) * 100)
-              : 0;
-
+          const submittedCount = assignment.submissionCount || 0;
+          
           return (
             <motion.div
               key={assignment._id}
@@ -345,10 +247,12 @@ export default function TeacherAssignmentsPage() {
                             {statusInfo.label}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {assignment.className}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <span className="font-medium text-primary">{assignment.classId?.name}</span>
+                          <span>•</span>
+                          <span>{assignment.subjectId?.name}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {assignment.description}
                         </p>
                       </div>
@@ -369,7 +273,7 @@ export default function TeacherAssignmentsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4" />
-                        <span>{assignment.totalStudents} students</span>
+                        <span>{submittedCount} Submissions</span>
                       </div>
                     </div>
                   </div>
@@ -378,43 +282,22 @@ export default function TeacherAssignmentsPage() {
                   <div className="text-center lg:text-right flex-shrink-0">
                     <div className="mb-3">
                       <p className="text-3xl font-bold text-primary">
-                        {submissionRate}%
+                        {submittedCount}
                       </p>
-                      <p className="text-xs text-muted-foreground">Submitted</p>
+                      <p className="text-xs text-muted-foreground">Submissions</p>
                     </div>
-                    <div className="text-sm">
-                      <p className="text-green-600 font-medium">
-                        {submittedCount} submitted
-                      </p>
-                      <p className="text-orange-600 font-medium">
-                        {assignment.totalStudents - submittedCount} pending
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mt-4 mb-4">
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-500"
-                      style={{ width: `${submissionRate}%` }}
-                    />
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setSelectedAssignment(assignment);
-                      setShowDetailModal(true);
-                    }}
+                    onClick={() => handleViewDetails(assignment)}
                   >
                     <Eye className="w-4 h-4 mr-1" />
-                    View Details
+                    View Submissions
                   </Button>
                   <Button
                     variant="outline"
@@ -455,213 +338,16 @@ export default function TeacherAssignmentsPage() {
       )}
 
       {/* Create/Edit Assignment Modal */}
-      <Modal
-        open={showCreateModal}
+      <AssignmentFormModal
+        isOpen={showFormModal}
         onClose={() => {
-          setShowCreateModal(false);
-          setIsEditing(false);
-          resetForm();
+          setShowFormModal(false);
+          setSelectedAssignment(null);
         }}
-        title={isEditing ? "Edit Assignment" : "Create New Assignment"}
-        size="lg"
-      >
-        <div className="space-y-5">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Assignment Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              placeholder="e.g., Quadratic Equations Problem Set"
-              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Describe the assignment..."
-              rows={3}
-              className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-            />
-          </div>
-
-          {/* Class Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Select Class <span className="text-red-500">*</span>
-            </label>
-            <ClassSelect
-              id="assignment-class"
-              name="class"
-              value={formData.classId}
-              onChange={(e) =>
-                setFormData({ ...formData, classId: e.target.value })
-              }
-              classes={classes}
-              placeholder="Choose a class..."
-              className="w-full"
-            />
-          </div>
-
-          {/* Due Date and Marks */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Due Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, dueDate: e.target.value })
-                }
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Total Marks <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                value={formData.totalMarks}
-                onChange={(e) =>
-                  setFormData({ ...formData, totalMarks: e.target.value })
-                }
-                placeholder="e.g., 100"
-                className="w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-          </div>
-
-          {/* Late Submission */}
-          <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg">
-            <input
-              type="checkbox"
-              id="lateSubmission"
-              checked={formData.allowLateSubmission}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  allowLateSubmission: e.target.checked,
-                })
-              }
-              className="w-4 h-4 rounded border-gray-300"
-            />
-            <label
-              htmlFor="lateSubmission"
-              className="text-sm font-medium cursor-pointer"
-            >
-              Allow late submissions
-            </label>
-          </div>
-
-          {/* Attachments */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Attachments (Optional)
-            </label>
-            <input
-              type="file"
-              id="fileUpload"
-              multiple
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                setFormData({
-                  ...formData,
-                  attachments: [
-                    ...(formData.attachments || []),
-                    ...files.map((f) => f.name),
-                  ],
-                });
-              }}
-              className="hidden"
-            />
-            <div
-              onClick={() => document.getElementById("fileUpload").click()}
-              className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer bg-muted/20 hover:bg-muted/40"
-            >
-              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground font-medium">
-                Click to upload or drag and drop
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                PDF, DOC, PPT (Max 10MB)
-              </p>
-            </div>
-
-            {/* File List */}
-            {formData.attachments && formData.attachments.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {formData.attachments.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      <span className="text-sm">{file}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFormData({
-                          ...formData,
-                          attachments: formData.attachments.filter(
-                            (_, i) => i !== index
-                          ),
-                        });
-                      }}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCreateModal(false);
-                setIsEditing(false);
-                resetForm();
-              }}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={
-                isEditing ? handleEditAssignment : handleCreateAssignment
-              }
-              className="flex-1"
-            >
-              {isEditing ? "Update Assignment" : "Create Assignment"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onSubmit={handleCreateOrUpdate}
+        editingAssignment={selectedAssignment}
+        isSubmitting={isSubmitting}
+      />
 
       {/* Assignment Detail Modal */}
       {selectedAssignment && (
@@ -670,123 +356,121 @@ export default function TeacherAssignmentsPage() {
           onClose={() => {
             setShowDetailModal(false);
             setSelectedAssignment(null);
+            setAssignmentDetails(null);
           }}
-          title="Assignment Details"
+          title="Assignment Submissions"
           size="lg"
         >
-          <div className="space-y-6">
-            {/* Assignment Info */}
-            <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-5 rounded-lg border border-primary/20">
-              <h3 className="font-bold text-xl mb-2">
-                {selectedAssignment.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                {selectedAssignment.className}
-              </p>
-              <p className="text-sm mb-4">{selectedAssignment.description}</p>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Due:{" "}
-                    {new Date(selectedAssignment.dueDate).toLocaleDateString()}
-                  </span>
+          {loadingDetails ? (
+            <div className="py-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading submissions...</p>
+            </div>
+          ) : assignmentDetails ? (
+            <div className="space-y-6">
+              {/* Assignment Info */}
+              <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-5 rounded-lg border border-primary/20">
+                <h3 className="font-bold text-xl mb-2">
+                  {assignmentDetails.title}
+                </h3>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                  <span className="font-medium text-primary">{assignmentDetails.classId?.name}</span>
+                  <span>•</span>
+                  <span>{assignmentDetails.subjectId?.name}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>{selectedAssignment.totalMarks} marks</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>{selectedAssignment.totalStudents} students</span>
+                <p className="text-sm mb-4">{assignmentDetails.description}</p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      Due:{" "}
+                      {new Date(assignmentDetails.dueDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{assignmentDetails.totalMarks} marks</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Submissions List */}
-            <div>
-              <h4 className="font-semibold mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Student Submissions
-              </h4>
+              {/* Totals / Roster */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                  <p>
+                    <span className="font-medium">Total Students:</span> {assignmentDetails.totalStudents ?? '—'}
+                  </p>
+                  <p>
+                    <span className="font-medium">Submitted:</span> {assignmentDetails.submissionCount ?? (assignmentDetails.submissions?.length || 0)}
+                  </p>
+                </div>
+                <div className="text-sm">
+                  <Badge className="bg-blue-100 text-blue-700 border-blue-200">Class: {assignmentDetails.classId?.name}</Badge>
+                  {assignmentDetails.sectionId ? (
+                    <Badge className="ml-2 bg-gray-100 text-gray-700 border-gray-200">Section: {assignmentDetails.sectionId}</Badge>
+                  ) : null}
+                </div>
+              </div>
 
-              {selectedAssignment.submissions &&
-              selectedAssignment.submissions.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedAssignment.submissions.map((submission) => (
-                    <div
-                      key={submission.studentId}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white font-semibold">
-                          {submission.studentName
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+              {/* Student Roster + Submissions */}
+              <div>
+                <h4 className="font-semibold mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Student Roster ({assignmentDetails.totalStudents ?? (assignmentDetails.studentStats?.length || 0)})
+                </h4>
+
+                {assignmentDetails.studentStats && assignmentDetails.studentStats.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {assignmentDetails.studentStats.map((stu) => (
+                      <div key={stu._id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold overflow-hidden">
+                            {stu.profilePhoto ? (
+                              <img src={stu.profilePhoto} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              stu.fullName?.split(" ").map((n) => n[0]).join("")
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{stu.fullName}</p>
+                            <p className="text-xs text-muted-foreground">Roll: {stu.rollNumber || 'N/A'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">
-                            {submission.studentName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Roll: {submission.roll}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {submission.status === "submitted" ? (
-                          <>
-                            <Badge className="bg-green-100 text-green-700 border-green-300">
+                        <div className="flex items-center gap-3">
+                          {stu.submitted ? (
+                            <div className="text-right mr-4">
+                              <p className="text-xs text-muted-foreground">Submitted on</p>
+                              <p className="text-sm font-medium">{new Date(stu.submission.submittedAt).toLocaleDateString()}</p>
+                            </div>
+                          ) : null}
+                          {stu.submitted ? (
+                            <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Submitted
                             </Badge>
-                            {submission.marks !== null && (
-                              <span className="text-sm font-semibold text-primary">
-                                {submission.marks}/
-                                {selectedAssignment.totalMarks}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <Badge className="bg-orange-100 text-orange-700 border-orange-300">
-                            <AlertCircle className="w-3 h-3 mr-1" />
-                            Pending
-                          </Badge>
-                        )}
+                          ) : (
+                            <Badge className="bg-red-50 text-red-700 border-red-100 flex items-center">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Not Submitted
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">No submissions yet</p>
-                </div>
-              )}
-            </div>
-
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {selectedAssignment.submissions?.filter(
-                    (s) => s.status === "submitted"
-                  ).length || 0}
-                </p>
-                <p className="text-xs text-muted-foreground">Submitted</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-orange-600">
-                  {selectedAssignment.totalStudents -
-                    (selectedAssignment.submissions?.filter(
-                      (s) => s.status === "submitted"
-                    ).length || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">Pending</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                    <p className="text-sm">No students found for this class/section</p>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="py-12 text-center">
+              <p className="text-muted-foreground">Failed to load details</p>
+            </div>
+          )}
         </Modal>
       )}
     </div>

@@ -48,7 +48,10 @@ const StudentFormModal = ({
   const [activeTab, setActiveTab] = useState('personal');
   const [uploading, setUploading] = useState(false);
   const [pendingProfileFile, setPendingProfileFile] = useState(null);
+  const [currentBranchIdState, setCurrentBranchIdState] = useState('');
+  const [currentClassIdState, setCurrentClassIdState] = useState('');
   const [pendingDocuments, setPendingDocuments] = useState([]);
+  const [documentsToDelete, setDocumentsToDelete] = useState([]);
   const [availableClasses, setAvailableClasses] = useState([]);
   const [profilePreview, setProfilePreview] = useState(null);
 
@@ -363,25 +366,32 @@ const StudentFormModal = ({
     }
   }, [editingStudent, isOpen, userRole, currentBranchId]);
 
+  // Update current branch/class state when formData changes
+  useEffect(() => {
+    setCurrentBranchIdState(formData.branchId || '');
+    setCurrentClassIdState(formData.classId || '');
+  }, [formData.branchId, formData.classId]);
+
   // Filter classes based on selected branch
   useEffect(() => {
-    if (formData.branchId && classes.length > 0) {
+    if (currentBranchIdState && classes.length > 0) {
       const filteredClasses = classes.filter(
-        cls => cls.branchId === formData.branchId ||
-          cls.branchId?._id === formData.branchId
+        cls => cls.branchId === currentBranchIdState ||
+          cls.branchId?._id === currentBranchIdState
       );
       setAvailableClasses(filteredClasses);
 
       // Reset class selection if current class not in filtered list
-      if (formData.classId && !filteredClasses.some(c =>
-        c._id === formData.classId || c._id === formData.classId?._id
+      if (currentClassIdState && !filteredClasses.some(c =>
+        c._id === currentClassIdState || c._id === currentClassIdState?._id
       )) {
         setFormData(prev => ({ ...prev, classId: '' }));
+        setCurrentClassIdState('');
       }
     } else {
       setAvailableClasses([]);
     }
-  }, [formData.branchId, classes]);
+  }, [currentBranchIdState, classes, currentClassIdState]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -406,10 +416,18 @@ const StudentFormModal = ({
         }));
       }
     } else {
+      const newValue = type === 'number' ? parseFloat(value) || 0 : value;
       setFormData(prev => ({
         ...prev,
-        [name]: type === 'number' ? parseFloat(value) || 0 : value,
+        [name]: newValue,
       }));
+
+      // Update separate state for branchId and classId to avoid useEffect dependency issues
+      if (name === 'branchId') {
+        setCurrentBranchIdState(newValue);
+      } else if (name === 'classId') {
+        setCurrentClassIdState(newValue);
+      }
     }
   };
 
@@ -484,7 +502,16 @@ const StudentFormModal = ({
     setPendingDocuments(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const addDocumentToDelete = (documentIndex) => {
+    const doc = editingStudent.studentProfile.documents[documentIndex];
+    setDocumentsToDelete(prev => [...prev, doc]);
+  };
+
+  const removeDocumentToDelete = (documentIndex) => {
+    setDocumentsToDelete(prev => prev.filter((_, i) => i !== documentIndex));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Basic validation
@@ -503,58 +530,94 @@ const StudentFormModal = ({
       return;
     }
 
-    // Prepare data for submission
-    const submissionData = {
-      // User fields
-      role: 'student',
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      alternatePhone: formData.alternatePhone,
-      dateOfBirth: formData.dateOfBirth,
-      gender: formData.gender,
-      bloodGroup: formData.bloodGroup,
-      nationality: formData.nationality,
-      religion: formData.religion,
-      cnic: formData.cnic,
-      address: formData.address,
-      branchId: formData.branchId,
-      status: formData.status,
-      remarks: formData.remarks,
+    if (formData.rollNumber && !/^\d{6}$/.test(formData.rollNumber)) {
+      toast.error('Roll Number must be exactly 6 digits');
+      return;
+    }
 
-      // Student Profile fields
-      studentProfile: {
-        classId: formData.classId,
-        ...(formData.departmentId && { departmentId: formData.departmentId }),
-        section: formData.section,
-        rollNumber: formData.rollNumber,
-        admissionDate: formData.admissionDate,
-        academicYear: formData.academicYear,
-        previousSchool: formData.previousSchool,
-        father: formData.father,
-        mother: formData.mother,
-        guardian: formData.guardian,
-        guardianType: formData.guardianType,
-        feeDiscount: formData.feeDiscount,
-        transportFee: formData.transportFee,
-      },
+    try {
+      // Convert profile photo to base64 if exists
+      let profilePhotoBase64 = null;
+      if (pendingProfileFile) {
+        profilePhotoBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(pendingProfileFile);
+        });
+      }
 
-      // Additional fields
-      medicalInfo: formData.medicalInfo,
-      emergencyContact: formData.emergencyContact,
+      // Convert documents to base64 if exist
+      const documentsBase64 = await Promise.all(
+        pendingDocuments.map(async (doc) => {
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(doc.file);
+          });
+          return {
+            ...doc,
+            file: base64, // Replace File object with base64 string
+          };
+        })
+      );
 
-      // Files to upload
-      pendingProfileFile,
-      pendingDocuments,
+      // Prepare data for submission
+      const submissionData = {
+        // User fields
+        role: 'student',
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        alternatePhone: formData.alternatePhone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        bloodGroup: formData.bloodGroup,
+        nationality: formData.nationality,
+        religion: formData.religion,
+        cnic: formData.cnic,
+        address: formData.address,
+        branchId: formData.branchId,
+        status: formData.status,
+        remarks: formData.remarks,
 
-      // Editing mode
-      isEditMode: !!editingStudent,
-      studentId: editingStudent?._id,
-    };
+        // Student Profile fields
+        studentProfile: {
+          classId: formData.classId,
+          ...(formData.departmentId && { departmentId: formData.departmentId }),
+          section: formData.section,
+          rollNumber: formData.rollNumber,
+          admissionDate: formData.admissionDate,
+          academicYear: formData.academicYear,
+          previousSchool: formData.previousSchool,
+          father: formData.father,
+          mother: formData.mother,
+          guardian: formData.guardian,
+          guardianType: formData.guardianType,
+          feeDiscount: formData.feeDiscount,
+          transportFee: formData.transportFee,
+        },
 
-    // Call parent onSubmit
-    onSubmit(submissionData);
+        // Additional fields
+        medicalInfo: formData.medicalInfo,
+        emergencyContact: formData.emergencyContact,
+
+        // Files to upload (now as base64)
+        pendingProfileFile: profilePhotoBase64,
+        pendingDocuments: documentsBase64,
+        documentsToDelete,
+
+        // Editing mode
+        isEditMode: !!editingStudent,
+        studentId: editingStudent?._id,
+      };
+
+      // Call parent onSubmit
+      await onSubmit(submissionData);
+    } catch (error) {
+      console.error('Error preparing submission:', error);
+      toast.error('Failed to prepare student data');
+    }
   };
 
   const renderPersonalInfoTab = () => (
@@ -867,7 +930,7 @@ const StudentFormModal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <label className="block text-sm font-medium mb-2">Admission Date</label>
           <Input
@@ -875,6 +938,19 @@ const StudentFormModal = ({
             name="admissionDate"
             value={formData.admissionDate}
             onChange={handleInputChange}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Roll Number <span className="text-xs text-muted-foreground font-normal">(Leave blank to auto-generate)</span>
+          </label>
+          <Input
+            type="text"
+            name="rollNumber"
+            value={formData.rollNumber}
+            onChange={handleInputChange}
+            placeholder="6-digit Roll Number"
+            maxLength={6}
           />
         </div>
         <div>
@@ -1495,7 +1571,49 @@ const StudentFormModal = ({
                   >
                     View
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => addDocumentToDelete(index)}
+                    className="text-red-600 hover:text-red-700 text-sm"
+                    disabled={documentsToDelete.some(d => d.publicId === doc.publicId)}
+                  >
+                    {documentsToDelete.some(d => d.publicId === doc.publicId) ? 'Marked for Deletion' : 'Delete'}
+                  </button>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Documents Marked for Deletion */}
+      {documentsToDelete.length > 0 && (
+        <div className="border-t pt-6">
+          <h4 className="text-md font-semibold mb-4 text-red-600">Documents Marked for Deletion</h4>
+          <div className="space-y-3">
+            {documentsToDelete.map((doc, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200"
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-red-500" />
+                  <div>
+                    <p className="text-sm font-medium text-red-900">
+                      {doc.name || doc.type || 'Document'}
+                    </p>
+                    <p className="text-xs text-red-600">
+                      {doc.type} • Marked for deletion
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeDocumentToDelete(index)}
+                  className="text-green-600 hover:text-green-700 text-sm"
+                >
+                  Undo
+                </button>
               </div>
             ))}
           </div>

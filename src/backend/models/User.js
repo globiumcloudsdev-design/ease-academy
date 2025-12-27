@@ -654,6 +654,31 @@ userSchema.methods.generateRegistrationNumber = async function(branchCode) {
   return `${branchCode}-${year}-${String(count + 1).padStart(4, '0')}`;
 };
 
+// Generate 6-digit random roll number
+userSchema.methods.generateRollNumber = async function() {
+  let rollNumber;
+  let exists = true;
+  
+  while (exists) {
+    // Generate random 6-digit number
+    rollNumber = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Check if it exists in the same branch and class
+    const existing = await this.constructor.findOne({
+      role: 'student',
+      branchId: this.branchId,
+      'studentProfile.classId': this.studentProfile?.classId,
+      'studentProfile.rollNumber': rollNumber
+    });
+    
+    if (!existing) {
+      exists = false;
+    }
+  }
+  
+  return rollNumber;
+};
+
 // Method to exclude sensitive fields from JSON response
 userSchema.methods.toJSON = function() {
   const obj = this.toObject();
@@ -716,19 +741,60 @@ userSchema.pre('save', async function(next) {
         const branchCode = branch?.code || 'SCH';
 
         this[profileKey] = this[profileKey] || {};
-        this[profileKey].employeeId = await this.generateEmployeeId(branchCode);
+        if (typeof this.generateEmployeeId === 'function') {
+          this[profileKey].employeeId = await this.generateEmployeeId(branchCode);
+        } else {
+          const prefix = this.role === 'teacher' ? 'T' : 'S';
+          const year = new Date().getFullYear();
+          const count = await this.constructor.countDocuments({
+            role: this.role,
+            branchId: this.branchId,
+          });
+          this[profileKey].employeeId = `${branchCode}-${prefix}-${year}-${String(count + 1).padStart(3, '0')}`;
+        }
       }
     }
 
     // Auto-generate registration number for student
-    if (this.role === 'student' && this.isNew) {
+    if (this.role === 'student') {
       if (!this.studentProfile?.registrationNumber && this.branchId) {
         const Branch = mongoose.model('Branch');
         const branch = await Branch.findById(this.branchId);
         const branchCode = branch?.code || 'SCH';
 
         this.studentProfile = this.studentProfile || {};
-        this.studentProfile.registrationNumber = await this.generateRegistrationNumber(branchCode);
+        if (typeof this.generateRegistrationNumber === 'function') {
+          this.studentProfile.registrationNumber = await this.generateRegistrationNumber(branchCode);
+        } else {
+          const year = new Date().getFullYear().toString().slice(-2);
+          const count = await this.constructor.countDocuments({
+            role: 'student',
+            branchId: this.branchId,
+          });
+          this.studentProfile.registrationNumber = `${branchCode}-${year}-${String(count + 1).padStart(4, '0')}`;
+        }
+      }
+      
+      // Auto-generate 6-digit roll number if missing
+      if (!this.studentProfile?.rollNumber && this.branchId && this.studentProfile?.classId) {
+        this.studentProfile = this.studentProfile || {};
+        if (typeof this.generateRollNumber === 'function') {
+          this.studentProfile.rollNumber = await this.generateRollNumber();
+        } else {
+          let rollNumber;
+          let exists = true;
+          while (exists) {
+            rollNumber = Math.floor(100000 + Math.random() * 900000).toString();
+            const existing = await this.constructor.findOne({
+              role: 'student',
+              branchId: this.branchId,
+              'studentProfile.classId': this.studentProfile.classId,
+              'studentProfile.rollNumber': rollNumber
+            });
+            if (!existing) exists = false;
+          }
+          this.studentProfile.rollNumber = rollNumber;
+        }
       }
     }
 
