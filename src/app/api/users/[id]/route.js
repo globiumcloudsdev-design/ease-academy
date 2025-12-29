@@ -141,10 +141,9 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
     }
 
     deepMerge(user, body);
-    // If a new password was provided, hash it and set passwordHash
+    // If a new password was provided, set passwordHash (will be hashed by pre-save hook)
     if (incomingPassword) {
-      const salt = await bcrypt.genSalt(10);
-      user.passwordHash = await bcrypt.hash(incomingPassword, salt);
+      user.passwordHash = incomingPassword;
     }
     user.updatedBy = userDoc._id;
     await user.save();

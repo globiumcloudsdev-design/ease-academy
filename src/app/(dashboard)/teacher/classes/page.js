@@ -50,12 +50,46 @@ export default function TeacherClassesPage() {
     try {
       setLoading(true);
       // Use apiClient to fetch data (automatic token handling)
-      const result = await apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST);
+      const [classesResult, assignmentsResult] = await Promise.all([
+        apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST),
+        apiClient.get(API_ENDPOINTS.TEACHER.ASSIGNMENTS.LIST)
+      ]);      
       
-      if (result.success) {
-        setClasses(result.data || []);
+      if (classesResult.success) {
+        const classesData = classesResult.data || [];
+        const assignmentsData = assignmentsResult.success ? (assignmentsResult.data || []) : [];
+        
+        // Merge assignments with classes
+        const classesWithAssignments = classesData.map(classItem => {
+          // Filter assignments for this class and section
+          const classAssignments = assignmentsData.filter(assignment => {
+            const matchClass = String(assignment.classId?._id || assignment.classId) === String(classItem.classId);
+            const matchSection = !assignment.sectionId || assignment.sectionId === classItem.section;
+            return matchClass && matchSection;
+          }).map(assignment => ({
+            id: assignment._id,
+            title: assignment.title,
+            description: assignment.description,
+            dueDate: new Date(assignment.dueDate).toLocaleDateString(),
+            status: assignment.status === 'published' ? 'Active' : assignment.status === 'draft' ? 'Draft' : 'Closed',
+            type: assignment.subjectId?.name || classItem.subjectName || 'Assignment',
+            submissions: assignment.submissionCount || 0,
+            total: classItem.studentCount || 0,
+            maxPoints: assignment.totalMarks || 0,
+            _id: assignment._id,
+            videoUrl: assignment.videoUrl,
+            attachments: assignment.attachments || [],
+          }));
+          
+          return {
+            ...classItem,
+            assignments: classAssignments
+          };
+        });
+        
+        setClasses(classesWithAssignments);
       } else {
-        console.error('Failed to load classes:', result.error);
+        console.error('Failed to load classes:', classesResult.error);
         setClasses([]);
       }
     } catch (error) {
@@ -451,6 +485,48 @@ export default function TeacherClassesPage() {
                             Parent & Guardian Details
                           </h5>
                           <div className="space-y-4">
+                            {/* Primary Guardian/Parent Details */}
+                            {selectedStudent.guardian && (
+                              <div className="border rounded-lg p-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30">
+                                <h6 className="font-medium text-sm text-primary mb-3 flex items-center gap-2">
+                                  <Users className="w-4 h-4" />
+                                  {selectedStudent.guardian.relation} Information
+                                </h6>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  {selectedStudent.guardian.name && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Name:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.name}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.relation && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Relation:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.relation}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.phone && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Phone:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.phone}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.email && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.email}</span>
+                                    </div>
+                                  )}
+                                  {selectedStudent.guardian.cnic && (
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">CNIC:</span>
+                                      <span className="font-medium">{selectedStudent.guardian.cnic}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Father Details */}
                             {selectedStudent.studentProfile?.father?.name && (
                               <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">

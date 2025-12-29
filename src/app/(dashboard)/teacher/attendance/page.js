@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
-import ClassSelect from "@/components/ui/class-select";
+import LiveJsQRScanner from "@/components/LiveJsQRScanner";
 import {
   ClipboardCheck,
   Calendar,
@@ -19,32 +19,20 @@ import {
   UserCheck,
 } from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
+import { toast } from "sonner";
 
 export default function TeacherAttendancePage() {
   const [attendanceData, setAttendanceData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedClass, setSelectedClass] = useState(null);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [scannedStudents, setScannedStudents] = useState([]);
-  const [isScanning, setIsScanning] = useState(false);
-  const scannerRef = useRef(null);
-  const html5QrCodeRef = useRef(null);
 
   useEffect(() => {
     loadAttendanceData();
   }, []);
-
-  useEffect(() => {
-    if (showScannerModal && isScanning) {
-      startScanner();
-    }
-    return () => {
-      stopScanner();
-    };
-  }, [showScannerModal, isScanning]);
 
   const loadAttendanceData = async () => {
     try {
@@ -118,103 +106,51 @@ export default function TeacherAttendancePage() {
     }
   };
 
-  const startScanner = async () => {
-    try {
-      const Html5Qrcode = (await import("html5-qrcode")).Html5Qrcode;
-
-      if (!scannerRef.current) return;
-
-      html5QrCodeRef.current = new Html5Qrcode("qr-reader");
-
-      const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-        handleScan(decodedText);
-      };
-
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-      };
-
-      await html5QrCodeRef.current.start(
-        { facingMode: "environment" },
-        config,
-        qrCodeSuccessCallback
-      );
-    } catch (err) {
-      console.error("Error starting scanner:", err);
-    }
-  };
-
-  const stopScanner = async () => {
-    if (html5QrCodeRef.current) {
+  const handleScan = (studentData) => {
+    if (studentData) {
       try {
-        await html5QrCodeRef.current.stop();
-        html5QrCodeRef.current.clear();
-        html5QrCodeRef.current = null;
-      } catch (err) {
-        console.error("Error stopping scanner:", err);
-      }
-    }
-  };
-
-  const handleScan = (data) => {
-    if (data) {
-      try {
-        // Parse QR code data (expecting JSON with student info)
-        const studentData = JSON.parse(data);
+        // studentData is already parsed by LiveJsQRScanner
+        const id = studentData.studentId || studentData.id || studentData.raw || `id-${Date.now()}`;
 
         // Check if student already scanned
-        if (scannedStudents.some((s) => s.id === studentData.studentId)) {
-          alert("This student has already been marked present!");
+        if (scannedStudents.some((s) => s.id === id)) {
           return;
         }
 
         // Add student to scanned list
         const newStudent = {
-          id: studentData.studentId,
-          name: studentData.name || "Unknown Student",
+          id: id,
+          name: studentData.name || studentData.raw || "Unknown Student",
           roll: studentData.roll || "N/A",
           time: new Date().toLocaleTimeString(),
           avatar:
             studentData.avatar ||
-            studentData.name?.substring(0, 2).toUpperCase() ||
-            "??",
+            (studentData.name ? studentData.name.substring(0, 2).toUpperCase() : "QR"),
         };
 
         setScannedStudents((prev) => [newStudent, ...prev]);
-
-        // Play success sound or show success animation
-        const audio = new Audio("/success.mp3");
-        audio.play().catch(() => {}); // Ignore if sound file not found
       } catch (error) {
-        console.error("Error parsing QR code:", error);
-        alert("Invalid QR code format!");
+        console.error("Error processing QR code:", error);
       }
     }
   };
 
   const handleStartScanning = () => {
-    if (!selectedClass) return;
     setScannedStudents([]);
     setShowScannerModal(true);
-    setIsScanning(true);
   };
 
-  const handleCloseScanner = async () => {
-    setIsScanning(false);
-    await stopScanner();
+  const handleCloseScanner = () => {
     setShowScannerModal(false);
   };
 
   const handleSaveAttendance = () => {
     // Here you would save the attendance to backend
     console.log("Saving attendance:", {
-      classId: selectedClass,
       date: selectedDate,
       students: scannedStudents,
     });
-    alert(
+    toast.success(
       `Attendance saved successfully! ${scannedStudents.length} students marked present.`
     );
     handleCloseScanner();
@@ -225,7 +161,6 @@ export default function TeacherAttendancePage() {
   }
 
   const { classes, todayStats, recentAttendance } = attendanceData;
-  const selectedClassData = classes.find((c) => c._id === selectedClass);
 
   return (
     <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
@@ -288,22 +223,7 @@ export default function TeacherAttendancePage() {
       {/* Mark Attendance Section */}
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Mark Attendance</h2>
-        <div className="grid gap-4 md:grid-cols-2 mb-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Select Class
-            </label>
-            <ClassSelect
-              id="class-select"
-              name="class"
-              value={selectedClass || ""}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              classes={classes}
-              placeholder="Choose a class..."
-              className="w-full"
-            />
-          </div>
-
+        <div className="grid gap-4 md:grid-cols-1 mb-6">
           <div>
             <label className="block text-sm font-medium mb-2">
               Select Date
@@ -318,7 +238,6 @@ export default function TeacherAttendancePage() {
         </div>
 
         <Button
-          disabled={!selectedClass}
           onClick={handleStartScanning}
           className="w-full md:w-auto"
         >
@@ -392,7 +311,7 @@ export default function TeacherAttendancePage() {
 
       {/* QR Scanner Modal */}
       <AnimatePresence>
-        {showScannerModal && selectedClass && (
+        {showScannerModal && (
           <Modal
             open={showScannerModal}
             onClose={handleCloseScanner}
@@ -406,7 +325,7 @@ export default function TeacherAttendancePage() {
                     Scan Student QR Codes
                   </h3>
                   <p className="text-xs text-muted-foreground font-normal">
-                    {selectedClassData?.name} • {selectedDate}
+                    Attendance Date: {selectedDate}
                   </p>
                 </div>
               </div>
@@ -414,19 +333,18 @@ export default function TeacherAttendancePage() {
             size="xl"
           >
             <div className="space-y-4">
-              {/* Class Info */}
+              {/* Info Card */}
               <Card className="p-4 bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Selected Class
+                      Attendance Mode
                     </p>
                     <p className="font-semibold text-lg">
-                      {selectedClassData?.name}
+                      General Attendance Scan
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {selectedClassData?.code} • {selectedClassData?.subject} •{" "}
-                      {selectedClassData?.grade}
+                      Date: {selectedDate}
                     </p>
                   </div>
                   <div className="text-right">
@@ -437,7 +355,7 @@ export default function TeacherAttendancePage() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      / {selectedClassData?.studentCount} Students
+                      Students Scanned
                     </p>
                   </div>
                 </div>
@@ -449,29 +367,23 @@ export default function TeacherAttendancePage() {
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold flex items-center gap-2">
                       <Camera className="w-4 h-4 text-primary" />
-                      Camera Scanner
+                      Fast QR Scanner
                     </h4>
-                    <Badge variant="outline" className="text-xs">
-                      {isScanning ? "Active" : "Inactive"}
-                    </Badge>
                   </div>
 
-                  <div
-                    ref={scannerRef}
-                    className="relative border-2 border-primary/30 rounded-lg overflow-hidden bg-black"
-                  >
-                    <div id="qr-reader" className="w-full"></div>
-                    {!isScanning && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                        <p className="text-white">Scanner Ready</p>
-                      </div>
-                    )}
+                  <div className="relative border-2 border-primary/30 rounded-lg overflow-hidden bg-black min-h-[300px]">
+                    <LiveJsQRScanner 
+                      onDetected={handleScan}
+                      continuous={true}
+                      beep={true}
+                      vibrate={true}
+                    />
                   </div>
 
                   <Card className="p-3 bg-blue-50 border-blue-200">
                     <p className="text-xs text-blue-700">
-                      <strong>Instructions:</strong> Point camera at student's
-                      QR code. Scanning happens automatically when QR is
+                      <strong>Fast Scan:</strong> Point camera at student's
+                      QR code. Scanning happens instantly when QR is
                       detected.
                     </p>
                   </Card>

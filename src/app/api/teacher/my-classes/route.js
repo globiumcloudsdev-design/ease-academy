@@ -89,7 +89,7 @@ const getMyClasses = async (req, user, userDoc) => {
           'studentProfile.classId': classData.classId,
           ...(classData.section ? { 'studentProfile.section': classData.section } : {}),
         })
-        .select('firstName lastName fullName email phone profilePhoto studentProfile.rollNumber studentProfile.registrationNumber')
+        .select('firstName lastName fullName email phone profilePhoto studentProfile.rollNumber studentProfile.registrationNumber studentProfile.father studentProfile.mother studentProfile.guardian studentProfile.guardianType')
         .sort({ 'studentProfile.rollNumber': 1 });
 
         // Sort schedule by day and time
@@ -106,15 +106,46 @@ const getMyClasses = async (req, user, userDoc) => {
         return {
           ...classData,
           studentCount: students.length,
-          students: students.map(student => ({
-            _id: student._id,
-            name: student.fullName || `${student.firstName} ${student.lastName}`,
-            rollNumber: student.studentProfile?.rollNumber,
-            registrationNumber: student.studentProfile?.registrationNumber,
-            email: student.email,
-            phone: student.phone,
-            profilePhoto: student.profilePhoto,
-          })),
+          students: students.map(student => {
+            // Determine guardian information based on guardianType
+            let guardianInfo = null;
+            if (student.studentProfile?.guardianType === 'guardian' && student.studentProfile?.guardian) {
+              guardianInfo = {
+                name: student.studentProfile.guardian.name,
+                relation: student.studentProfile.guardian.relation || 'Guardian',
+                phone: student.studentProfile.guardian.phone,
+                email: student.studentProfile.guardian.email,
+                cnic: student.studentProfile.guardian.cnic,
+              };
+            } else if (student.studentProfile?.father) {
+              guardianInfo = {
+                name: student.studentProfile.father.name,
+                relation: 'Father',
+                phone: student.studentProfile.father.phone,
+                email: student.studentProfile.father.email,
+                cnic: student.studentProfile.father.cnic,
+              };
+            } else if (student.studentProfile?.mother) {
+              guardianInfo = {
+                name: student.studentProfile.mother.name,
+                relation: 'Mother',
+                phone: student.studentProfile.mother.phone,
+                email: student.studentProfile.mother.email,
+                cnic: student.studentProfile.mother.cnic,
+              };
+            }
+
+            return {
+              _id: student._id,
+              name: student.fullName || `${student.firstName} ${student.lastName}`,
+              rollNumber: student.studentProfile?.rollNumber,
+              registrationNumber: student.studentProfile?.registrationNumber,
+              email: student.email,
+              phone: student.phone,
+              profilePhoto: student.profilePhoto,
+              guardian: guardianInfo,
+            };
+          }),
           nextClass,
         };
       })

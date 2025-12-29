@@ -32,6 +32,7 @@ const parentSignupSchema = z.object({
 
 export async function POST(request) {
   try {
+    
     await connectDB();
 
     const body = await request.json();
@@ -67,9 +68,6 @@ export async function POST(request) {
       }
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-
     // Create parent user (inactive until approved)
     const parent = new User({
       role: 'parent',
@@ -78,7 +76,7 @@ export async function POST(request) {
       phone: validatedData.phone,
       cnic: validatedData.cnic,
       branchId: branchId,
-      passwordHash: hashedPassword,
+      passwordHash: validatedData.password,
       isActive: false,
       approved: false,
       status: 'pending',

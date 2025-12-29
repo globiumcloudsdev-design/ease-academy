@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Modal from "@/components/ui/modal";
 import {
   Calendar,
   Clock,
@@ -20,6 +21,22 @@ export default function TeacherExamsPage() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, upcoming, past
+  // Modal state used for both Create and Edit
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState("create"); // 'create' | 'edit'
+  const [editingId, setEditingId] = useState(null);
+  const [newExam, setNewExam] = useState({
+    title: "",
+    className: "",
+    date: new Date().toISOString().split("T")[0],
+    startTime: "09:00",
+    endTime: "10:00",
+    duration: 60,
+    room: "",
+    totalMarks: 100,
+    passingMarks: 40,
+    studentsEnrolled: 0,
+  });
 
   useEffect(() => {
     loadExams();
@@ -138,7 +155,25 @@ export default function TeacherExamsPage() {
             Schedule and manage exams
           </p>
         </div>
-        <Button>
+        <Button
+          onClick={() => {
+            setModalMode("create");
+            setEditingId(null);
+            setNewExam({
+              title: "",
+              className: "",
+              date: new Date().toISOString().split("T")[0],
+              startTime: "09:00",
+              endTime: "10:00",
+              duration: 60,
+              room: "",
+              totalMarks: 100,
+              passingMarks: 40,
+              studentsEnrolled: 0,
+            });
+            setShowModal(true);
+          }}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Create New Exam
         </Button>
@@ -244,7 +279,28 @@ export default function TeacherExamsPage() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-4 border-t border-border">
-                <Button variant="outline" size="sm" className="flex-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setModalMode("edit");
+                    setEditingId(exam._id);
+                    setNewExam({
+                      title: exam.title || "",
+                      className: exam.className || "",
+                      date: new Date(exam.date).toISOString().split("T")[0],
+                      startTime: exam.startTime || "09:00",
+                      endTime: exam.endTime || "10:00",
+                      duration: exam.duration || 60,
+                      room: exam.room || "",
+                      totalMarks: exam.totalMarks || 100,
+                      passingMarks: exam.passingMarks || 40,
+                      studentsEnrolled: exam.studentsEnrolled || 0,
+                    });
+                    setShowModal(true);
+                  }}
+                >
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
                 </Button>
@@ -274,6 +330,141 @@ export default function TeacherExamsPage() {
           </p>
         </div>
       )}
+
+      {/* Create/Edit Exam Modal (rendered outside conditional) */}
+      <Modal
+        open={showModal}
+        onClose={() => {
+          setShowModal(false);
+          setEditingId(null);
+        }}
+        title={"Create Exam"}
+        size="md"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => { setShowModal(false); setEditingId(null); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                // simple validation
+                if (!newExam.title || !newExam.date) {
+                  alert("Please provide exam title and date");
+                  return;
+                }
+
+                if (modalMode === "create") {
+                  const exam = {
+                    _id: Date.now().toString(),
+                    ...newExam,
+                    status: new Date(newExam.date) < new Date() ? "completed" : "upcoming",
+                  };
+                  setExams((prev) => [exam, ...prev]);
+                } else if (modalMode === "edit" && editingId) {
+                  setExams((prev) => prev.map((e) => (e._id === editingId ? { ...e, ...newExam, status: new Date(newExam.date) < new Date() ? "completed" : "upcoming" } : e)));
+                }
+
+                setShowModal(false);
+                setEditingId(null);
+              }}
+            >
+              {modalMode === "create" ? "Create Exam" : "Save Changes"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Title</label>
+            <input
+              className="w-full px-3 py-2 border rounded"
+              value={newExam.title}
+              onChange={(e) => setNewExam((s) => ({ ...s, title: e.target.value }))}
+              placeholder="Exam Title"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Date</label>
+              <input
+                type="date"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.date}
+                onChange={(e) => setNewExam((s) => ({ ...s, date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Class / Subject</label>
+              <input
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.className}
+                onChange={(e) => setNewExam((s) => ({ ...s, className: e.target.value }))}
+                placeholder="e.g. Mathematics 101"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Start Time</label>
+              <input
+                type="time"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.startTime}
+                onChange={(e) => setNewExam((s) => ({ ...s, startTime: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">End Time</label>
+              <input
+                type="time"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.endTime}
+                onChange={(e) => setNewExam((s) => ({ ...s, endTime: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Duration (mins)</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.duration}
+                onChange={(e) => setNewExam((s) => ({ ...s, duration: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1">Total Marks</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.totalMarks}
+                onChange={(e) => setNewExam((s) => ({ ...s, totalMarks: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Passing Marks</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.passingMarks}
+                onChange={(e) => setNewExam((s) => ({ ...s, passingMarks: Number(e.target.value) }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Room</label>
+              <input
+                className="w-full px-3 py-2 border rounded"
+                value={newExam.room}
+                onChange={(e) => setNewExam((s) => ({ ...s, room: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

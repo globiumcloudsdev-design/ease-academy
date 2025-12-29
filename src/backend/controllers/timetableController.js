@@ -64,11 +64,16 @@ export async function getTimetables(filters = {}) {
 /**
  * Get timetable by ID
  */
-export async function getTimetableById(id) {
+export async function getTimetableById(id, branchId = null) {
   try {
     await connectDB();
 
-    const timetable = await Timetable.findById(id)
+    const query = { _id: id };
+    if (branchId) {
+      query.branchId = branchId;
+    }
+
+    const timetable = await Timetable.findOne(query)
       .populate('branchId', 'name code address contact')
       .populate('classId', 'name code grade sections')
       .populate('periods.subjectId', 'name code description')
@@ -78,7 +83,10 @@ export async function getTimetableById(id) {
       .lean();
 
     if (!timetable) {
-      throw new Error('Timetable not found');
+      return {
+        success: false,
+        message: branchId ? 'Timetable not found or access denied' : 'Timetable not found',
+      };
     }
 
     return {
@@ -87,7 +95,10 @@ export async function getTimetableById(id) {
     };
   } catch (error) {
     console.error('Get timetable error:', error);
-    throw new Error(error.message || 'Failed to fetch timetable');
+    return {
+      success: false,
+      message: error.message || 'Failed to fetch timetable',
+    };
   }
 }
 

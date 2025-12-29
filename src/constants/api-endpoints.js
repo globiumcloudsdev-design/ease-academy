@@ -26,7 +26,7 @@ export const API_ENDPOINTS = {
   SUPER_ADMIN: {
     DASHBOARD: '/api/super-admin/dashboard',
     DASHBOARD_STATS: '/api/super-admin/dashboard/stats',
-    
+
     // Branch Management
     BRANCHES: {
       CREATE: '/api/super-admin/branches',
@@ -38,7 +38,7 @@ export const API_ENDPOINTS = {
       ACTIVATE: '/api/super-admin/branches/:id/activate',
       DEACTIVATE: '/api/super-admin/branches/:id/deactivate',
     },
-    
+
     // Branch Admin Management
     BRANCH_ADMINS: {
       CREATE: '/api/super-admin/branch-admins',
@@ -48,7 +48,7 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/branch-admins/:id',
       ASSIGN_BRANCH: '/api/super-admin/branch-admins/:id/assign-branch',
     },
-    
+
     // Global Settings
     SETTINGS: {
       GET: '/api/super-admin/settings',
@@ -183,6 +183,8 @@ export const API_ENDPOINTS = {
       GET: '/api/super-admin/fee-vouchers/:id',
       UPDATE: '/api/super-admin/fee-vouchers/:id',
       DELETE: '/api/super-admin/fee-vouchers/:id',
+      APPROVE_PAYMENT: '/api/super-admin/fee-vouchers/:voucherId/approve-payment',
+      // REJECT_PAYMENT: '/api/super-admin/fee-vouchers/:voucherId/reject-payment',
     },
 
     // Subjects Management
@@ -213,7 +215,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/super-admin/attendance/:id',
       DELETE: '/api/super-admin/attendance/:id',
     },
-    
+
 
     // Grades (alias to school endpoints)
     GRADES: {
@@ -232,7 +234,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/super-admin/departments/:id',
       DELETE: '/api/super-admin/departments/:id',
     },
-    
+
     // Admins Management
     ADMINS: {
       CREATE: '/api/super-admin/admins',
@@ -242,7 +244,7 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/admins/:id',
       ASSIGN_BRANCH: '/api/super-admin/admins/:id/assign-branch',
     },
-    
+
     // Reports
     REPORTS: {
       OVERALL: '/api/super-admin/reports/overall',
@@ -252,7 +254,7 @@ export const API_ENDPOINTS = {
       PERFORMANCE: '/api/super-admin/reports/performance',
       EXPORT: '/api/super-admin/reports/export',
     },
-    
+
     // Users Management
     USERS: {
       LIST: '/api/super-admin/users',
@@ -303,7 +305,7 @@ export const API_ENDPOINTS = {
       CLASS_TIMETABLE: (classId) => `/api/branch-admin/timetables/class/${classId}`,
       TEACHER_TIMETABLE: (teacherId) => `/api/branch-admin/timetables/teacher/${teacherId}`,
     },
-    
+
     // Teachers Management
     TEACHERS: {
       CREATE: '/api/branch-admin/teachers',
@@ -315,7 +317,7 @@ export const API_ENDPOINTS = {
       ASSIGN_CLASSES: '/api/branch-admin/teachers/:id/assign-classes',
       SCHEDULE: '/api/branch-admin/teachers/:id/schedule',
     },
-    
+
     // Students Management
     STUDENTS: {
       CREATE: '/api/branch-admin/students',
@@ -330,7 +332,7 @@ export const API_ENDPOINTS = {
       EXPORT: '/api/branch-admin/students/export',
       SEARCH: '/api/branch-admin/students/search',
     },
-    
+
     // Classes Management
     CLASSES: {
       CREATE: '/api/branch-admin/classes',
@@ -342,7 +344,7 @@ export const API_ENDPOINTS = {
       STUDENTS: '/api/branch-admin/classes/:id/students',
       TIMETABLE: '/api/branch-admin/classes/:id/timetable',
     },
-    
+
     // Grades (alias to school endpoints)
     GRADES: {
       LIST: '/api/school/grades',
@@ -351,7 +353,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/school/grades/:id',
       DELETE: '/api/school/grades/:id',
     },
-    
+
     // Subjects Management
     SUBJECTS: {
       CREATE: '/api/branch-admin/subjects',
@@ -360,7 +362,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/subjects/:id',
       DELETE: '/api/branch-admin/subjects/:id',
     },
-    
+
     // Events Management
     EVENTS: {
       CREATE: '/api/branch-admin/events',
@@ -369,7 +371,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/events/:id',
       DELETE: '/api/branch-admin/events/:id',
     },
-    
+
     // Departments Management
     DEPARTMENTS: {
       CREATE: '/api/branch-admin/departments',
@@ -378,7 +380,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/departments/:id',
       DELETE: '/api/branch-admin/departments/:id',
     },
-    
+
     // Syllabus Management
     SYLLABUS: {
       CREATE: '/api/branch-admin/syllabus',
@@ -387,7 +389,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/syllabus/:id',
       DELETE: '/api/branch-admin/syllabus/:id',
     },
-    
+
     // Exams Management
     EXAMS: {
       CREATE: '/api/branch-admin/exams',
@@ -396,7 +398,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/exams/:id',
       DELETE: '/api/branch-admin/exams/:id',
     },
-    
+
     // Attendance Management
     ATTENDANCE: {
       CREATE: '/api/branch-admin/attendance',
@@ -406,7 +408,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/attendance/:id',
       DELETE: '/api/branch-admin/attendance/:id',
     },
-    
+
     // Fee Management
     FEES: {
       CREATE: '/api/branch-admin/fees',
@@ -415,7 +417,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/fees/:id',
       DELETE: '/api/branch-admin/fees/:id',
     },
-    
+
     // Fee Templates
     FEE_TEMPLATES: {
       CREATE: '/api/branch-admin/fee-templates',
@@ -433,7 +435,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/fee-categories/:id',
       DELETE: '/api/branch-admin/fee-categories/:id',
     },
-    
+
     // Fee Vouchers
     FEE_VOUCHERS: {
       CREATE: '/api/branch-admin/fee-vouchers',
@@ -441,8 +443,10 @@ export const API_ENDPOINTS = {
       GET: '/api/branch-admin/fee-vouchers/:id',
       UPDATE: '/api/branch-admin/fee-vouchers/:id',
       DELETE: '/api/branch-admin/fee-vouchers/:id',
+      APPROVE_PAYMENT: '/api/branch-admin/fee-vouchers/:voucherId/approve-payment',
+      // REJECT_PAYMENT: '/api/branch-admin/fee-vouchers/:voucherId/reject-payment',
     },
-    
+
     // Expenses Management
     EXPENSES: {
       CREATE: '/api/branch-admin/expenses',
@@ -451,7 +455,7 @@ export const API_ENDPOINTS = {
       UPDATE: '/api/branch-admin/expenses/:id',
       DELETE: '/api/branch-admin/expenses/:id',
     },
-    
+
     // Academic Structure (Read-only)
     LEVELS: {
       LIST: '/api/branch-admin/levels',
@@ -462,7 +466,7 @@ export const API_ENDPOINTS = {
     GRADES_VIEW: {
       LIST: '/api/branch-admin/grades',
     },
-    
+
     // Reports
     REPORTS: {
       ATTENDANCE: '/api/branch-admin/reports/attendance',
@@ -471,7 +475,7 @@ export const API_ENDPOINTS = {
       TEACHER_PERFORMANCE: '/api/branch-admin/reports/teacher-performance',
       EXPORT: '/api/branch-admin/reports/export',
     },
-    
+
     // Finance
     FINANCE: {
       FEES: '/api/branch-admin/finance/fees',
@@ -589,83 +593,83 @@ export const API_ENDPOINTS = {
     },
   },
 
-  // Parent Endpoints
-  PARENT: {
-    // Profile
-    PROFILE: {
-      GET: '/api/parent/profile',
-      UPDATE: '/api/parent/profile',
-      SETTINGS: '/api/parent/profile/settings',
-    },
+  // // Parent Endpoints
+  // PARENT: {
+  //   // Profile
+  //   PROFILE: {
+  //     GET: '/api/parent/profile',
+  //     UPDATE: '/api/parent/profile',
+  //     SETTINGS: '/api/parent/profile/settings',
+  //   },
 
-    // Auth
-    AUTH: {
-      SIGNUP: '/api/parent/auth/signup',
-    },
+  //   // Auth
+  //   AUTH: {
+  //     SIGNUP: '/api/parent/auth/signup',
+  //   },
 
-    // Announcements
-    ANNOUNCEMENTS: '/api/parent/announcements',
+  //   // Announcements
+  //   ANNOUNCEMENTS: '/api/parent/announcements',
 
-    // Attendance
-    ATTENDANCE: '/api/parent/attendance',
+  //   // Attendance
+  //   ATTENDANCE: '/api/parent/attendance',
 
-    // Children
-    CHILDREN: {
-      LIST: '/api/parent/children',
-      GET: '/api/parent/children/[id]',
-      ASSIGNMENTS: '/api/parent/children/assignments',
-      NOTES: '/api/parent/children/notes',
-      QUIZZES: '/api/parent/children/quizzes',
-      ANNOUNCEMENTS: '/api/parent/children/[id]/announcements',
-      ATTENDANCE: '/api/parent/children/[id]/attendance',
-      MESSAGES: '/api/parent/children/[id]/messages',
-    },
+  //   // Children
+  //   CHILDREN: {
+  //     LIST: '/api/parent/children',
+  //     GET: '/api/parent/children/[id]',
+  //     ASSIGNMENTS: '/api/parent/children/assignments',
+  //     NOTES: '/api/parent/children/notes',
+  //     QUIZZES: '/api/parent/children/quizzes',
+  //     ANNOUNCEMENTS: '/api/parent/children/[id]/announcements',
+  //     ATTENDANCE: '/api/parent/children/[id]/attendance',
+  //     MESSAGES: '/api/parent/children/[id]/messages',
+  //   },
 
-    // Events
-    EVENTS: '/api/parent/events',
+  //   // Events
+  //   EVENTS: '/api/parent/events',
 
-    // Messages
-    MESSAGES: {
-      LIST: '/api/parent/messages',
-      COMPOSE: '/api/parent/messages/compose',
-    },
+  //   // Messages
+  //   MESSAGES: {
+  //     LIST: '/api/parent/messages',
+  //     COMPOSE: '/api/parent/messages/compose',
+  //   },
 
-    // Notifications
-    NOTIFICATIONS: {
-      LIST: '/api/parent/notifications',
-      GET: '/api/parent/notifications/[id]',
-    },
+  //   // Notifications
+  //   NOTIFICATIONS: {
+  //     LIST: '/api/parent/notifications',
+  //     GET: '/api/parent/notifications/[id]',
+  //   },
 
-    // Academics
-    ACADEMICS: {
-      SYLLABUS: '/api/parent/academics/syllabus',
-    },
+  //   // Academics
+  //   ACADEMICS: {
+  //     SYLLABUS: '/api/parent/academics/syllabus',
+  //   },
 
-    // Privacy
-    PRIVACY: '/api/parent/privacy',
+  //   // Privacy
+  //   PRIVACY: '/api/parent/privacy',
 
-    // Support
-    SUPPORT: '/api/parent/support',
-  },
+  //   // Support
+  //   SUPPORT: '/api/parent/support',
+  // },
 
   // Student Endpoints
   STUDENT: {
     DASHBOARD: '/student/dashboard',
-    
+
     // Profile
     PROFILE: {
       GET: '/student/profile',
       UPDATE: '/student/profile',
       AVATAR: '/student/profile/avatar',
     },
-    
+
     // Attendance
     ATTENDANCE: {
       VIEW: '/student/attendance',
       REPORT: '/student/attendance/report',
       SUMMARY: '/student/attendance/summary',
     },
-    
+
     // Grades
     GRADES: {
       VIEW: '/student/grades',
@@ -673,7 +677,7 @@ export const API_ENDPOINTS = {
       REPORT: '/student/grades/report',
       HISTORY: '/student/grades/history',
     },
-    
+
     // Assignments
     ASSIGNMENTS: {
       LIST: '/student/assignments',
@@ -681,21 +685,21 @@ export const API_ENDPOINTS = {
       SUBMIT: '/student/assignments/:id/submit',
       SUBMISSIONS: '/student/assignments/submissions',
     },
-    
+
     // Schedule
     SCHEDULE: {
       TIMETABLE: '/student/schedule/timetable',
       EXAMS: '/student/schedule/exams',
       EVENTS: '/student/schedule/events',
     },
-    
+
     // Fees
     FEES: {
       VIEW: '/student/fees',
       HISTORY: '/student/fees/history',
       INVOICES: '/student/fees/invoices',
     },
-    
+
     // Library
     LIBRARY: {
       BOOKS: '/student/library/books',
@@ -709,7 +713,7 @@ export const API_ENDPOINTS = {
   COMMON: {
     // File Upload
     UPLOAD: '/api/upload',
-    
+
     // Notifications
     NOTIFICATIONS: {
       LIST: '/common/notifications',
@@ -718,7 +722,7 @@ export const API_ENDPOINTS = {
       UNREAD_COUNT: '/common/notifications/unread-count',
       DELETE: '/common/notifications/:id',
     },
-    
+
     // Search
     SEARCH: {
       GLOBAL: '/common/search',
@@ -759,17 +763,57 @@ export const API_ENDPOINTS = {
       DELETE: '/api/school/grade-stream-subjects/:id',
     },
   },
+
+  // Parent Portal Endpoints
+  PARENT: {
+    // Get all children of authenticated parent
+    CHILDREN: '/api/parent',
+
+    // Child specific endpoints
+    CHILD: {
+      // Child details
+      DETAILS: '/api/parent/:childId',
+
+      // Academic information
+      ASSIGNMENTS: '/api/parent/:childId/assignments',
+      QUIZZES: '/api/parent/:childId/quizzes',
+      SYLLABUS: '/api/parent/:childId/syllabus',
+      NOTES: '/api/parent/:childId/notes',
+
+      // School activities
+      EVENTS: '/api/parent/:childId/events',
+      ANNOUNCEMENTS: '/api/parent/:childId/announcements',
+
+      // Communication
+      MESSAGES: '/api/parent/:childId/messages',
+      NOTIFICATIONS: '/api/parent/:childId/notifications',
+
+      // Progress tracking
+      ATTENDANCE: '/api/parent/:childId/attendance',
+
+      // Resources
+      LIBRARY: '/api/parent/:childId/library',
+
+      // Fee vouchers
+      FEE_VOUCHERS: '/api/parent/:childId/fee-vouchers',
+      PAY_FEE_VOUCHER: '/api/parent/:childId/fee-vouchers/:id/pay',
+
+      // Assignment submission
+      SUBMIT_ASSIGNMENT: '/api/parent/:childId/assignments/submit',
+    },
+  },
+
 };
 
 // Helper function to build URL with parameters
 export const buildUrl = (endpoint, params = {}) => {
   let url = endpoint;
-  
+
   // Replace path parameters
   Object.keys(params).forEach((key) => {
     url = url.replace(`:${key}`, params[key]);
   });
-  
+
   return url;
 };
 

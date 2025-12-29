@@ -118,11 +118,10 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
       }
     }
 
-    // Update password if provided
+    // Update password if provided (will be hashed by pre-save hook)
     const password = body.password;
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      user.passwordHash = await bcrypt.hash(password, salt);
+      user.passwordHash = password;
     }
 
     // Initialize studentProfile if it doesn't exist and role is student

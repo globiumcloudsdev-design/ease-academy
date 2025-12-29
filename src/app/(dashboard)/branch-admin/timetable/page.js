@@ -72,12 +72,16 @@ export default function BranchTimetablePage() {
     if (!branchId) return;
     fetchClasses();
     fetchTeachers();
+    fetchTeacherSchedulesForBranch(branchId, selectedAcademicYear);
     // initial fetch
     fetchTimetables();
   }, [branchId]);
 
   useEffect(() => {
-    if (selectedClass) fetchSections(selectedClass);
+    if (selectedClass) {
+      fetchSections(selectedClass);
+      fetchSubjects(selectedClass);
+    }
   }, [selectedClass]);
 
   const fetchClasses = async () => {
@@ -100,13 +104,23 @@ export default function BranchTimetablePage() {
   };
 
   const fetchSubjects = async (classId) => {
-    try {
-      if (!classId) return setSubjects([]);
+    if (!classId || typeof classId !== 'string') {
       setSubjects([]);
-      // If there's a dedicated branch-admin subjects endpoint, use it. Fallback to empty list.
-      // Keeping tolerant so branch-admin page doesn't crash if subjects are fetched from super-admin endpoints.
-    } catch (e) {
-      console.error(e);
+      return;
+    }
+    try {
+      const response = await apiClient.get(
+        `${API_ENDPOINTS.BRANCH_ADMIN.SUBJECTS.LIST}?classId=${encodeURIComponent(classId)}`
+      );
+      if (response.success) {
+        // API returns data.subjects, not just data
+        setSubjects(response.data?.subjects || response.data || []);
+      } else {
+        setSubjects([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subjects:', error);
+      toast.error('Failed to load subjects');
       setSubjects([]);
     }
   };
@@ -180,10 +194,14 @@ export default function BranchTimetablePage() {
 
   const fetchTeachers = async () => {
     try {
-      const res = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.TEACHERS.LIST, { branchId });
-      if (res.success) setTeachers(res.data.teachers || []);
+      const res = await apiClient.get(`${API_ENDPOINTS.BRANCH_ADMIN.TEACHERS.LIST}?limit=1000`);
+      if (res.success) {
+        setTeachers(res.data?.teachers || res.data || []);
+        console.log('Teachers fetched:', res || 0);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch teachers:', e);
+      toast.error('Failed to load teachers');
     }
   };
 
@@ -380,10 +398,24 @@ export default function BranchTimetablePage() {
     return true;
   };
 
-  const getAvailableTeachers = (day, startTime, endTime, currentPeriodIndex = -1) => {
-    if (!branchId) return [];
-    if (!day || !startTime || !endTime) return teachers.filter(t => t.branchId?._id === branchId || t.branchId === branchId);
-    return teachers.filter(t => (t.branchId?._id === branchId || t.branchId === branchId)).filter(teacher => isTeacherAvailable(teacher._id, day, startTime, endTime, currentPeriodIndex));
+  const getAvailableTeachers = (day, startTime, endTime, currentPeriodIndex = -1, currentTeacherId = null) => {
+    console.log('getAvailableTeachers called - teachers length:', teachers.length);
+    
+    if (!day || !startTime || !endTime) {
+      console.log('Missing day/time, returning all teachers');
+      return teachers;
+    }
+    
+    const availableTeachers = teachers.filter(teacher => {
+      // Always include the currently assigned teacher for this period
+      if (currentTeacherId && teacher._id === currentTeacherId) {
+        return true;
+      }
+      return isTeacherAvailable(teacher._id, day, startTime, endTime, currentPeriodIndex);
+    });
+    
+    console.log('Available teachers count:', availableTeachers.length);
+    return availableTeachers;
   };
 
   const fetchTeacherSchedulesForBranch = async (branchIdParam, academicYear) => {
@@ -749,7 +781,7 @@ export default function BranchTimetablePage() {
 
                     <div className="space-y-2">
                       <Label>Teacher</Label>
-                      <Dropdown value={period.teacherId} onChange={(e) => updatePeriod(index, 'teacherId', e.target.value)} options={[{ value: '', label: 'None' }, ...getAvailableTeachers(period.day, period.startTime, period.endTime, index).map(t => ({ value: t._id, label: `${t.firstName} ${t.lastName}` }))]} placeholder="Select teacher" />
+                      <Dropdown value={period.teacherId} onChange={(e) => updatePeriod(index, 'teacherId', e.target.value)} options={[{ value: '', label: 'None' }, ...getAvailableTeachers(period.day, period.startTime, period.endTime, index, period.teacherId).map(t => ({ value: t._id, label: `${t.firstName} ${t.lastName}` }))]} placeholder="Select teacher" />
                     </div>
 
                     <div className="space-y-2"><Label>Room Number</Label><Input value={period.roomNumber} onChange={(e) => updatePeriod(index, 'roomNumber', e.target.value)} placeholder="e.g., 101, Lab A" /></div>

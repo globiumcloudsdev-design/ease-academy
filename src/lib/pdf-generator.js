@@ -289,471 +289,440 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
 export const generateFeeVoucherPDF = (voucher) => {
   const doc = new jsPDF();
   
-  // Detect mobile device
-  const isMobile = window.innerWidth < 768;
+  // Check if we're in a browser environment for responsive detection
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
   
-  // Adjust sizes based on device
-  const scaleFactor = isMobile ? 0.85 : 1;
-  const mobilePadding = 10;
+  // Professional Color Palette
+  const primaryColor = [0, 102, 204]; // Professional Blue
+  const secondaryColor = [52, 73, 94]; // Dark Gray
+  const accentColor = [34, 197, 94]; // Green for amounts
+  const warningColor = [245, 158, 11]; // Amber for warnings
+  const borderColor = [229, 231, 235]; // Light Gray for borders
+  const highlightColor = [254, 252, 232]; // Soft Yellow for highlights
   
-  // Responsive Colors
-  const primaryColor = [25, 86, 136]; // Dark Blue
-  const secondaryColor = [60, 60, 60]; // Dark Gray
-  const accentColor = [220, 53, 69]; // Red
-  const successColor = [40, 167, 69]; // Green
-  const lightBgColor = [248, 249, 250]; // Light Gray
-  const borderColor = [206, 212, 218]; // Border Gray
-
-  // Responsive Dimensions
+  // Page dimensions
   const pageWidth = doc.internal.pageSize.width;
-  const margin = isMobile ? mobilePadding : 15;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = isMobile ? 8 : 12;
   const contentWidth = pageWidth - (2 * margin);
   
-  // Responsive Font Sizes
-  const headerFontSize = isMobile ? 18 : 24;
-  const titleFontSize = isMobile ? 10 : 12;
-  const sectionFontSize = isMobile ? 11 : 12;
-  const bodyFontSize = isMobile ? 9 : 10;
-  const smallFontSize = isMobile ? 7 : 8;
-
-  // Responsive Spacing
+  // Responsive font sizes
+  const h1Size = isMobile ? 20 : 24;
+  const h2Size = isMobile ? 14 : 16;
+  const h3Size = isMobile ? 12 : 14;
+  const bodySize = isMobile ? 9 : 10;
+  const smallSize = isMobile ? 7 : 8;
+  
+  // Responsive spacing
   const lineHeight = isMobile ? 6 : 7;
-  const sectionSpacing = isMobile ? 12 : 15;
-  const boxPadding = isMobile ? 8 : 10;
-
-  // Header - Mobile Optimized
+  const sectionGap = isMobile ? 12 : 15;
+  const boxPadding = isMobile ? 6 : 8;
+  
+  // Clear background
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageWidth, pageHeight, 'F');
+  
+  // ========== HEADER SECTION ==========
+  let yPosition = margin;
+  
+  // School Header with badge
   doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, pageWidth, isMobile ? 35 : 40, 'F');
+  doc.roundedRect(margin, yPosition, contentWidth, isMobile ? 35 : 40, 3, 3, 'F');
   
-  // School Name - Responsive
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(headerFontSize);
-  doc.setFont('helvetica', 'bold');
-  const headerText = isMobile ? 'EASE' : 'EASE ACADEMY';
-  doc.text(headerText, pageWidth / 2, isMobile ? 18 : 20, { align: 'center' });
-  
-  // Subtitle
-  if (!isMobile) {
-    doc.setFontSize(titleFontSize);
-    doc.setFont('helvetica', 'normal');
-    doc.text('OFFICIAL FEE PAYMENT VOUCHER', pageWidth / 2, isMobile ? 25 : 30, { align: 'center' });
-  }
-
-  let yPosition = isMobile ? 45 : 50;
-
-  // Voucher Number and Status - Mobile Stacked Layout
-  if (isMobile) {
-    // Stacked layout for mobile
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(margin, yPosition, contentWidth, 12, 2, 2, 'F');
-    doc.setTextColor(...primaryColor);
-    doc.setFontSize(bodyFontSize);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`VOUCHER #${voucher.voucherNumber}`, pageWidth / 2, yPosition + 8, { align: 'center' });
-    
-    yPosition += 15;
-    
-    // Status Badge
-    const status = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
-    const statusBgColor = voucher.status === 'paid' ? successColor : 
-                         voucher.status === 'partial' ? [255, 193, 7] : accentColor;
-    
-    doc.setFillColor(...statusBgColor);
-    doc.roundedRect(margin, yPosition, contentWidth, 12, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.text(status.toUpperCase(), pageWidth / 2, yPosition + 8, { align: 'center' });
-    
-    yPosition += 20;
-  } else {
-    // Desktop layout (side by side)
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(pageWidth - 60, yPosition, 50, 15, 2, 2, 'F');
-    doc.setTextColor(...primaryColor);
-    doc.setFontSize(bodyFontSize);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`VCH-${voucher.voucherNumber}`, pageWidth - 35, yPosition + 10, { align: 'center' });
-    
-    const status = voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1);
-    const statusBgColor = voucher.status === 'paid' ? successColor : 
-                         voucher.status === 'partial' ? [255, 193, 7] : accentColor;
-    
-    doc.setFillColor(...statusBgColor);
-    doc.roundedRect(margin, yPosition, 60, 15, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.text(status.toUpperCase(), margin + 30, yPosition + 10, { align: 'center' });
-    
-    yPosition += 20;
-  }
-
-  // Section 1: Student Information - Responsive
-  doc.setFillColor(...lightBgColor);
-  const studentBoxHeight = isMobile ? 60 : 40;
-  doc.roundedRect(margin, yPosition, contentWidth, studentBoxHeight, 3, 3, 'F');
-  
+  // School badge/logo
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(margin + (isMobile ? 5 : 10), yPosition + (isMobile ? 8 : 10), 
+                  isMobile ? 20 : 25, isMobile ? 20 : 25, 3, 3, 'F');
   doc.setTextColor(...primaryColor);
-  doc.setFontSize(sectionFontSize);
+  doc.setFontSize(isMobile ? 12 : 16);
   doc.setFont('helvetica', 'bold');
-  doc.text('STUDENT INFO', margin + boxPadding, yPosition + (isMobile ? 6 : 8));
+  doc.text('EA', margin + (isMobile ? 15 : 22.5), yPosition + (isMobile ? 20 : 23), { align: 'center' });
   
-  // Underline
+  // School name with responsive positioning
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(h1Size);
+  doc.setFont('helvetica', 'bold');
+  const schoolName = isMobile ? 'EASE ACADEMY' : 'EASE ACADEMY';
+  const schoolX = isMobile ? pageWidth / 2 : margin + (isMobile ? 40 : 50);
+  doc.text(schoolName, schoolX, yPosition + (isMobile ? 18 : 22));
+  
+  // School motto
+  if (!isMobile) {
+    doc.setFontSize(bodySize);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Center of Excellence', margin + 50, yPosition + 30);
+  }
+  
+  // Voucher title
+  doc.setFontSize(h2Size);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FEE PAYMENT VOUCHER', pageWidth / 2, yPosition + (isMobile ? 30 : 35), { align: 'center' });
+  
+  yPosition += isMobile ? 40 : 45;
+  
+  // ========== VOUCHER INFO BADGE ==========
+  doc.setFillColor(255, 255, 255);
   doc.setDrawColor(...primaryColor);
   doc.setLineWidth(0.5);
-  const underlineLength = isMobile ? 40 : 50;
-  doc.line(margin + boxPadding, yPosition + (isMobile ? 8 : 10), 
-           margin + boxPadding + underlineLength, yPosition + (isMobile ? 8 : 10));
-
-  // Student Details - Mobile: Stacked, Desktop: Two Columns
+  doc.roundedRect(margin, yPosition, contentWidth, isMobile ? 20 : 24, 3, 3, 'FD');
+  
+  // Voucher number
+  doc.setTextColor(...primaryColor);
+  doc.setFontSize(h3Size);
+  doc.setFont('helvetica', 'bold');
+  const voucherText = isMobile ? `Voucher #${voucher.voucherNumber}` : `Fee Voucher #${voucher.voucherNumber}`;
+  doc.text(voucherText, margin + boxPadding, yPosition + (isMobile ? 8 : 10));
+  
+  // Issue date
+  doc.setFontSize(bodySize);
+  doc.setFont('helvetica', 'normal');
+  const issueDate = new Date().toLocaleDateString('en-PK', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  doc.text(`Issued: ${issueDate}`, contentWidth - margin - boxPadding, yPosition + (isMobile ? 8 : 10), { align: 'right' });
+  
+  yPosition += isMobile ? 25 : 28;
+  
+  // ========== STUDENT INFORMATION SECTION ==========
+  // Section header
+  doc.setTextColor(...secondaryColor);
+  doc.setFontSize(h3Size);
+  doc.setFont('helvetica', 'bold');
+  doc.text('STUDENT DETAILS', margin, yPosition);
+  
+  yPosition += (isMobile ? 5 : 7);
+  
+  // Student info box
+  doc.setFillColor(249, 250, 251);
+  doc.roundedRect(margin, yPosition, contentWidth, isMobile ? 45 : 50, 2, 2, 'F');
+  doc.setDrawColor(...borderColor);
+  doc.rect(margin, yPosition, contentWidth, isMobile ? 45 : 50);
+  
+  const studentY = yPosition + boxPadding;
+  
+  // Get student data with fallbacks
   const studentName = voucher.studentId?.fullName ||
                      `${voucher.studentId?.firstName || ''} ${voucher.studentId?.lastName || ''}`.trim() ||
                      'N/A';
-  const fatherName = voucher.studentId?.fatherName || 'N/A';
+  const fatherName = voucher.studentId?.fatherName || 
+                    voucher.studentId?.studentProfile?.father?.name || 'N/A';
   const registrationNumber = voucher.studentId?.studentProfile?.registrationNumber ||
-                            voucher.studentId?.registrationNumber ||
-                            'N/A';
+                            voucher.studentId?.registrationNumber || 'N/A';
   const rollNumber = voucher.studentId?.studentProfile?.rollNumber ||
-                    voucher.studentId?.rollNumber ||
-                    'N/A';
+                    voucher.studentId?.rollNumber || 'N/A';
   const className = voucher.classId?.name || 'N/A';
   const section = voucher.studentId?.studentProfile?.section || 'N/A';
-
-  doc.setFontSize(bodyFontSize);
-  doc.setTextColor(...secondaryColor);
   
-  if (isMobile) {
-    // Mobile: Stacked Layout
-    let detailY = yPosition + 15;
-    
-    // Name
-    doc.setFont('helvetica', 'bold');
-    doc.text(studentName, margin + boxPadding, detailY);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Father: ${fatherName}`, margin + boxPadding, detailY + lineHeight);
-    
-    // Class and Section
-    detailY += lineHeight * 2;
-    doc.text(`Class: ${className}`, margin + boxPadding, detailY);
-    doc.text(`Section: ${section}`, margin + boxPadding + (contentWidth/2), detailY);
-    
-    // Registration and Roll Number
-    detailY += lineHeight;
-    doc.text(`Reg #: ${registrationNumber}`, margin + boxPadding, detailY);
-    doc.text(`Roll #: ${rollNumber}`, margin + boxPadding + (contentWidth/2), detailY);
-    
-    yPosition += studentBoxHeight + 10;
-  } else {
-    // Desktop: Two Columns
-    yPosition += 15;
-    
-    // Column 1
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Name:`, margin + boxPadding, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.text(studentName, margin + boxPadding + 15, yPosition);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Father:`, margin + boxPadding, yPosition + lineHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.text(fatherName, margin + boxPadding + 15, yPosition + lineHeight);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Reg #:`, margin + boxPadding, yPosition + (lineHeight * 2));
-    doc.setFont('helvetica', 'bold');
-    doc.text(registrationNumber, margin + boxPadding + 15, yPosition + (lineHeight * 2));
-
-    // Column 2
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Class:`, margin + boxPadding + 100, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.text(className, margin + boxPadding + 115, yPosition);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Section:`, margin + boxPadding + 100, yPosition + lineHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.text(section, margin + boxPadding + 115, yPosition + lineHeight);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Roll #:`, margin + boxPadding + 100, yPosition + (lineHeight * 2));
-    doc.setFont('helvetica', 'bold');
-    doc.text(rollNumber, margin + boxPadding + 115, yPosition + (lineHeight * 2));
-    
-    yPosition += studentBoxHeight - 10;
-  }
-
-  // Section 2: Fee Details - Responsive
-  const feeBoxHeight = isMobile ? 50 : 35;
-  doc.setFillColor(...lightBgColor);
-  doc.roundedRect(margin, yPosition, contentWidth, feeBoxHeight, 3, 3, 'F');
-  
-  doc.setTextColor(...primaryColor);
-  doc.setFontSize(sectionFontSize);
-  doc.setFont('helvetica', 'bold');
-  doc.text('FEE DETAILS', margin + boxPadding, yPosition + (isMobile ? 6 : 8));
-  doc.line(margin + boxPadding, yPosition + (isMobile ? 8 : 10), 
-           margin + boxPadding + (isMobile ? 40 : 45), yPosition + (isMobile ? 8 : 10));
-
-  const monthName = MONTHS.find(m => m.value === voucher.month.toString())?.label || voucher.month;
-  const dueDate = voucher.dueDate ? new Date(voucher.dueDate).toLocaleDateString('en-PK') : 'N/A';
-  const issueDate = voucher.createdAt ? new Date(voucher.createdAt).toLocaleDateString('en-PK') : 
-                   new Date().toLocaleDateString('en-PK');
-
-  doc.setFontSize(bodyFontSize);
+  doc.setFontSize(bodySize);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...secondaryColor);
-
-  if (isMobile) {
-    // Mobile: Stacked Layout
-    let feeY = yPosition + 15;
-    
-    // Row 1
-    doc.text(`Month:`, margin + boxPadding, feeY);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${monthName} ${voucher.year}`, margin + boxPadding + 20, feeY);
-    
-    // Row 2
-    feeY += lineHeight;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Due Date:`, margin + boxPadding, feeY);
-    doc.setFont('helvetica', 'bold');
-    doc.text(dueDate, margin + boxPadding + 20, feeY);
-    
-    // Row 3
-    feeY += lineHeight;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Branch:`, margin + boxPadding, feeY);
-    doc.setFont('helvetica', 'bold');
-    doc.text(voucher.branchId?.name || 'N/A', margin + boxPadding + 20, feeY);
-    
-    // Row 4
-    feeY += lineHeight;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Template:`, margin + boxPadding, feeY);
-    doc.setFont('helvetica', 'bold');
-    doc.text(voucher.templateId?.name || 'N/A', margin + boxPadding + 20, feeY);
-    
-    yPosition += feeBoxHeight + 10;
-  } else {
-    // Desktop: Two Columns
-    yPosition += 15;
-    
-    // Column 1
-    doc.text(`Month:`, margin + boxPadding, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${monthName} ${voucher.year}`, margin + boxPadding + 15, yPosition);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Due Date:`, margin + boxPadding, yPosition + lineHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.text(dueDate, margin + boxPadding + 15, yPosition + lineHeight);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Issue Date:`, margin + boxPadding, yPosition + (lineHeight * 2));
-    doc.setFont('helvetica', 'bold');
-    doc.text(issueDate, margin + boxPadding + 15, yPosition + (lineHeight * 2));
-
-    // Column 2
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Branch:`, margin + boxPadding + 100, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.text(voucher.branchId?.name || 'N/A', margin + boxPadding + 115, yPosition);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Template:`, margin + boxPadding + 100, yPosition + lineHeight);
-    doc.setFont('helvetica', 'bold');
-    doc.text(voucher.templateId?.name || 'N/A', margin + boxPadding + 115, yPosition + lineHeight);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Session:`, margin + boxPadding + 100, yPosition + (lineHeight * 2));
-    doc.setFont('helvetica', 'bold');
-    doc.text(voucher.academicYear || '2024-25', margin + boxPadding + 115, yPosition + (lineHeight * 2));
-    
-    yPosition += feeBoxHeight - 5;
-  }
-
-  // Amount Breakdown - Responsive Table
-  doc.setTextColor(...primaryColor);
-  doc.setFontSize(isMobile ? 12 : 14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('AMOUNT BREAKDOWN', pageWidth / 2, yPosition, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
   
-  yPosition += isMobile ? 6 : 8;
-
-  // Table Header
-  doc.setFillColor(...primaryColor);
+  if (isMobile) {
+    // Mobile: Stacked layout
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Student:', margin + boxPadding, studentY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(studentName, margin + boxPadding + 20, studentY);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Class:', margin + boxPadding, studentY + lineHeight);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${className} - ${section}`, margin + boxPadding + 20, studentY + lineHeight);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Father:', margin + boxPadding, studentY + (lineHeight * 2));
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(fatherName, margin + boxPadding + 20, studentY + (lineHeight * 2));
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Reg #:', margin + contentWidth/2, studentY + (lineHeight * 3));
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(registrationNumber, margin + contentWidth/2 + 15, studentY + (lineHeight * 3));
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Roll #:', margin + contentWidth/2, studentY + (lineHeight * 4));
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(rollNumber, margin + contentWidth/2 + 15, studentY + (lineHeight * 4));
+  } else {
+    // Desktop: Two-column layout
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Student Name:', margin + boxPadding, studentY);
+    doc.text('Class & Section:', margin + boxPadding, studentY + lineHeight);
+    doc.text('Father Name:', margin + boxPadding, studentY + (lineHeight * 2));
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(studentName, margin + boxPadding + 30, studentY);
+    doc.text(`${className} - ${section}`, margin + boxPadding + 30, studentY + lineHeight);
+    doc.text(fatherName, margin + boxPadding + 30, studentY + (lineHeight * 2));
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...secondaryColor);
+    doc.text('Registration #:', margin + contentWidth/2, studentY);
+    doc.text('Roll Number:', margin + contentWidth/2, studentY + lineHeight);
+    doc.text('Branch:', margin + contentWidth/2, studentY + (lineHeight * 2));
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(registrationNumber, margin + contentWidth/2 + 35, studentY);
+    doc.text(rollNumber, margin + contentWidth/2 + 35, studentY + lineHeight);
+    doc.text(voucher.branchId?.name || 'N/A', margin + contentWidth/2 + 35, studentY + (lineHeight * 2));
+  }
+  
+  yPosition += isMobile ? 50 : 55;
+  
+  // ========== FEE PERIOD SECTION ==========
+  // Section header
+  doc.setTextColor(...secondaryColor);
+  doc.setFontSize(h3Size);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FEE PERIOD', margin, yPosition);
+  
+  yPosition += (isMobile ? 5 : 7);
+  
+  // Fee period box
+  doc.setFillColor(249, 250, 251);
+  doc.roundedRect(margin, yPosition, contentWidth, isMobile ? 20 : 22, 2, 2, 'F');
+  doc.setDrawColor(...borderColor);
+  doc.rect(margin, yPosition, contentWidth, isMobile ? 20 : 22);
+  
+  const periodY = yPosition + boxPadding;
+  
+  const monthName = MONTHS.find(m => m.value === voucher.month.toString())?.label || voucher.month;
+  const dueDate = voucher.dueDate ? new Date(voucher.dueDate).toLocaleDateString('en-PK', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }) : 'N/A';
+  
+  doc.setFontSize(bodySize);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(0, 0, 0);
+  
+  if (isMobile) {
+    doc.text(`Month: ${monthName} ${voucher.year}`, margin + boxPadding, periodY);
+    doc.text(`Due: ${dueDate}`, margin + contentWidth - boxPadding, periodY, { align: 'right' });
+  } else {
+    doc.text(`For Month: ${monthName} ${voucher.year}`, margin + boxPadding, periodY);
+    doc.text(`Due Date: ${dueDate}`, margin + contentWidth/2, periodY);
+    doc.text(`Fee Template: ${voucher.templateId?.name || 'N/A'}`, margin + contentWidth - boxPadding, periodY, { align: 'right' });
+  }
+  
+  yPosition += isMobile ? 25 : 28;
+  
+  // ========== FEE BREAKDOWN SECTION ==========
+  // Section header
+  doc.setTextColor(...secondaryColor);
+  doc.setFontSize(h3Size);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FEE BREAKDOWN', margin, yPosition);
+  
+  yPosition += (isMobile ? 5 : 7);
+  
+  // Prepare fee items
+  const feeItems = [
+    { description: 'Tuition Fee', amount: voucher.amount || 0 },
+    { description: 'Examination Fee', amount: voucher.examinationFee || 0 },
+    { description: 'Library Fee', amount: voucher.libraryFee || 0 },
+    { description: 'Sports Fee', amount: voucher.sportsFee || 0 },
+    { description: 'Computer Fee', amount: voucher.computerFee || 0 },
+    { description: 'Science Lab Fee', amount: voucher.scienceLabFee || 0 },
+    { description: 'Transport Fee', amount: voucher.transportFee || 0 },
+    { description: 'Activity Fee', amount: voucher.activityFee || 0 },
+    { description: 'Late Fee Fine', amount: voucher.lateFeeAmount || 0 },
+    { description: 'Other Charges', amount: voucher.otherCharges || 0 },
+  ];
+  
+  // Filter non-zero items
+  const nonZeroItems = feeItems.filter(item => item.amount > 0);
+  
+  // Add discount if applicable
+  if (voucher.discountAmount > 0) {
+    nonZeroItems.push({ description: 'Discount', amount: -voucher.discountAmount });
+  }
+  
+  // Calculate table height based on number of items
   const headerHeight = isMobile ? 8 : 10;
-  doc.rect(margin, yPosition, contentWidth, headerHeight, 'F');
+  const rowHeight = isMobile ? 8 : 10;
+  const tableHeight = headerHeight + (nonZeroItems.length * rowHeight) + (isMobile ? 12 : 15);
+  
+  // Table header
+  doc.setFillColor(...primaryColor);
+  doc.roundedRect(margin, yPosition, contentWidth, headerHeight, 1, 1, 'F');
   
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(isMobile ? 10 : 11);
+  doc.setFontSize(isMobile ? 9 : 10);
+  doc.setFont('helvetica', 'bold');
   doc.text('Description', margin + boxPadding, yPosition + (isMobile ? 5 : 7));
   doc.text('Amount (PKR)', margin + contentWidth - boxPadding, yPosition + (isMobile ? 5 : 7), { align: 'right' });
   
-  yPosition += headerHeight;
-
-  // Table Rows - Responsive
-  const rows = [
-    { desc: 'Base Fee', amount: voucher.amount || 0 },
-    { desc: 'Discount', amount: -(voucher.discountAmount || 0) },
-    { desc: 'Late Fee', amount: voucher.lateFeeAmount || 0 },
-    { desc: 'Other Charges', amount: voucher.otherCharges || 0 }
-  ];
-
-  const rowHeight = isMobile ? 8 : 10;
-  doc.setFontSize(bodyFontSize);
-  doc.setFont('helvetica', 'normal');
-
-  let totalBeforePaid = 0;
-  rows.forEach((row, index) => {
-    // Alternate row colors
+  let currentY = yPosition + headerHeight;
+  
+  // Table rows
+  let subTotal = 0;
+  
+  nonZeroItems.forEach((item, index) => {
+    // Alternate row background
     if (index % 2 === 0) {
       doc.setFillColor(255, 255, 255);
     } else {
-      doc.setFillColor(248, 249, 250);
+      doc.setFillColor(249, 250, 251);
     }
-    doc.rect(margin, yPosition, contentWidth, rowHeight, 'F');
+    doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
     
-    doc.setTextColor(...secondaryColor);
-    doc.text(row.desc, margin + boxPadding, yPosition + (isMobile ? 5 : 7));
+    // Description
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.text(item.description, margin + boxPadding, currentY + (isMobile ? 5 : 7));
     
-    // Format amount
-    const formattedAmount = row.amount.toLocaleString('en-PK');
-    if (row.amount < 0) {
-      doc.setTextColor(220, 53, 69);
-    }
-    doc.text(formattedAmount, margin + contentWidth - boxPadding, yPosition + (isMobile ? 5 : 7), { align: 'right' });
+    // Amount
+    const amountText = Math.abs(item.amount).toLocaleString('en-PK');
+    const amountColor = item.amount < 0 ? warningColor : secondaryColor;
+    doc.setTextColor(...amountColor);
+    doc.text(amountText, margin + contentWidth - boxPadding, currentY + (isMobile ? 5 : 7), { align: 'right' });
     
-    if (row.amount < 0) {
-      doc.setTextColor(...secondaryColor);
-    }
-    
-    totalBeforePaid += row.amount;
-    yPosition += rowHeight;
+    subTotal += item.amount;
+    currentY += rowHeight;
   });
-
-  // Total Amount Row - Responsive
-  const totalAmount = voucher.totalAmount || totalBeforePaid;
-  const totalRowHeight = isMobile ? 10 : 12;
   
-  doc.setFillColor(255, 243, 205);
-  doc.rect(margin, yPosition, contentWidth, totalRowHeight, 'F');
+  // Total row
+  const totalAmount = voucher.totalAmount || Math.max(0, subTotal);
   
-  doc.setDrawColor(255, 193, 7);
+  doc.setFillColor(...highlightColor);
+  doc.roundedRect(margin, currentY, contentWidth, isMobile ? 10 : 12, 1, 1, 'F');
+  doc.setDrawColor(245, 158, 11);
   doc.setLineWidth(0.5);
-  doc.rect(margin, yPosition, contentWidth, totalRowHeight);
+  doc.rect(margin, currentY, contentWidth, isMobile ? 10 : 12);
   
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(isMobile ? 10 : 11);
-  doc.setTextColor(133, 100, 4);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(133, 77, 14);
   
-  const totalLabel = isMobile ? 'TOTAL:' : 'TOTAL AMOUNT PAYABLE:';
-  doc.text(totalLabel, margin + boxPadding, yPosition + (isMobile ? 6 : 8));
-  doc.text(totalAmount.toLocaleString('en-PK'), margin + contentWidth - boxPadding, yPosition + (isMobile ? 6 : 8), { align: 'right' });
+  const totalLabel = isMobile ? 'TOTAL PAYABLE:' : 'TOTAL AMOUNT PAYABLE:';
+  doc.text(totalLabel, margin + boxPadding, currentY + (isMobile ? 6 : 8));
+  doc.text(totalAmount.toLocaleString('en-PK'), margin + contentWidth - boxPadding, 
+           currentY + (isMobile ? 6 : 8), { align: 'right' });
   
-  yPosition += totalRowHeight + (isMobile ? 12 : 15);
-
-  // Payment Information - Responsive
+  yPosition += tableHeight + sectionGap;
+  
+  // ========== PAYMENT STATUS SECTION ==========
   if (voucher.paidAmount > 0) {
-    const paymentBoxHeight = isMobile ? 30 : 25;
-    doc.setFillColor(225, 250, 235);
-    doc.roundedRect(margin, yPosition, contentWidth, paymentBoxHeight, 3, 3, 'F');
+    const paidAmount = voucher.paidAmount || 0;
+    const remainingAmount = Math.max(0, totalAmount - paidAmount);
     
-    doc.setTextColor(...successColor);
+    doc.setFillColor(240, 253, 244);
+    doc.roundedRect(margin, yPosition, contentWidth, isMobile ? 25 : 30, 3, 3, 'F');
+    doc.setDrawColor(34, 197, 94);
+    doc.rect(margin, yPosition, contentWidth, isMobile ? 25 : 30);
+    
+    doc.setTextColor(21, 128, 61);
     doc.setFontSize(isMobile ? 11 : 12);
     doc.setFont('helvetica', 'bold');
-    doc.text('PAYMENT INFO', margin + boxPadding, yPosition + (isMobile ? 7 : 8));
+    doc.text('PAYMENT STATUS', margin + boxPadding, yPosition + (isMobile ? 8 : 10));
     
-    const paidAmount = voucher.paidAmount || 0;
-    const remainingAmount = totalAmount - paidAmount;
-    
-    yPosition += isMobile ? 12 : 15;
-    
-    doc.setFontSize(bodyFontSize);
+    doc.setFontSize(bodySize);
+    doc.setFont('helvetica', 'normal');
     
     if (isMobile) {
-      // Mobile: Stacked
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Paid: PKR ${paidAmount.toLocaleString('en-PK')}`, margin + boxPadding, yPosition);
-      
-      yPosition += lineHeight;
-      
+      doc.text(`Paid: PKR ${paidAmount.toLocaleString('en-PK')}`, margin + boxPadding, yPosition + 18);
       if (remainingAmount > 0) {
-        doc.setTextColor(accentColor);
-        doc.text(`Due: PKR ${remainingAmount.toLocaleString('en-PK')}`, margin + boxPadding, yPosition);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`Due: PKR ${remainingAmount.toLocaleString('en-PK')}`, margin + contentWidth - boxPadding, 
+                 yPosition + 18, { align: 'right' });
       } else {
-        doc.setTextColor(...successColor);
-        doc.text('FULLY PAID ✓', margin + boxPadding, yPosition);
+        doc.setTextColor(21, 128, 61);
+        doc.text('✓ Fully Paid', margin + contentWidth - boxPadding, yPosition + 18, { align: 'right' });
       }
-      
-      yPosition += lineHeight + 5;
     } else {
-      // Desktop: Side by side
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Paid Amount:`, margin + boxPadding, yPosition);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...successColor);
-      doc.text(`PKR ${paidAmount.toLocaleString('en-PK')}`, margin + boxPadding + 30, yPosition);
-      
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(`Remaining:`, margin + boxPadding + 100, yPosition);
-      
+      doc.text(`Amount Paid: PKR ${paidAmount.toLocaleString('en-PK')}`, margin + boxPadding, yPosition + 20);
       if (remainingAmount > 0) {
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(accentColor);
-        doc.text(`PKR ${remainingAmount.toLocaleString('en-PK')}`, margin + boxPadding + 130, yPosition);
+        doc.setTextColor(220, 38, 38);
+        doc.text(`Balance Due: PKR ${remainingAmount.toLocaleString('en-PK')}`, 
+                 margin + contentWidth - boxPadding, yPosition + 20, { align: 'right' });
       } else {
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...successColor);
-        doc.text(`FULLY PAID`, margin + boxPadding + 130, yPosition);
+        doc.setTextColor(21, 128, 61);
+        doc.text('✓ Fully Paid', margin + contentWidth - boxPadding, yPosition + 20, { align: 'right' });
       }
-      
-      yPosition += 20;
     }
+    
+    yPosition += isMobile ? 30 : 35;
   }
-
-  // Footer - Responsive
-  const pageHeight = doc.internal.pageSize.height;
   
-  // Mobile: Simpler footer
-  if (isMobile) {
-    // Small note at bottom
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(smallFontSize);
-    doc.setFont('helvetica', 'italic');
-    doc.text('Keep this voucher for your records', pageWidth / 2, pageHeight - 15, { align: 'center' });
-    
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-PK')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
-  } else {
-    // Desktop: Full footer with signatures
-    // Signature Line
-    doc.setDrawColor(...borderColor);
-    doc.setLineWidth(0.5);
-    const signatureY = pageHeight - 50;
-    doc.line(margin, signatureY, pageWidth - margin, signatureY);
-    
-    // Signatures
+  // ========== INSTRUCTIONS SECTION ==========
+  if (yPosition < pageHeight - 50) {
     doc.setTextColor(...secondaryColor);
-    doc.setFontSize(smallFontSize);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(isMobile ? 9 : 10);
+    doc.setFont('helvetica', 'italic');
     
-    // Left Signature
-    doc.text('___________________', margin + 25, signatureY + 10);
-    doc.text('Student/Parent', margin + 35, signatureY + 15);
+    const instructions = [
+      '• Please pay before due date to avoid late fee charges.',
+      '• Keep this voucher for your records.',
+      '• Contact accounts office for any queries.'
+    ];
     
-    // Right Signature
-    doc.text('___________________', pageWidth - margin - 65, signatureY + 10);
-    doc.text('Accounts Officer', pageWidth - margin - 60, signatureY + 15);
+    instructions.forEach((instruction, index) => {
+      doc.text(instruction, margin, yPosition + (index * (isMobile ? 4 : 5)));
+    });
     
-    // Footer Bar
-    doc.setFillColor(248, 249, 250);
-    doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
-    
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Generated: ${new Date().toLocaleString('en-PK')}`, margin, pageHeight - 12);
-    doc.text('EASE Academy FMS', pageWidth / 2, pageHeight - 12, { align: 'center' });
-    doc.text('Computer Generated', pageWidth - margin, pageHeight - 12, { align: 'right' });
+    yPosition += isMobile ? 20 : 25;
   }
-
-  // Return PDF as buffer
+  
+  // ========== FOOTER SECTION ==========
+  const footerY = pageHeight - margin - (isMobile ? 25 : 30);
+  
+  // Horizontal line
+  doc.setDrawColor(...borderColor);
+  doc.setLineWidth(0.5);
+  doc.line(margin, footerY, margin + contentWidth, footerY);
+  
+  // Signature areas
+  doc.setFontSize(smallSize);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  
+  if (!isMobile) {
+    // Desktop: Two signature areas
+    doc.text('____________________', margin + 40, footerY + 8);
+    doc.text('Student/Parent Signature', margin + 40, footerY + 13, { align: 'center' });
+    
+    doc.text('____________________', margin + contentWidth - 40, footerY + 8);
+    doc.text('Accounts Officer', margin + contentWidth - 40, footerY + 13, { align: 'center' });
+  }
+  
+  // Footer text
+  doc.setFontSize(smallSize);
+  doc.setFont('helvetica', 'italic');
+  doc.text('Computer Generated Document - No Signature Required', pageWidth / 2, pageHeight - margin - 5, { align: 'center' });
+  
+  // Generation timestamp
+  doc.setFont('helvetica', 'normal');
+  const timestamp = new Date().toLocaleString('en-PK', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  doc.text(`Generated: ${timestamp}`, pageWidth - margin, pageHeight - margin - 10, { align: 'right' });
+  
+  // School contact
+  doc.setTextColor(...primaryColor);
+  doc.setFontSize(smallSize);
+  doc.setFont('helvetica', 'bold');
+  doc.text('EASE Academy • accounts@easeacademy.edu.pk • (042) 123-4567', margin, pageHeight - margin - 10);
+  
   return doc.output('arraybuffer');
 };
