@@ -15,7 +15,7 @@ export const GET = withAuth(async (request, user, userDoc, { params }) => {
     await connectDB();
     const { id } = await params;
     const voucher = await FeeVoucher.findById(id)
-      .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber studentProfile.classId studentProfile.section')
+      .populate('studentId', 'fullName firstName lastName email fatherName studentProfile.registrationNumber studentProfile.rollNumber studentProfile.classId studentProfile.section studentProfile.guardianType studentProfile.father studentProfile.guardian')
       .populate('templateId', 'name code category amount lateFee discount')
       .populate('classId', 'name code')
       .populate('branchId', 'name')

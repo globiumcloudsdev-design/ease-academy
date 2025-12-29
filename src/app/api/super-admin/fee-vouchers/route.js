@@ -38,7 +38,7 @@ export const GET = withAuth(async (request, user, userDoc) => {
 
     const [vouchers, total] = await Promise.all([
       FeeVoucher.find(query)
-        .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber studentProfile.section')
+        .populate('studentId', 'fullName firstName lastName email fatherName studentProfile.registrationNumber studentProfile.rollNumber studentProfile.section studentProfile.guardianType studentProfile.father studentProfile.guardian')
         .populate('templateId', 'name code category')
         .populate('classId', 'name code')
         .populate('branchId', 'name')

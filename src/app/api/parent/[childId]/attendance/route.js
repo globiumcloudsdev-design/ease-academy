@@ -3,6 +3,8 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import Attendance from '@/backend/models/Attendance';
+import Branch from '@/backend/models/Branch';
+import Class from '@/backend/models/Class';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
