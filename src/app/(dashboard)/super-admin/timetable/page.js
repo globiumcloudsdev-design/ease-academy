@@ -49,8 +49,6 @@ const PERIOD_TYPES = [
 ];
 
 export default function TimetablePage() {
-    const { execute: request, loading } = useApi();
-
     const [timetables, setTimetables] = useState([]);
     const [branches, setBranches] = useState([]);
     const [classes, setClasses] = useState([]);
@@ -72,6 +70,7 @@ export default function TimetablePage() {
     const [showDialog, setShowDialog] = useState(false);
     const [editingTimetable, setEditingTimetable] = useState(null);
     const [viewingTimetable, setViewingTimetable] = useState(null);
+    const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -501,6 +500,7 @@ export default function TimetablePage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
         try {
             let response;
@@ -529,6 +529,8 @@ export default function TimetablePage() {
             }
         } catch (error) {
             toast.error(error.message || 'Failed to save timetable');
+        } finally {
+            setLoading(false);
         }
     };
 
