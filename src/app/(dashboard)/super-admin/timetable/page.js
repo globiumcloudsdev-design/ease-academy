@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useApi } from '@/hooks/useApi';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import { Button } from '@/components/ui/button';
 import {

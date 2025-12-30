@@ -23,6 +23,12 @@ import Modal from '@/components/ui/modal';
 import Input from '@/components/ui/input';
 import Dropdown from '@/components/ui/dropdown';
 import { Button } from '@/components/ui/button';
+import dynamic from 'next/dynamic';
+
+const BranchMap = dynamic(() => import('@/components/branch/BranchMap'), { 
+  ssr: false,
+  loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center text-gray-400">Loading Map...</div>
+});
 
 export default function BranchesPage() {
   const [branches, setBranches] = useState([]);
@@ -46,6 +52,19 @@ export default function BranchesPage() {
     postalCode: '',
     establishedDate: '',
     status: 'active',
+    location: {
+      latitude: 33.6844, // Default to Islamabad
+      longitude: 73.0479,
+    },
+    bankAccounts: [
+      {
+        accountTitle: '',
+        serviceName: '',
+        accountNo: '',
+        iban: '',
+        isDefault: true,
+      },
+    ],
   });
 
   useEffect(() => {
@@ -90,8 +109,42 @@ export default function BranchesPage() {
       postalCode: '',
       establishedDate: '',
       status: 'active',
+      location: {
+        latitude: 33.6844,
+        longitude: 73.0479,
+      },
+      bankAccounts: [
+        {
+          accountTitle: '',
+          serviceName: '',
+          accountNo: '',
+          iban: '',
+          isDefault: true,
+        },
+      ],
     });
     setShowModal(true);
+  };
+
+  const addBankAccount = () => {
+    setFormData({
+      ...formData,
+      bankAccounts: [
+        ...formData.bankAccounts,
+        { accountTitle: '', serviceName: '', accountNo: '', iban: '', isDefault: false },
+      ],
+    });
+  };
+
+  const removeBankAccount = (index) => {
+    const newAccounts = formData.bankAccounts.filter((_, i) => i !== index);
+    setFormData({ ...formData, bankAccounts: newAccounts });
+  };
+
+  const updateBankAccount = (index, field, value) => {
+    const newAccounts = [...formData.bankAccounts];
+    newAccounts[index][field] = value;
+    setFormData({ ...formData, bankAccounts: newAccounts });
   };
 
   const handleEdit = (branch) => {
@@ -110,6 +163,13 @@ export default function BranchesPage() {
         ? format(new Date(branch.establishedDate), 'yyyy-MM-dd')
         : '',
       status: branch.status || 'active',
+      location: {
+        latitude: branch.location?.latitude || 33.6844,
+        longitude: branch.location?.longitude || 73.0479,
+      },
+      bankAccounts: branch.bankAccounts?.length > 0 
+        ? branch.bankAccounts 
+        : [{ accountTitle: '', serviceName: '', accountNo: '', iban: '', isDefault: true }],
     });
     setShowModal(true);
   };
@@ -138,6 +198,12 @@ export default function BranchesPage() {
           phone: formData.phone || '',
           email: formData.email || '',
         },
+        location: {
+          latitude: formData.location.latitude,
+          longitude: formData.location.longitude,
+          address: formData.address || '',
+        },
+        bankAccounts: formData.bankAccounts.filter(acc => acc.accountTitle && acc.accountNo),
         status: formData.status || 'active',
       };
 
@@ -531,6 +597,104 @@ export default function BranchesPage() {
                   options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]}
                   placeholder={null}
                 />
+              </div>
+            </div>
+
+            {/* Location Map */}
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Branch Location</label>
+              <BranchMap 
+                latitude={formData.location.latitude} 
+                longitude={formData.location.longitude}
+                onLocationChange={(pos) => setFormData({
+                  ...formData,
+                  location: { latitude: pos.lat, longitude: pos.lng }
+                })}
+              />
+            </div>
+
+            {/* Bank Accounts */}
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Bank Accounts</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addBankAccount}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Account
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {formData.bankAccounts.map((account, index) => (
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50 relative">
+                    {formData.bankAccounts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeBankAccount(index)}
+                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Account Title</label>
+                        <Input
+                          value={account.accountTitle}
+                          onChange={(e) => updateBankAccount(index, 'accountTitle', e.target.value)}
+                          placeholder="School Main Account"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Bank/Service Name</label>
+                        <Input
+                          value={account.serviceName}
+                          onChange={(e) => updateBankAccount(index, 'serviceName', e.target.value)}
+                          placeholder="HBL / EasyPaisa"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Account Number</label>
+                        <Input
+                          value={account.accountNo}
+                          onChange={(e) => updateBankAccount(index, 'accountNo', e.target.value)}
+                          placeholder="XXXX-XXXX-XXXX"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">IBAN</label>
+                        <Input
+                          value={account.iban}
+                          onChange={(e) => updateBankAccount(index, 'iban', e.target.value)}
+                          placeholder="PKXX XXXX XXXX XXXX"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`default-${index}`}
+                        checked={account.isDefault}
+                        onChange={(e) => {
+                          const newAccounts = formData.bankAccounts.map((acc, i) => ({
+                            ...acc,
+                            isDefault: i === index ? e.target.checked : false
+                          }));
+                          setFormData({ ...formData, bankAccounts: newAccounts });
+                        }}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <label htmlFor={`default-${index}`} className="text-xs text-gray-600 cursor-pointer">
+                        Set as Default Account
+                      </label>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </form>

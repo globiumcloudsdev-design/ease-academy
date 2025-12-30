@@ -534,6 +534,7 @@ export const API_ENDPOINTS = {
       LIST: '/api/teacher/classes',
       GET: '/api/teacher/classes/:id',
       STUDENTS: '/api/teacher/classes/:id/students',
+      SUBJECTS: '/api/teacher/classes/:id/subjects',
       TIMETABLE: '/api/teacher/classes/:id/timetable',
     },
 
@@ -571,8 +572,10 @@ export const API_ENDPOINTS = {
       LIST: '/api/teacher/exams',
       GET: '/api/teacher/exams/:id',
       UPDATE: '/api/teacher/exams/:id',
+      UPDATE_STATUS: '/api/teacher/exams/:id',
       DELETE: '/api/teacher/exams/:id',
       SCHEDULE: '/api/teacher/exams/:id/schedule',
+      RESULTS: '/api/teacher/exams/:id/results',
     },
 
     // Grades
@@ -655,6 +658,10 @@ export const API_ENDPOINTS = {
   COMMON: {
     // File Upload
     UPLOAD: '/api/upload',
+    UPLOADS: {
+      SINGLE: '/api/upload',
+      MULTIPLE: '/api/upload/multiple',
+    },
 
     // Notifications
     NOTIFICATIONS: {
@@ -709,7 +716,7 @@ export const API_ENDPOINTS = {
   // Parent Portal Endpoints
   PARENT: {
     SIGNUP: '/api/parent/auth/signup',
-    
+
     // Get all children of authenticated parent
     CHILDREN: '/api/parent',
 
@@ -721,6 +728,7 @@ export const API_ENDPOINTS = {
       // Academic information
       ASSIGNMENTS: '/api/parent/:childId/assignments',
       QUIZZES: '/api/parent/:childId/quizzes',
+      EXAMS: '/api/parent/:childId/exams',
       SYLLABUS: '/api/parent/:childId/syllabus',
       NOTES: '/api/parent/:childId/notes',
       TIMETABLE: '/api/parent/:childId/timetable',

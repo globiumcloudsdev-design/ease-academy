@@ -4,6 +4,9 @@ import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import Assignment from '@/backend/models/Assignment';
 import Submission from '@/backend/models/Submission';
+import Branch from '@/backend/models/Branch';
+import Class from '@/backend/models/Class';
+import Subject from '@/backend/models/Subject';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
@@ -21,9 +24,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: true, assignments: [] });
     }
 
-    // Fetch assignments for child's class
+    // Fetch assignments for child's class and section
     const assignments = await Assignment.find({
       classId: child.studentProfile.classId,
+      $or: [
+        { sectionId: child.studentProfile.section },
+        { sectionId: { $exists: false } },
+        { sectionId: null },
+        { sectionId: '' }
+      ],
       status: { $in: ['published', 'active'] },
     })
       .populate('subjectId', 'name code')

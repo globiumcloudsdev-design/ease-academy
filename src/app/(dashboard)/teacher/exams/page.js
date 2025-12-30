@@ -14,104 +14,262 @@ import {
   Plus,
   Edit,
   Trash2,
+  FileText,
+  Upload,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
+import apiClient from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
+import { toast } from "sonner";
 
 export default function TeacherExamsPage() {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, upcoming, past
+  
   // Modal state used for both Create and Edit
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("create"); // 'create' | 'edit'
   const [editingId, setEditingId] = useState(null);
+  
+  // Result Modal state
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [students, setStudents] = useState([]);
+  const [results, setResults] = useState({}); // { studentId: { marks, grade, remarks, files } }
+  const [savingResults, setSavingResults] = useState(false);
+
   const [newExam, setNewExam] = useState({
     title: "",
-    className: "",
-    date: new Date().toISOString().split("T")[0],
-    startTime: "09:00",
-    endTime: "10:00",
-    duration: 60,
-    room: "",
-    totalMarks: 100,
-    passingMarks: 40,
-    studentsEnrolled: 0,
+    examType: "midterm",
+    classId: "",
+    subjects: [{
+      subjectId: "",
+      date: new Date().toISOString().split("T")[0],
+      startTime: "09:00",
+      endTime: "10:00",
+      duration: 60,
+      totalMarks: 100,
+      passingMarks: 40,
+      room: "",
+    }],
+    status: "scheduled",
   });
+
+  const [classes, setClasses] = useState([]);
+  const [availableSubjects, setAvailableSubjects] = useState([]);
 
   useEffect(() => {
     loadExams();
+    loadClasses();
   }, []);
+
+  const loadClasses = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.CLASSES.LIST);
+      if (response.success) {
+        setClasses(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading classes:", error);
+    }
+  };
+
+  const loadSubjects = async (classId) => {
+    if (!classId) return;
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.CLASSES.SUBJECTS.replace(':id', classId));
+      if (response.success) {
+        setAvailableSubjects(response.data);
+      }
+    } catch (error) {
+      console.error("Error loading subjects:", error);
+      toast.error("Failed to load subjects");
+    }
+  };
+
+  useEffect(() => {
+    if (newExam.classId) {
+      loadSubjects(newExam.classId);
+    }
+  }, [newExam.classId]);
 
   const loadExams = async () => {
     try {
       setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const mockExams = [
-        {
-          _id: "1",
-          title: "Mid-term Exam - Mathematics",
-          className: "Mathematics 101",
-          date: new Date(Date.now() + 86400000).toISOString(),
-          startTime: "10:00 AM",
-          endTime: "12:00 PM",
-          duration: 120,
-          room: "A-101",
-          totalMarks: 100,
-          passingMarks: 40,
-          status: "upcoming",
-          studentsEnrolled: 30,
-        },
-        {
-          _id: "2",
-          title: "Final Exam - Physics",
-          className: "Physics 201",
-          date: new Date(Date.now() + 86400000 * 7).toISOString(),
-          startTime: "09:00 AM",
-          endTime: "12:00 PM",
-          duration: 180,
-          room: "B-205",
-          totalMarks: 100,
-          passingMarks: 40,
-          status: "upcoming",
-          studentsEnrolled: 25,
-        },
-        {
-          _id: "3",
-          title: "Quiz - Chemistry",
-          className: "Chemistry 301",
-          date: new Date(Date.now() + 86400000 * 3).toISOString(),
-          startTime: "11:00 AM",
-          endTime: "12:00 PM",
-          duration: 60,
-          room: "C-102",
-          totalMarks: 50,
-          passingMarks: 20,
-          status: "upcoming",
-          studentsEnrolled: 28,
-        },
-        {
-          _id: "4",
-          title: "Mid-term Exam - Biology",
-          className: "Biology 401",
-          date: new Date(Date.now() - 86400000 * 5).toISOString(),
-          startTime: "10:00 AM",
-          endTime: "12:00 PM",
-          duration: 120,
-          room: "D-303",
-          totalMarks: 100,
-          passingMarks: 40,
-          status: "completed",
-          studentsEnrolled: 22,
-        },
-      ];
-
-      setExams(mockExams);
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.EXAMS.LIST);
+      if (response.success) {
+        setExams(response.exams);
+      }
     } catch (error) {
       console.error("Error loading exams:", error);
+      toast.error("Failed to load exams");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const response = await apiClient.patch(API_ENDPOINTS.TEACHER.EXAMS.UPDATE_STATUS.replace(':id', id), { status: newStatus });
+      if (response.success) {
+        toast.success(`Exam ${newStatus} successfully`);
+        loadExams();
+      }
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
+
+  const handleManageResults = async (exam) => {
+    setSelectedExam(exam);
+    // Default to first subject if available
+    if (exam.subjects && exam.subjects.length > 0) {
+      setSelectedSubjectId(exam.subjects[0].subjectId._id || exam.subjects[0].subjectId);
+    }
+    
+    try {
+      // Fetch students for this class
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.CLASSES.STUDENTS.replace(':id', exam.classId._id || exam.classId));
+      if (response.success) {
+        setStudents(response.data.students);
+        
+        // Initialize results from exam.results if they exist
+        const initialResults = {};
+        exam.results?.forEach(r => {
+          const studentId = r.studentId._id || r.studentId;
+          const subjectId = r.subjectId._id || r.subjectId;
+          
+          if (!initialResults[studentId]) initialResults[studentId] = {};
+          initialResults[studentId][subjectId] = {
+            marksObtained: r.marksObtained,
+            grade: r.grade,
+            remarks: r.remarks,
+            isAbsent: r.isAbsent,
+            attachments: r.attachments || []
+          };
+        });
+        setResults(initialResults);
+        setShowResultModal(true);
+      }
+    } catch (error) {
+      toast.error("Failed to load students");
+    }
+  };
+
+  const handleSaveResults = async () => {
+    if (!selectedSubjectId) {
+      toast.error("Please select a subject");
+      return;
+    }
+
+    try {
+      setSavingResults(true);
+      const resultsArray = students.map(student => {
+        const studentResult = results[student._id]?.[selectedSubjectId] || {};
+        return {
+          studentId: student._id,
+          ...studentResult
+        };
+      });
+
+      const response = await apiClient.post(`${API_ENDPOINTS.TEACHER.EXAMS.RESULTS.replace(':id', selectedExam._id)}`, { 
+        results: resultsArray,
+        subjectId: selectedSubjectId 
+      });
+      
+      if (response.success) {
+        toast.success("Results saved successfully");
+        setShowResultModal(false);
+        loadExams();
+      }
+    } catch (error) {
+      toast.error("Failed to save results");
+    } finally {
+      setSavingResults(false);
+    }
+  };
+
+  const handleCreateExam = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.TEACHER.EXAMS.CREATE, newExam);
+      if (response.success) {
+        toast.success("Exam created successfully");
+        setShowModal(false);
+        loadExams();
+        setNewExam({
+          title: "",
+          examType: "midterm",
+          classId: "",
+          subjects: [{
+            subjectId: "",
+            date: new Date().toISOString().split("T")[0],
+            startTime: "09:00",
+            endTime: "10:00",
+            duration: 60,
+            totalMarks: 100,
+            passingMarks: 40,
+            room: "",
+          }],
+          status: "scheduled",
+        });
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to create exam");
+    }
+  };
+
+  const handleUpdateExam = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await apiClient.put(API_ENDPOINTS.TEACHER.EXAMS.UPDATE.replace(':id', editingId), newExam);
+      if (response.success) {
+        toast.success("Exam updated successfully");
+        setShowModal(false);
+        loadExams();
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to update exam");
+    }
+  };
+
+  const handleDeleteExam = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this exam?")) return;
+    try {
+      const response = await apiClient.delete(API_ENDPOINTS.TEACHER.EXAMS.DELETE.replace(':id', id));
+      if (response.success) {
+        toast.success("Exam deleted successfully");
+        loadExams();
+      }
+    } catch (error) {
+      toast.error("Failed to delete exam");
+    }
+  };
+
+  const openEditModal = (exam) => {
+    setModalMode("edit");
+    setEditingId(exam._id);
+    setNewExam({
+      title: exam.title,
+      examType: exam.examType,
+      classId: exam.classId._id || exam.classId,
+      subjects: exam.subjects.map(s => ({
+        subjectId: s.subjectId._id || s.subjectId,
+        date: new Date(s.date).toISOString().split("T")[0],
+        startTime: s.startTime,
+        endTime: s.endTime,
+        duration: s.duration,
+        totalMarks: s.totalMarks,
+        passingMarks: s.passingMarks,
+        room: s.room,
+      })),
+      status: exam.status,
+    });
+    setShowModal(true);
   };
 
   const getStatusBadge = (date, status) => {
@@ -134,9 +292,40 @@ export default function TeacherExamsPage() {
     }
   };
 
+  const handleFileUpload = async (studentId, files) => {
+    if (!selectedSubjectId) {
+      toast.error("Please select a subject first");
+      return;
+    }
+
+    const formData = new FormData();
+    Array.from(files).forEach(file => {
+      formData.append('files', file); // Backend expects 'files'
+    });
+
+    try {
+      const response = await apiClient.post(API_ENDPOINTS.COMMON.UPLOADS.MULTIPLE, formData);
+      if (response.success) {
+        setResults(prev => ({
+          ...prev,
+          [studentId]: {
+            ...prev[studentId],
+            [selectedSubjectId]: {
+              ...(prev[studentId]?.[selectedSubjectId] || {}),
+              attachments: [...(prev[studentId]?.[selectedSubjectId]?.attachments || []), ...response.data]
+            }
+          }
+        }));
+        toast.success("Files uploaded successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to upload files");
+    }
+  };
+
   const filteredExams = exams.filter((exam) => {
     if (filter === "all") return true;
-    if (filter === "upcoming") return exam.status === "upcoming";
+    if (filter === "upcoming") return exam.status === "scheduled";
     if (filter === "past") return exam.status === "completed";
     return true;
   });
@@ -161,15 +350,19 @@ export default function TeacherExamsPage() {
             setEditingId(null);
             setNewExam({
               title: "",
-              className: "",
-              date: new Date().toISOString().split("T")[0],
-              startTime: "09:00",
-              endTime: "10:00",
-              duration: 60,
-              room: "",
-              totalMarks: 100,
-              passingMarks: 40,
-              studentsEnrolled: 0,
+              examType: "midterm",
+              classId: "",
+              subjects: [{
+                subjectId: "",
+                date: new Date().toISOString().split("T")[0],
+                startTime: "09:00",
+                endTime: "10:00",
+                duration: 60,
+                totalMarks: 100,
+                passingMarks: 40,
+                room: "",
+              }],
+              status: "scheduled",
             });
             setShowModal(true);
           }}
@@ -191,7 +384,7 @@ export default function TeacherExamsPage() {
           variant={filter === "upcoming" ? "default" : "outline"}
           onClick={() => setFilter("upcoming")}
         >
-          Upcoming ({exams.filter((e) => e.status === "upcoming").length})
+          Upcoming ({exams.filter((e) => e.status === "scheduled").length})
         </Button>
         <Button
           variant={filter === "past" ? "default" : "outline"}
@@ -213,7 +406,9 @@ export default function TeacherExamsPage() {
             <Card className="p-6 hover:shadow-lg transition-all duration-300 group relative overflow-hidden">
               {/* Status Badge */}
               <div className="absolute top-4 right-4">
-                {getStatusBadge(exam.date, exam.status)}
+                <Badge variant={exam.status === 'completed' ? 'secondary' : 'default'}>
+                  {exam.status.toUpperCase()}
+                </Badge>
               </div>
 
               {/* Exam Header */}
@@ -223,83 +418,36 @@ export default function TeacherExamsPage() {
                 </h3>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <BookOpen className="w-4 h-4" />
-                  <span>{exam.className}</span>
+                  <span>{exam.classId?.name} ({exam.examType})</span>
                 </div>
               </div>
 
-              {/* Exam Details */}
+              {/* Subjects List */}
               <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    {new Date(exam.date).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span>
-                    {exam.startTime} - {exam.endTime} ({exam.duration} mins)
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                  <span>Room: {exam.room}</span>
-                </div>
-              </div>
-
-              {/* Marks Info */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Total Marks
-                  </p>
-                  <p className="text-xl font-bold text-blue-600">
-                    {exam.totalMarks}
-                  </p>
-                </div>
-                <div className="p-3 bg-green-500/10 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Passing</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {exam.passingMarks}
-                  </p>
-                </div>
-              </div>
-
-              {/* Students */}
-              <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                <span>{exam.studentsEnrolled} students enrolled</span>
+                {exam.subjects.map((sub, idx) => (
+                  <div key={idx} className="p-3 bg-muted/50 rounded-lg text-sm">
+                    <div className="font-medium mb-1">{sub.subjectId?.name}</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(sub.date).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {sub.startTime}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-4 border-t border-border">
+              <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => {
-                    setModalMode("edit");
-                    setEditingId(exam._id);
-                    setNewExam({
-                      title: exam.title || "",
-                      className: exam.className || "",
-                      date: new Date(exam.date).toISOString().split("T")[0],
-                      startTime: exam.startTime || "09:00",
-                      endTime: exam.endTime || "10:00",
-                      duration: exam.duration || 60,
-                      room: exam.room || "",
-                      totalMarks: exam.totalMarks || 100,
-                      passingMarks: exam.passingMarks || 40,
-                      studentsEnrolled: exam.studentsEnrolled || 0,
-                    });
-                    setShowModal(true);
-                  }}
+                  onClick={() => openEditModal(exam)}
                 >
                   <Edit className="w-4 h-4 mr-1" />
                   Edit
@@ -307,164 +455,377 @@ export default function TeacherExamsPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="flex-1"
+                  onClick={() => handleManageResults(exam)}
+                >
+                  <FileText className="w-4 h-4 mr-1" />
+                  Results
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={exam.status === 'active' ? 'text-red-600' : 'text-green-600'}
+                  onClick={() => handleStatusChange(exam._id, exam.status === 'active' ? 'scheduled' : 'active')}
+                >
+                  {exam.status === 'active' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="text-red-600 hover:text-red-700"
+                  onClick={() => handleDeleteExam(exam._id)}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
-
-              {/* Hover Effect */}
-              <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-primary to-primary/60 w-0 group-hover:w-full transition-all duration-300" />
             </Card>
           </motion.div>
         ))}
       </div>
 
-      {/* Empty State */}
-      {filteredExams.length === 0 && (
-        <div className="text-center py-12">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-          <p className="text-muted-foreground font-medium">No exams found</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {filter === "all" ? "Create your first exam" : `No ${filter} exams`}
-          </p>
-        </div>
-      )}
+      {/* Result Modal */}
+      <Modal
+        open={showResultModal}
+        onClose={() => setShowResultModal(false)}
+        title={`Manage Results - ${selectedExam?.title}`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          {/* Subject Selector for Results */}
+          <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+            <label className="text-sm font-medium">Select Subject:</label>
+            <select
+              className="p-2 border rounded bg-background"
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+            >
+              {selectedExam?.subjects.map(sub => (
+                <option key={sub.subjectId._id || sub.subjectId} value={sub.subjectId._id || sub.subjectId}>
+                  {sub.subjectId.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {/* Create/Edit Exam Modal (rendered outside conditional) */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left p-2">Student</th>
+                  <th className="text-left p-2">Marks</th>
+                  <th className="text-left p-2">Grade</th>
+                  <th className="text-left p-2">Remarks</th>
+                  <th className="text-left p-2">Attachments</th>
+                  <th className="text-left p-2">Absent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map(student => (
+                  <tr key={student._id} className="border-b">
+                    <td className="p-2">
+                      <div className="font-medium">{student.fullName || student.name}</div>
+                      <div className="text-xs text-muted-foreground">{student.studentProfile?.rollNumber || student.rollNumber}</div>
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="number"
+                        className="w-20 p-1 border rounded"
+                        value={results[student._id]?.[selectedSubjectId]?.marksObtained || ""}
+                        onChange={(e) => setResults(prev => ({
+                          ...prev,
+                          [student._id]: {
+                            ...prev[student._id],
+                            [selectedSubjectId]: {
+                              ...(prev[student._id]?.[selectedSubjectId] || {}),
+                              marksObtained: Number(e.target.value)
+                            }
+                          }
+                        }))}
+                        disabled={results[student._id]?.[selectedSubjectId]?.isAbsent}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="text"
+                        className="w-16 p-1 border rounded"
+                        value={results[student._id]?.[selectedSubjectId]?.grade || ""}
+                        onChange={(e) => setResults(prev => ({
+                          ...prev,
+                          [student._id]: {
+                            ...prev[student._id],
+                            [selectedSubjectId]: {
+                              ...(prev[student._id]?.[selectedSubjectId] || {}),
+                              grade: e.target.value
+                            }
+                          }
+                        }))}
+                        disabled={results[student._id]?.[selectedSubjectId]?.isAbsent}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="text"
+                        className="w-full p-1 border rounded"
+                        value={results[student._id]?.[selectedSubjectId]?.remarks || ""}
+                        onChange={(e) => setResults(prev => ({
+                          ...prev,
+                          [student._id]: {
+                            ...prev[student._id],
+                            [selectedSubjectId]: {
+                              ...(prev[student._id]?.[selectedSubjectId] || {}),
+                              remarks: e.target.value
+                            }
+                          }
+                        }))}
+                      />
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer p-1 bg-primary/10 rounded hover:bg-primary/20">
+                          <Upload className="w-4 h-4" />
+                          <input
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => handleFileUpload(student._id, e.target.files)}
+                          />
+                        </label>
+                        {results[student._id]?.[selectedSubjectId]?.attachments?.length > 0 && (
+                          <span className="text-xs">{results[student._id][selectedSubjectId].attachments.length} files</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={results[student._id]?.[selectedSubjectId]?.isAbsent || false}
+                        onChange={(e) => setResults(prev => ({
+                          ...prev,
+                          [student._id]: {
+                            ...prev[student._id],
+                            [selectedSubjectId]: {
+                              ...(prev[student._id]?.[selectedSubjectId] || {}),
+                              isAbsent: e.target.checked
+                            }
+                          }
+                        }))}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowResultModal(false)}>Cancel</Button>
+            <Button onClick={handleSaveResults} disabled={savingResults}>
+              {savingResults ? "Saving..." : "Save Results"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create/Edit Exam Modal */}
       <Modal
         open={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setEditingId(null);
-        }}
-        title={"Create Exam"}
-        size="md"
-        footer={
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => { setShowModal(false); setEditingId(null); }}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                // simple validation
-                if (!newExam.title || !newExam.date) {
-                  alert("Please provide exam title and date");
-                  return;
-                }
-
-                if (modalMode === "create") {
-                  const exam = {
-                    _id: Date.now().toString(),
-                    ...newExam,
-                    status: new Date(newExam.date) < new Date() ? "completed" : "upcoming",
-                  };
-                  setExams((prev) => [exam, ...prev]);
-                } else if (modalMode === "edit" && editingId) {
-                  setExams((prev) => prev.map((e) => (e._id === editingId ? { ...e, ...newExam, status: new Date(newExam.date) < new Date() ? "completed" : "upcoming" } : e)));
-                }
-
-                setShowModal(false);
-                setEditingId(null);
-              }}
-            >
-              {modalMode === "create" ? "Create Exam" : "Save Changes"}
-            </Button>
-          </div>
-        }
+        onClose={() => setShowModal(false)}
+        title={modalMode === "create" ? "Create Exam" : "Edit Exam"}
+        size="lg"
       >
-        <div className="grid gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input
-              className="w-full px-3 py-2 border rounded"
-              value={newExam.title}
-              onChange={(e) => setNewExam((s) => ({ ...s, title: e.target.value }))}
-              placeholder="Exam Title"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Date</label>
+        <form onSubmit={modalMode === "create" ? handleCreateExam : handleUpdateExam} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Exam Title</label>
               <input
-                type="date"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.date}
-                onChange={(e) => setNewExam((s) => ({ ...s, date: e.target.value }))}
+                className="w-full p-2 border rounded"
+                value={newExam.title}
+                onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
+                required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Class / Subject</label>
-              <input
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.className}
-                onChange={(e) => setNewExam((s) => ({ ...s, className: e.target.value }))}
-                placeholder="e.g. Mathematics 101"
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Exam Type</label>
+              <select
+                className="w-full p-2 border rounded"
+                value={newExam.examType}
+                onChange={(e) => setNewExam({ ...newExam, examType: e.target.value })}
+              >
+                <option value="midterm">Midterm</option>
+                <option value="final">Final</option>
+                <option value="quiz">Quiz</option>
+                <option value="monthly">Monthly Test</option>
+              </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Start Time</label>
-              <input
-                type="time"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.startTime}
-                onChange={(e) => setNewExam((s) => ({ ...s, startTime: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">End Time</label>
-              <input
-                type="time"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.endTime}
-                onChange={(e) => setNewExam((s) => ({ ...s, endTime: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Duration (mins)</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.duration}
-                onChange={(e) => setNewExam((s) => ({ ...s, duration: Number(e.target.value) }))}
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Class</label>
+            <select
+              className="w-full p-2 border rounded"
+              value={newExam.classId}
+              onChange={(e) => setNewExam({ ...newExam, classId: e.target.value })}
+              required
+            >
+              <option value="">Select Class</option>
+              {classes.map(c => (
+                <option key={c._id} value={c._id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">Total Marks</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.totalMarks}
-                onChange={(e) => setNewExam((s) => ({ ...s, totalMarks: Number(e.target.value) }))}
-              />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Subjects & Schedule</label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setNewExam({
+                  ...newExam,
+                  subjects: [...newExam.subjects, {
+                    subjectId: "",
+                    date: new Date().toISOString().split("T")[0],
+                    startTime: "09:00",
+                    endTime: "10:00",
+                    duration: 60,
+                    totalMarks: 100,
+                    passingMarks: 40,
+                    room: "",
+                  }]
+                })}
+              >
+                Add Subject
+              </Button>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Passing Marks</label>
-              <input
-                type="number"
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.passingMarks}
-                onChange={(e) => setNewExam((s) => ({ ...s, passingMarks: Number(e.target.value) }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Room</label>
-              <input
-                className="w-full px-3 py-2 border rounded"
-                value={newExam.room}
-                onChange={(e) => setNewExam((s) => ({ ...s, room: e.target.value }))}
-              />
-            </div>
+
+            {newExam.subjects.map((sub, index) => (
+              <div key={index} className="p-4 border rounded-lg space-y-3 relative">
+                {index > 0 && (
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 text-red-500"
+                    onClick={() => {
+                      const subs = [...newExam.subjects];
+                      subs.splice(index, 1);
+                      setNewExam({ ...newExam, subjects: subs });
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Subject</label>
+                    <select
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.subjectId}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].subjectId = e.target.value;
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                      required
+                    >
+                      <option value="">Select Subject</option>
+                      {availableSubjects.map(s => (
+                        <option key={s._id} value={s._id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Date</label>
+                    <input
+                      type="date"
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.date}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].date = e.target.value;
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Start Time</label>
+                    <input
+                      type="time"
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.startTime}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].startTime = e.target.value;
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">End Time</label>
+                    <input
+                      type="time"
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.endTime}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].endTime = e.target.value;
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Room</label>
+                    <input
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.room}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].room = e.target.value;
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Total Marks</label>
+                    <input
+                      type="number"
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.totalMarks}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].totalMarks = Number(e.target.value);
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Passing Marks</label>
+                    <input
+                      type="number"
+                      className="w-full p-2 border rounded text-sm"
+                      value={sub.passingMarks}
+                      onChange={(e) => {
+                        const subs = [...newExam.subjects];
+                        subs[index].passingMarks = Number(e.target.value);
+                        setNewExam({ ...newExam, subjects: subs });
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+            <Button type="submit">{modalMode === "create" ? "Create Exam" : "Save Changes"}</Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );
 }
+

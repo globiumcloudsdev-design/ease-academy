@@ -26,9 +26,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: true, timetable: null, message: 'Child or class not found' });
     }
 
-    // Fetch active timetable for the child's class
+    // Fetch active timetable for the child's class and section
     const timetable = await Timetable.findOne({
       classId: child.studentProfile.classId,
+      $or: [
+        { section: child.studentProfile.section },
+        { section: { $exists: false } },
+        { section: null },
+        { section: '' }
+      ],
       status: 'active'
     })
     .populate('periods.subjectId', 'name code')

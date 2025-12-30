@@ -3,6 +3,9 @@ import { withAuth } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import User from '@/backend/models/User';
 import Exam from '@/backend/models/Exam';
+import Branch from '@/backend/models/Branch';
+import Class from '@/backend/models/Class';
+import Subject from '@/backend/models/Subject';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
@@ -18,9 +21,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: true, quizzes: [] });
     }
 
-    // Fetch quizzes/exams for child's class
+    // Fetch quizzes/exams for child's class and section
     const quizzes = await Exam.find({
       classId: child.studentProfile.classId,
+      $or: [
+        { section: child.studentProfile.section },
+        { section: { $exists: false } },
+        { section: null },
+        { section: '' }
+      ],
       examType: { $in: ['quiz', 'surprise', 'unit_test'] },
     })
       .populate('subjects.subjectId', 'name code')

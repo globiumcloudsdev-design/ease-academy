@@ -217,10 +217,14 @@ async function createAttendance(request, authenticatedUser, userDoc) {
     }
 
     // Check if attendance already exists for this date/class/type
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+
     const existingQuery = {
       branchId,
       classId,
-      date: new Date(date),
+      date: { $gte: startOfDay, $lt: endOfDay },
       attendanceType
     };
 
@@ -233,11 +237,26 @@ async function createAttendance(request, authenticatedUser, userDoc) {
     }
 
     const existingAttendance = await Attendance.findOne(existingQuery);
+    
     if (existingAttendance) {
-      return NextResponse.json(
-        { success: false, message: 'Attendance already exists for this date and configuration' },
-        { status: 409 }
-      );
+      // Update existing attendance records
+      existingAttendance.records = records;
+      existingAttendance.markedBy = authenticatedUser.userId;
+      await existingAttendance.save();
+
+      await existingAttendance.populate([
+        { path: 'branchId', select: 'name code' },
+        { path: 'classId', select: 'name code' },
+        { path: 'subjectId', select: 'name code' },
+        { path: 'eventId', select: 'title startDate' },
+        { path: 'markedBy', select: 'fullName email' }
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Attendance updated successfully',
+        data: existingAttendance
+      });
     }
 
     // Create new attendance record
@@ -246,7 +265,7 @@ async function createAttendance(request, authenticatedUser, userDoc) {
       classId,
       subjectId: attendanceType === 'subject' ? subjectId : null,
       eventId: attendanceType === 'event' ? eventId : null,
-      date: new Date(date),
+      date: startOfDay,
       attendanceType,
       records,
       markedBy: authenticatedUser.userId,

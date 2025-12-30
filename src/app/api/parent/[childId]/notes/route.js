@@ -19,9 +19,15 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: true, notes: [] });
     }
 
-    // For now, return assignment attachments as notes
+    // For now, return assignment attachments as notes (filtered by class and section)
     const assignments = await Assignment.find({
       classId: child.studentProfile.classId,
+      $or: [
+        { sectionId: child.studentProfile.section },
+        { sectionId: { $exists: false } },
+        { sectionId: null },
+        { sectionId: '' }
+      ],
       attachments: { $exists: true, $ne: [] },
     })
       .populate('subjectId', 'name')

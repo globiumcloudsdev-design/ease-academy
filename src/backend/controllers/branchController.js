@@ -90,7 +90,7 @@ export async function createBranch(branchData) {
   try {
     await connectDB();
     
-    const { name, code, address, contact, adminId, settings } = branchData;
+    const { name, code, address, contact, location, bankAccounts, adminId, settings } = branchData;
     
     // Check if code already exists
     const existingBranch = await Branch.findOne({ code });
@@ -104,6 +104,8 @@ export async function createBranch(branchData) {
       code: code.toUpperCase(),
       address,
       contact,
+      location,
+      bankAccounts,
       admin: adminId || null,
       settings: settings || {},
       status: 'active',

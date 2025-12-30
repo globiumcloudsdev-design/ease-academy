@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useApi, useFormSubmit } from '@/hooks/useApi';
+import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { toast } from 'sonner';
 import { Plus, DollarSign, TrendingDown, Filter, Edit, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -27,8 +28,7 @@ export default function ExpensesPage() {
     paymentStatus: 'pending',
   });
 
-  const { execute } = useApi();
-  const { handleSubmit, submitting } = useFormSubmit();
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadExpenses();
@@ -37,7 +37,7 @@ export default function ExpensesPage() {
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      const response = await execute({ url: API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST });
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST);
       
       if (response?.success) {
         setExpenses(response.data.expenses || []);
@@ -52,21 +52,26 @@ export default function ExpensesPage() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     
-    await handleSubmit(
-      async () => {
-        const url = editingExpense
-          ? `${API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST}/${editingExpense._id}`
-          : API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST;
-        
-        const method = editingExpense ? 'PUT' : 'POST';
-        
-        return execute({ url, method, data: formData });
-      },
-      () => {
+    try {
+      setSubmitting(true);
+      const url = editingExpense
+        ? `${API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST}/${editingExpense._id}`
+        : API_ENDPOINTS.SUPER_ADMIN.EXPENSES.LIST;
+      
+      const method = editingExpense ? 'put' : 'post';
+      
+      const response = await apiClient[method](url, formData);
+      
+      if (response.success) {
+        toast.success(editingExpense ? 'Expense updated' : 'Expense created');
         setShowModal(false);
         loadExpenses();
       }
-    );
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save expense');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const filteredExpenses = filterCategory === 'all'

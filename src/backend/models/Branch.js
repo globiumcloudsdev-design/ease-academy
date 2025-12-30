@@ -25,6 +25,23 @@ const branchSchema = new mongoose.Schema(
       phone: String,
       email: String,
     },
+    location: {
+      latitude: Number,
+      longitude: Number,
+      address: String,
+    },
+    bankAccounts: [
+      {
+        accountTitle: String,
+        serviceName: String, // e.g., HBL, EasyPaisa, JazzCash
+        accountNo: String,
+        iban: String,
+        isDefault: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
     admin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
