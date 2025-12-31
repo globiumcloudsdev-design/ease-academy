@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { withAuth } from '@/backend/middleware/auth';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 import connectDB from '@/lib/database';
 import Exam from '@/backend/models/Exam';
 import Timetable from '@/backend/models/Timetable';
