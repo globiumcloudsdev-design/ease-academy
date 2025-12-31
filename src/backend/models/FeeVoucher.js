@@ -45,6 +45,23 @@ const feeVoucherSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    baseAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    items: [{
+      name: String,
+      amount: Number,
+      discount: {
+        enabled: Boolean,
+        type: {
+          type: String,
+          enum: ['fixed', 'percentage'],
+        },
+        amount: Number,
+      }
+    }],
     amount: {
       type: Number,
       required: true,

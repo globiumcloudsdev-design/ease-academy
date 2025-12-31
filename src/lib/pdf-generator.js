@@ -711,33 +711,49 @@ export const generateFeeVoucherPDF = (voucher) => {
 
   yPosition += (isMobile ? 8 : 10);
 
-  // Prepare fee items
-  const feeItems = [
-    { description: 'Tuition Fee', amount: voucher.amount || 0 },
-    { description: 'Examination Fee', amount: voucher.examinationFee || 0 },
-    { description: 'Library Fee', amount: voucher.libraryFee || 0 },
-    { description: 'Sports Fee', amount: voucher.sportsFee || 0 },
-    { description: 'Computer Fee', amount: voucher.computerFee || 0 },
-    { description: 'Science Lab Fee', amount: voucher.scienceLabFee || 0 },
-    { description: 'Transport Fee', amount: voucher.transportFee || 0 },
-    { description: 'Activity Fee', amount: voucher.activityFee || 0 },
-    { description: 'Late Fee Fine', amount: voucher.lateFeeAmount || 0 },
-    { description: 'Other Charges', amount: voucher.otherCharges || 0 },
-  ];
+  // Prepare fee items dynamically from voucher
+  const feeItems = [];
+  
+  // 1. Add Base Amount if exists
+  if (voucher.baseAmount > 0) {
+    feeItems.push({ description: 'Base Template Amount', amount: voucher.baseAmount });
+  }
 
-  // Filter non-zero items
-  const nonZeroItems = feeItems.filter(item => item.amount > 0);
+  // 2. Add Template Items/Components
+  if (voucher.items && voucher.items.length > 0) {
+    voucher.items.forEach(item => {
+      feeItems.push({ description: item.name, amount: item.amount || 0 });
+    });
+  } else if (voucher.templateId?.items && voucher.templateId.items.length > 0) {
+    // Fallback to template items if voucher doesn't have them (for older vouchers)
+    voucher.templateId.items.forEach(item => {
+      feeItems.push({ description: item.name, amount: item.amount || 0 });
+    });
+  } else {
+    // Ultimate fallback for very old vouchers
+    feeItems.push({ description: 'Tuition Fee', amount: voucher.amount || 0 });
+  }
+
+  // 3. Add Late Fee if applicable
+  if (voucher.lateFeeAmount > 0) {
+    feeItems.push({ description: 'Late Fee Fine', amount: voucher.lateFeeAmount });
+  }
+
+  // Filter non-zero items (except we might want to show 0 if user asked for it, but usually non-zero is cleaner)
+  // User said: "r agar ksi component mein Amount hoto Amount aye wrna 0 aye"
+  // This implies they want to see all components even if 0.
+  const displayItems = feeItems;
 
   // Add discount if applicable
   if (voucher.discountAmount > 0) {
-    nonZeroItems.push({ description: 'Discount', amount: -voucher.discountAmount });
+    displayItems.push({ description: 'Discount', amount: -voucher.discountAmount });
   }
 
   // Calculate table dimensions
   const headerHeight = isMobile ? 10 : 12;
   const rowHeight = isMobile ? 10 : 12;
   const totalRowHeight = isMobile ? 12 : 15;
-  const tableHeight = headerHeight + (nonZeroItems.length * rowHeight) + totalRowHeight;
+  const tableHeight = headerHeight + (displayItems.length * rowHeight) + totalRowHeight;
 
   // Calculate column widths - optimized for better fit
   const descColWidth = contentWidth * 0.6; // 60% for description
@@ -763,7 +779,7 @@ export const generateFeeVoucherPDF = (voucher) => {
   // Table rows
   let subTotal = 0;
 
-  nonZeroItems.forEach((item, index) => {
+  displayItems.forEach((item, index) => {
     // Alternate row background
     if (index % 2 === 0) {
       doc.setFillColor(255, 255, 255);
@@ -791,7 +807,7 @@ export const generateFeeVoucherPDF = (voucher) => {
 
     // Amount
     const amountText = Math.abs(item.amount).toLocaleString('en-PK');
-    const amountColor = item.amount < 0 ? warningColor : secondaryColor;
+    const amountColor = item.amount < 0 ? [220, 38, 38] : secondaryColor; // Red for discount
     doc.setTextColor(...amountColor);
     doc.setFont('helvetica', 'bold');
 

@@ -6,6 +6,16 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Modal from "@/components/ui/modal";
+import Dropdown from "@/components/ui/dropdown";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import ButtonLoader from "@/components/ui/button-loader";
 import {
   Calendar,
   Clock,
@@ -494,42 +504,42 @@ export default function TeacherExamsPage() {
           {/* Subject Selector for Results */}
           <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
             <label className="text-sm font-medium">Select Subject:</label>
-            <select
-              className="p-2 border rounded bg-background"
-              value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
-            >
-              {selectedExam?.subjects.map(sub => (
-                <option key={sub.subjectId._id || sub.subjectId} value={sub.subjectId._id || sub.subjectId}>
-                  {sub.subjectId.name}
-                </option>
-              ))}
-            </select>
+            <div className="w-64">
+              <Dropdown
+                value={selectedSubjectId}
+                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                options={selectedExam?.subjects.map(sub => ({
+                  value: sub.subjectId._id || sub.subjectId,
+                  label: sub.subjectId.name
+                })) || []}
+                placeholder="Select Subject"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Student</th>
-                  <th className="text-left p-2">Marks</th>
-                  <th className="text-left p-2">Grade</th>
-                  <th className="text-left p-2">Remarks</th>
-                  <th className="text-left p-2">Attachments</th>
-                  <th className="text-left p-2">Absent</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Marks</TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Remarks</TableHead>
+                  <TableHead>Attachments</TableHead>
+                  <TableHead>Absent</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {students.map(student => (
-                  <tr key={student._id} className="border-b">
-                    <td className="p-2">
+                  <TableRow key={student._id}>
+                    <TableCell>
                       <div className="font-medium">{student.fullName || student.name}</div>
                       <div className="text-xs text-muted-foreground">{student.studentProfile?.rollNumber || student.rollNumber}</div>
-                    </td>
-                    <td className="p-2">
+                    </TableCell>
+                    <TableCell>
                       <input
                         type="number"
-                        className="w-20 p-1 border rounded"
+                        className="w-20 p-1 border rounded bg-background"
                         value={results[student._id]?.[selectedSubjectId]?.marksObtained || ""}
                         onChange={(e) => setResults(prev => ({
                           ...prev,
@@ -543,11 +553,11 @@ export default function TeacherExamsPage() {
                         }))}
                         disabled={results[student._id]?.[selectedSubjectId]?.isAbsent}
                       />
-                    </td>
-                    <td className="p-2">
+                    </TableCell>
+                    <TableCell>
                       <input
                         type="text"
-                        className="w-16 p-1 border rounded"
+                        className="w-16 p-1 border rounded bg-background"
                         value={results[student._id]?.[selectedSubjectId]?.grade || ""}
                         onChange={(e) => setResults(prev => ({
                           ...prev,
@@ -561,11 +571,11 @@ export default function TeacherExamsPage() {
                         }))}
                         disabled={results[student._id]?.[selectedSubjectId]?.isAbsent}
                       />
-                    </td>
-                    <td className="p-2">
+                    </TableCell>
+                    <TableCell>
                       <input
                         type="text"
-                        className="w-full p-1 border rounded"
+                        className="w-full p-1 border rounded bg-background"
                         value={results[student._id]?.[selectedSubjectId]?.remarks || ""}
                         onChange={(e) => setResults(prev => ({
                           ...prev,
@@ -578,8 +588,8 @@ export default function TeacherExamsPage() {
                           }
                         }))}
                       />
-                    </td>
-                    <td className="p-2">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <label className="cursor-pointer p-1 bg-primary/10 rounded hover:bg-primary/20">
                           <Upload className="w-4 h-4" />
@@ -594,8 +604,8 @@ export default function TeacherExamsPage() {
                           <span className="text-xs">{results[student._id][selectedSubjectId].attachments.length} files</span>
                         )}
                       </div>
-                    </td>
-                    <td className="p-2">
+                    </TableCell>
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={results[student._id]?.[selectedSubjectId]?.isAbsent || false}
@@ -610,16 +620,16 @@ export default function TeacherExamsPage() {
                           }
                         }))}
                       />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowResultModal(false)}>Cancel</Button>
             <Button onClick={handleSaveResults} disabled={savingResults}>
-              {savingResults ? "Saving..." : "Save Results"}
+              {savingResults ? <ButtonLoader /> : "Save Results"}
             </Button>
           </div>
         </div>
@@ -645,32 +655,28 @@ export default function TeacherExamsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Exam Type</label>
-              <select
-                className="w-full p-2 border rounded"
+              <Dropdown
                 value={newExam.examType}
                 onChange={(e) => setNewExam({ ...newExam, examType: e.target.value })}
-              >
-                <option value="midterm">Midterm</option>
-                <option value="final">Final</option>
-                <option value="quiz">Quiz</option>
-                <option value="monthly">Monthly Test</option>
-              </select>
+                options={[
+                  { value: "midterm", label: "Midterm" },
+                  { value: "final", label: "Final" },
+                  { value: "quiz", label: "Quiz" },
+                  { value: "monthly", label: "Monthly Test" },
+                ]}
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Class</label>
-            <select
-              className="w-full p-2 border rounded"
+            <Dropdown
               value={newExam.classId}
               onChange={(e) => setNewExam({ ...newExam, classId: e.target.value })}
+              options={classes.map(c => ({ value: c._id, label: c.name }))}
+              placeholder="Select Class"
               required
-            >
-              <option value="">Select Class</option>
-              {classes.map(c => (
-                <option key={c._id} value={c._id}>{c.name}</option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="space-y-4">
@@ -701,9 +707,11 @@ export default function TeacherExamsPage() {
             {newExam.subjects.map((sub, index) => (
               <div key={index} className="p-4 border rounded-lg space-y-3 relative">
                 {index > 0 && (
-                  <button
+                  <Button
                     type="button"
-                    className="absolute top-2 right-2 text-red-500"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="absolute top-2 right-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                     onClick={() => {
                       const subs = [...newExam.subjects];
                       subs.splice(index, 1);
@@ -711,26 +719,22 @@ export default function TeacherExamsPage() {
                     }}
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium">Subject</label>
-                    <select
-                      className="w-full p-2 border rounded text-sm"
+                    <Dropdown
                       value={sub.subjectId}
                       onChange={(e) => {
                         const subs = [...newExam.subjects];
                         subs[index].subjectId = e.target.value;
                         setNewExam({ ...newExam, subjects: subs });
                       }}
+                      options={availableSubjects.map(s => ({ value: s._id, label: s.name }))}
+                      placeholder="Select Subject"
                       required
-                    >
-                      <option value="">Select Subject</option>
-                      {availableSubjects.map(s => (
-                        <option key={s._id} value={s._id}>{s.name}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-medium">Date</label>

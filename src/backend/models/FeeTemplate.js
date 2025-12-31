@@ -16,20 +16,42 @@ const feeTemplateSchema = new mongoose.Schema(
       uppercase: true,
       trim: true,
     },
-    category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'FeeCategory',
-      required: [true, 'Fee category is required'],
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: [500, 'Description cannot exceed 500 characters'],
-    },
-    amount: {
+    items: [{
+      name: {
+        type: String,
+        required: [true, 'Item name is required'],
+        trim: true,
+      },
+      amount: {
+        type: Number,
+        required: [true, 'Item amount is required'],
+        min: [0, 'Amount cannot be negative'],
+      },
+      discount: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        type: {
+          type: String,
+          enum: ['fixed', 'percentage'],
+          default: 'fixed',
+        },
+        amount: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+      },
+    }],
+    baseAmount: {
       type: Number,
-      required: [true, 'Amount is required'],
-      min: [0, 'Amount cannot be negative'],
+      default: 0,
+      min: [0, 'Base amount cannot be negative'],
+    },
+    totalAmount: {
+      type: Number,
+      default: 0,
     },
     frequency: {
       type: String,
@@ -131,11 +153,42 @@ const feeTemplateSchema = new mongoose.Schema(
   }
 );
 
+// Pre-save hook to calculate totalAmount
+feeTemplateSchema.pre('save', function(next) {
+  let sum = this.baseAmount || 0;
+
+  if (this.items && this.items.length > 0) {
+    sum += this.items.reduce((total, item) => {
+      let itemTotal = item.amount;
+      if (item.discount && item.discount.enabled) {
+        if (item.discount.type === 'fixed') {
+          itemTotal -= item.discount.amount;
+        } else if (item.discount.type === 'percentage') {
+          itemTotal -= (item.amount * item.discount.amount) / 100;
+        }
+      }
+      return total + Math.max(0, itemTotal);
+    }, 0);
+  }
+
+  // Apply global discount if enabled
+  if (this.discount && this.discount.enabled) {
+    if (this.discount.type === 'fixed') {
+      sum -= this.discount.amount;
+    } else if (this.discount.type === 'percentage') {
+      sum -= (sum * this.discount.amount) / 100;
+    }
+  }
+
+  this.totalAmount = Math.max(0, sum);
+  next();
+});
+
 // Indexes for faster queries
 feeTemplateSchema.index({ code: 1 });
-feeTemplateSchema.index({ category: 1 });
 feeTemplateSchema.index({ status: 1 });
 feeTemplateSchema.index({ branchId: 1 });
+feeTemplateSchema.index({ totalAmount: 1 });
 
 const FeeTemplate = mongoose.models.FeeTemplate || mongoose.model('FeeTemplate', feeTemplateSchema);
 

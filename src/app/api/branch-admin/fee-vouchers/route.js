@@ -210,15 +210,32 @@ export const POST = withAuth(async (request, user, userDoc) => {
 
           const voucherNumber = `FV-${year}-${String(month).padStart(2, '0')}-${String(counter.seq).padStart(6, '0')}`;
 
-          // Calculate amounts
-          const baseAmount = template.amount || 0;
-          const discountAmount = template.discount?.enabled 
-            ? (template.discount.type === 'percentage' 
-              ? (baseAmount * template.discount.amount) / 100 
-              : template.discount.amount)
-            : 0;
+          // Calculate amounts from template items
+          const templateBaseAmount = template.baseAmount || 0;
+          const itemsAmount = (template.items || []).reduce((sum, item) => sum + item.amount, 0);
+          const baseAmount = templateBaseAmount + itemsAmount;
+          
+          // Calculate total discount (item-level + global)
+          let totalDiscount = (template.items || []).reduce((sum, item) => {
+            if (item.discount && item.discount.enabled) {
+              if (item.discount.type === 'fixed') return sum + item.discount.amount;
+              return sum + (item.amount * item.discount.amount) / 100;
+            }
+            return sum;
+          }, 0);
 
-          const totalAmount = baseAmount - discountAmount + lateFeeAmount;
+          // Apply global discount on the sum of items (after item discounts)
+          const sumAfterItemDiscounts = baseAmount - totalDiscount;
+          if (template.discount && template.discount.enabled) {
+            if (template.discount.type === 'fixed') {
+              totalDiscount += template.discount.amount;
+            } else {
+              totalDiscount += (sumAfterItemDiscounts * template.discount.amount) / 100;
+            }
+          }
+
+          const discountAmount = totalDiscount;
+          const totalAmount = Math.max(0, baseAmount - discountAmount + lateFeeAmount);
 
           // Create voucher
           const voucher = await FeeVoucher.create({
@@ -230,6 +247,8 @@ export const POST = withAuth(async (request, user, userDoc) => {
             month: parseInt(month),
             year: parseInt(year),
             dueDate: new Date(dueDate),
+            baseAmount: templateBaseAmount,
+            items: template.items || [],
             amount: baseAmount,
             discountAmount,
             lateFeeAmount,

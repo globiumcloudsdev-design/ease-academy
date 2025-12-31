@@ -29,7 +29,6 @@ async function getFeeTemplates(request, authenticatedUser, userDoc) {
     const limit = parseInt(searchParams.get('limit')) || 10;
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status');
-    const category = searchParams.get('category');
 
     // Build query - only for this branch or school-wide (null branchId)
     const query = {
@@ -46,6 +45,7 @@ async function getFeeTemplates(request, authenticatedUser, userDoc) {
           $or: [
             { name: { $regex: search, $options: 'i' } },
             { code: { $regex: search, $options: 'i' } },
+            { 'items.name': { $regex: search, $options: 'i' } },
           ]
         }
       ];
@@ -55,15 +55,10 @@ async function getFeeTemplates(request, authenticatedUser, userDoc) {
       query.status = status;
     }
 
-    if (category) {
-      query.category = category;
-    }
-
     const skip = (page - 1) * limit;
 
     const [templates, total] = await Promise.all([
       FeeTemplate.find(query)
-        .populate('category', 'name code color icon')
         .populate('createdBy', 'fullName email')
         .sort({ createdAt: -1 })
         .skip(skip)

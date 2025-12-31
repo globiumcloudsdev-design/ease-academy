@@ -19,7 +19,7 @@ export const GET = withAuth(async (request, user, userDoc, { params }) => {
       branchId: user.branchId,
     })
       .populate('studentId', 'fullName firstName lastName email studentProfile.registrationNumber studentProfile.rollNumber studentProfile.classId studentProfile.section')
-      .populate('templateId', 'name code category amount lateFee discount')
+      .populate('templateId', 'name code category baseAmount items lateFee discount')
       .populate('classId', 'name code')
       .populate('branchId', 'name')
       .lean();

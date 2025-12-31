@@ -20,19 +20,77 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Exam not found' }, { status: 404 });
     }
 
-    // Verify access
+    const contentType = request.headers.get('content-type') || '';
+    let bodyData = {};
+    let formData = null;
+
+    if (contentType.includes('multipart/form-data')) {
+      formData = await request.formData();
+    } else {
+      bodyData = await request.json();
+    }
+
+    // Verify access for teachers
     if (userDoc.role === 'teacher') {
-      const teacherClasses = userDoc.teacherProfile?.classes?.map(c => c.classId.toString()) || [];
-      if (!teacherClasses.includes(exam.classId.toString())) {
-        return NextResponse.json({ success: false, message: 'Access denied' }, { status: 403 });
+      const teacherId = userDoc._id;
+      const timetables = await Timetable.find({
+        'periods.teacherId': teacherId,
+        classId: exam.classId,
+        status: 'active'
+      });
+
+      const teacherSubjects = new Set();
+      timetables.forEach(tt => {
+        // If exam is for a specific section, teacher must teach in that section
+        if (exam.section && tt.section && tt.section !== exam.section) return;
+        
+        tt.periods.forEach(p => {
+          if (p.teacherId?.toString() === teacherId.toString() && p.subjectId) {
+            teacherSubjects.add(p.subjectId.toString());
+          }
+        });
+      });
+
+      const targetSubjectId = formData ? formData.get('subjectId') : bodyData.subjectId;
+      
+      if (!targetSubjectId || !teacherSubjects.has(targetSubjectId.toString())) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Access denied. You do not teach this subject in this class/section.' 
+        }, { status: 403 });
+      }
+
+      // If exam is for all sections, verify teacher only edits students in their assigned sections
+      if (!exam.section) {
+        const teacherSections = new Set();
+        timetables.forEach(tt => {
+          if (tt.section) teacherSections.add(tt.section);
+        });
+
+        if (teacherSections.size > 0) {
+          if (formData) {
+            const studentId = formData.get('studentId');
+            const student = await User.findById(studentId).select('studentProfile.section').lean();
+            if (!teacherSections.has(student?.studentProfile?.section)) {
+              return NextResponse.json({ success: false, message: 'Access denied to this student' }, { status: 403 });
+            }
+          } else {
+            const studentIds = bodyData.results.map(r => r.studentId);
+            const students = await User.find({ _id: { $in: studentIds } }).select('studentProfile.section').lean();
+            const invalidStudent = students.find(s => !teacherSections.has(s.studentProfile?.section));
+            if (invalidStudent) {
+              return NextResponse.json({ 
+                success: false, 
+                message: 'Access denied. Some students are not in your assigned sections.' 
+              }, { status: 403 });
+            }
+          }
+        }
       }
     }
 
-    const contentType = request.headers.get('content-type') || '';
-    
-    if (contentType.includes('multipart/form-data')) {
+    if (formData) {
       // Handle single student result with potential file uploads
-      const formData = await request.formData();
       const studentId = formData.get('studentId');
       const subjectId = formData.get('subjectId');
       const marksObtained = parseFloat(formData.get('marksObtained') || '0');
@@ -100,7 +158,7 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
 
     } else {
       // Handle bulk results update (JSON)
-      const { results, subjectId } = await request.json();
+      const { results, subjectId } = bodyData;
       if (!results || !Array.isArray(results) || !subjectId) {
         return NextResponse.json({ success: false, message: 'Results array and Subject ID are required' }, { status: 400 });
       }
@@ -130,3 +188,4 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
     return NextResponse.json({ success: false, message: 'Failed to update results' }, { status: 500 });
   }
 });
+

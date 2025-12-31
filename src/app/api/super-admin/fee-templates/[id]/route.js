@@ -15,7 +15,6 @@ async function getFeeTemplate(request) {
 
     const template = await FeeTemplate.findById(id)
       .populate('branchId', 'name code city')
-      .populate('category', 'name code color icon')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email');
 
@@ -61,18 +60,18 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc) {
     }
 
     // Update template
-    const updateData = {
-      ...body,
-      updatedBy: userDoc._id,
-    };
+    Object.assign(template, body);
+    template.updatedBy = userDoc._id;
+    
+    // Ensure code is uppercase if provided
+    if (body.code) {
+      template.code = body.code.toUpperCase();
+    }
 
-    const updatedTemplate = await FeeTemplate.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    )
+    await template.save();
+
+    const updatedTemplate = await FeeTemplate.findById(id)
       .populate('branchId', 'name code city')
-      .populate('category', 'name code color icon')
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email');
 

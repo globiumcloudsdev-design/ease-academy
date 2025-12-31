@@ -26,7 +26,6 @@ async function getFeeTemplate(request, authenticatedUser, userDoc, { params }) {
         { branchId: null }
       ]
     })
-      .populate('category', 'name code color icon')
       .populate('createdBy', 'fullName email')
       .lean();
 
@@ -90,9 +89,6 @@ async function updateFeeTemplate(request, authenticatedUser, userDoc, { params }
 
     template.updatedBy = authenticatedUser.userId;
     await template.save();
-
-    // Populate category after save
-    await template.populate('category', 'name code color icon');
 
     return NextResponse.json({
       success: true,

@@ -28,7 +28,6 @@ export default function FeeTemplatesPage() {
   const { user } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [feeCategories, setFeeCategories] = useState([]); // Fetched from API
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -42,12 +41,11 @@ export default function FeeTemplatesPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
+    baseAmount: 0,
     description: '',
-    feeType: 'tuition', // maps to FeeTemplate.category
-    amount: '',
+    items: [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
     frequency: 'monthly',
     isActive: true,
-    components: [],
     classes: [], // class IDs that this template applies to
     sections: [], // sections array
     applicableTo: 'all', // 'all', 'class-specific', 'student-specific'
@@ -56,16 +54,9 @@ export default function FeeTemplatesPage() {
     paymentMethods: ['cash', 'bank-transfer', 'online'],
   });
 
-  const [newComponent, setNewComponent] = useState({
-    name: '',
-    amount: '',
-    isMandatory: true,
-  });
-
   useEffect(() => {
     fetchTemplates();
     fetchClasses();
-    fetchCategories();
   }, [search, typeFilter, pagination.page]);
 
   // Close class dropdown when clicking outside
@@ -91,25 +82,6 @@ export default function FeeTemplatesPage() {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_CATEGORIES.LIST, { limit: 100, isActive: true });
-      if (response.success) {
-        // Transform categories to match expected format
-        const transformed = response.data.map(cat => ({
-          value: cat._id,
-          label: cat.name,
-          color: cat.color || 'blue',
-          code: cat.code,
-        }));
-        setFeeCategories(transformed);
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load fee categories');
-    }
-  };
-
   const fetchTemplates = async () => {
     try {
       setLoading(true);
@@ -118,7 +90,7 @@ export default function FeeTemplatesPage() {
         limit: pagination.limit,
         search,
       };
-      if (typeFilter) params.feeType = typeFilter;
+      if (typeFilter) params.frequency = typeFilter;
 
       const response = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_TEMPLATES.LIST, params);
       if (response.success) {
@@ -143,30 +115,6 @@ export default function FeeTemplatesPage() {
     setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
-  const handleComponentChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setNewComponent((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const addComponent = () => {
-    if (!newComponent.name || !newComponent.amount) {
-      toast.warning('Please fill in component name and amount');
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      components: [...prev.components, { ...newComponent }],
-    }));
-    setNewComponent({ name: '', amount: '', isMandatory: true });
-  };
-
-  const removeComponent = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      components: prev.components.filter((_, i) => i !== index),
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -176,9 +124,16 @@ export default function FeeTemplatesPage() {
       const payload = {
         name: formData.name,
         code: (formData.code || '').toUpperCase(),
-        category: formData.feeType, // matches schema enum values
         description: formData.description,
-        amount: parseFloat(formData.amount) || 0,
+        baseAmount: parseFloat(formData.baseAmount) || 0,
+        items: formData.items.map(item => ({
+          ...item,
+          amount: parseFloat(item.amount) || 0,
+          discount: {
+            ...item.discount,
+            amount: parseFloat(item.discount?.amount) || 0
+          }
+        })),
         frequency: formData.frequency,
         applicableTo: formData.applicableTo,
         classes: formData.applicableTo === 'class-specific' ? formData.classes : [],
@@ -229,12 +184,15 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: template.name || '',
       code: template.code || '',
+      baseAmount: template.baseAmount || 0,
       description: template.description || '',
-      feeType: typeof template.category === 'object' ? template.category?._id : template.category || (feeCategories.length > 0 ? feeCategories[0].value : ''),
-      amount: template.amount !== undefined ? String(template.amount) : '',
+      items: template.items?.length > 0 ? template.items.map(item => ({
+        name: item.name,
+        amount: item.amount.toString(),
+        discount: item.discount || { enabled: false, type: 'fixed', amount: 0 }
+      })) : [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
       frequency: template.frequency || 'monthly',
       isActive: template.status === 'active',
-      components: template.components || [],
       classes: template.classes?.map(c => c._id || c) || [],
       sections: template.sections || [],
       applicableTo: template.applicableTo || 'all',
@@ -264,14 +222,22 @@ export default function FeeTemplatesPage() {
     setCurrentTemplate(null);
     setFormData({
       name: template.name + ' (Copy)',
+      code: (template.code || '') + '-COPY',
+      baseAmount: template.baseAmount || 0,
       description: template.description || '',
-      feeType: typeof template.category === 'object' ? template.category?._id : template.category || (feeCategories.length > 0 ? feeCategories[0].value : ''),
-      baseAmount: template.baseAmount || '',
+      items: template.items?.length > 0 ? template.items.map(item => ({
+        name: item.name,
+        amount: item.amount.toString(),
+        discount: item.discount || { enabled: false, type: 'fixed', amount: 0 }
+      })) : [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
       frequency: template.frequency || 'monthly',
       isActive: true,
-      applicableFrom: '',
-      applicableTo: '',
-      components: template.components || [],
+      classes: template.classes?.map(c => c._id || c) || [],
+      sections: template.sections || [],
+      applicableTo: template.applicableTo || 'all',
+      lateFee: template.lateFee || { enabled: false, type: 'fixed', amount: '', graceDays: '' },
+      discount: template.discount || { enabled: false, type: 'fixed', amount: '', criteria: '' },
+      paymentMethods: template.paymentMethods || ['cash', 'bank-transfer', 'online'],
     });
     setIsEditMode(false);
     setIsModalOpen(true);
@@ -282,12 +248,11 @@ export default function FeeTemplatesPage() {
     setFormData({
       name: '',
       code: '',
+      baseAmount: 0,
       description: '',
-      feeType: feeCategories.length > 0 ? feeCategories[0].value : '',
-      amount: '',
+      items: [{ name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }],
       frequency: 'monthly',
       isActive: true,
-      components: [],
       classes: [],
       sections: [],
       applicableTo: 'all',
@@ -300,9 +265,16 @@ export default function FeeTemplatesPage() {
   };
 
   const calculateTotalAmount = (template) => {
-    const base = parseFloat(template.amount || template.baseAmount || 0) || 0;
-    const componentTotal = (template.components || []).reduce((sum, comp) => sum + (parseFloat(comp.amount) || 0), 0);
-    return base + componentTotal;
+    const base = parseFloat(template.baseAmount) || 0;
+    const itemsTotal = (template.items || []).reduce((sum, item) => {
+      let amt = parseFloat(item.amount) || 0;
+      if (item.discount?.enabled) {
+        if (item.discount.type === 'fixed') amt -= parseFloat(item.discount.amount) || 0;
+        else amt -= (amt * (parseFloat(item.discount.amount) || 0)) / 100;
+      }
+      return sum + Math.max(0, amt);
+    }, 0);
+    return base + itemsTotal;
   };
 
   if (loading && templates.length === 0) {
@@ -343,10 +315,10 @@ export default function FeeTemplatesPage() {
               icon={Search}
             />
             <Dropdown
-              placeholder="Filter by type"
+              placeholder="Filter by frequency"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              options={[{ value: '', label: 'All Types' }, ...feeCategories]}
+              options={[{ value: '', label: 'All Frequencies' }, ...FEE_FREQUENCIES]}
             />
           </div>
 
@@ -356,9 +328,9 @@ export default function FeeTemplatesPage() {
               <TableRow>
                 <TableHead>Template Name</TableHead>
                 <TableHead>Code</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Components</TableHead>
+                <TableHead>Total Amount</TableHead>
                 <TableHead>Frequency</TableHead>
-                <TableHead>Amount</TableHead>
                 <TableHead>Late Fee</TableHead>
                 <TableHead>Discount</TableHead>
                 <TableHead>Applicable To</TableHead>
@@ -379,16 +351,28 @@ export default function FeeTemplatesPage() {
                     <TableCell className="font-medium">{template.name}</TableCell>
                     <TableCell className="text-xs text-gray-600">{template.code}</TableCell>
                     <TableCell>
-                      <span className="capitalize">
-                        {typeof template.category === 'object' && template.category?.name 
-                          ? template.category.name 
-                          : template.category || template.feeType}
-                      </span>
+                      <div className="space-y-1">
+                        {template.baseAmount > 0 && (
+                          <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                            Base Amount: PKR {template.baseAmount.toLocaleString()}
+                          </div>
+                        )}
+                        {template.items?.map((item, idx) => (
+                          <div key={idx} className="text-[10px] text-gray-600 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                            {item.name}: PKR {(item.amount || 0).toLocaleString()}
+                            {item.discount?.enabled && (
+                              <span className="text-green-600 ml-1">
+                                (-{item.discount.type === 'percentage' ? `${item.discount.amount}%` : `PKR ${item.discount.amount}`})
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </TableCell>
+                    <TableCell className="font-semibold">PKR {template.totalAmount?.toLocaleString() || '0'}</TableCell>
                     <TableCell>
                       <span className="capitalize">{template.frequency}</span>
                     </TableCell>
-                    <TableCell className="font-semibold">PKR {parseFloat(template.amount || template.baseAmount || 0).toLocaleString()}</TableCell>
                     <TableCell>
                       {template.lateFee?.enabled ? (
                         <span className="text-xs text-orange-600">
@@ -541,11 +525,7 @@ export default function FeeTemplatesPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Category *</label>
-              <Dropdown name="feeType" value={formData.feeType} onChange={handleInputChange} options={feeCategories} />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Frequency *</label>
               <Dropdown
@@ -555,9 +535,6 @@ export default function FeeTemplatesPage() {
                 options={FEE_FREQUENCIES}
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Applicable To *</label>
               <Dropdown
@@ -571,15 +548,17 @@ export default function FeeTemplatesPage() {
                 ]}
               />
             </div>
-            {formData.applicableTo === 'class-specific' && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Select Classes *</label>
-                <div className="relative class-dropdown-container">
-                  <button
-                    type="button"
-                    onClick={() => setClassDropdownOpen(!classDropdownOpen)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-left bg-white hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  >
+          </div>
+
+          {formData.applicableTo === 'class-specific' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Select Classes *</label>
+              <div className="relative class-dropdown-container">
+                <button
+                  type="button"
+                  onClick={() => setClassDropdownOpen(!classDropdownOpen)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-left bg-white hover:border-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                >
                     <span className="text-gray-700">
                       {formData.classes.length === 0
                         ? 'Select classes...'
@@ -663,7 +642,6 @@ export default function FeeTemplatesPage() {
                 )}
               </div>
             )}
-          </div>
 
           {/* Sections */}
           <div>
@@ -682,17 +660,141 @@ export default function FeeTemplatesPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Amount (PKR) *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Base Template Amount (Fixed)
+            </label>
             <input
               type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleInputChange}
+              value={formData.baseAmount}
+              onChange={(e) => setFormData({ ...formData, baseAmount: e.target.value })}
+              placeholder="0.00"
               className="w-full px-3 py-2 border rounded-lg"
-              min="0"
-              step="0.01"
-              required
             />
+            <p className="text-[10px] text-gray-500 mt-1 italic">This amount will be added to the total regardless of components.</p>
+          </div>
+
+          {/* Fee Items/Components */}
+          <div className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50/50">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-gray-900 flex items-center gap-2 text-sm">
+                <DollarSign className="w-4 h-4 text-blue-600" />
+                Fee Components
+              </h3>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setFormData({
+                    ...formData,
+                    items: [...formData.items, { name: '', amount: '', discount: { enabled: false, type: 'fixed', amount: 0 } }]
+                  });
+                }}
+                className="h-8 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Component
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {formData.items.map((item, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-white p-3 rounded-md border border-gray-200 shadow-sm">
+                  <div className="md:col-span-5">
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Component Name</label>
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => {
+                        const newItems = [...formData.items];
+                        newItems[index].name = e.target.value;
+                        setFormData({ ...formData, items: newItems });
+                      }}
+                      placeholder="e.g. Tuition Fee"
+                      className="w-full px-3 py-1.5 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Amount</label>
+                    <input
+                      type="number"
+                      value={item.amount}
+                      onChange={(e) => {
+                        const newItems = [...formData.items];
+                        newItems[index].amount = e.target.value;
+                        setFormData({ ...formData, items: newItems });
+                      }}
+                      placeholder="0.00"
+                      className="w-full px-3 py-1.5 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <input
+                        type="checkbox"
+                        checked={item.discount?.enabled}
+                        onChange={(e) => {
+                          const newItems = [...formData.items];
+                          newItems[index].discount.enabled = e.target.checked;
+                          setFormData({ ...formData, items: newItems });
+                        }}
+                        className="w-3 h-3 text-blue-600 rounded"
+                      />
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Discount</label>
+                    </div>
+                    {item.discount?.enabled && (
+                      <div className="flex gap-1">
+                        <select
+                          value={item.discount.type}
+                          onChange={(e) => {
+                            const newItems = [...formData.items];
+                            newItems[index].discount.type = e.target.value;
+                            setFormData({ ...formData, items: newItems });
+                          }}
+                          className="text-[10px] border border-gray-300 rounded px-1 h-7 bg-gray-50"
+                        >
+                          <option value="fixed">PKR</option>
+                          <option value="percentage">%</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={item.discount.amount}
+                          onChange={(e) => {
+                            const newItems = [...formData.items];
+                            newItems[index].discount.amount = e.target.value;
+                            setFormData({ ...formData, items: newItems });
+                          }}
+                          className="w-full px-2 py-1 border rounded text-[10px] h-7"
+                          placeholder="0"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="md:col-span-1 pt-5">
+                    {formData.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newItems = formData.items.filter((_, i) => i !== index);
+                          setFormData({ ...formData, items: newItems });
+                        }}
+                        className="text-red-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex justify-end pt-2 border-t border-gray-200">
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-gray-500 uppercase">Total Template Amount</p>
+                <p className="text-lg font-black text-blue-600">
+                  PKR {calculateTotalAmount(formData).toLocaleString()}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Info Alert */}
@@ -883,78 +985,6 @@ export default function FeeTemplatesPage() {
               className="w-4 h-4"
             />
             <label className="text-sm font-medium">Active Template</label>
-          </div>
-
-          {/* Fee Components Section */}
-          <div className="border-t pt-4">
-            <h3 className="font-semibold mb-3">Fee Components (Optional)</h3>
-
-            {/* Existing Components */}
-            {formData.components.length > 0 && (
-              <div className="mb-4 space-y-2">
-                {formData.components.map((comp, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-                    <span className="flex-1">{comp.name}</span>
-                    <span className="font-medium">PKR {parseFloat(comp.amount).toLocaleString()}</span>
-                    <span className="text-xs text-gray-500">{comp.isMandatory ? 'Mandatory' : 'Optional'}</span>
-                    <Button variant="ghost" size="icon-sm" onClick={() => removeComponent(index)}>
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Add New Component */}
-            <div className="space-y-2">
-              <input
-                type="text"
-                name="name"
-                placeholder="Component name (e.g., Lab Fee)"
-                value={newComponent.name}
-                onChange={handleComponentChange}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  name="amount"
-                  placeholder="Amount"
-                  value={newComponent.amount}
-                  onChange={handleComponentChange}
-                  className="flex-1 px-3 py-2 border rounded-lg"
-                  min="0"
-                  step="0.01"
-                />
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    name="isMandatory"
-                    checked={newComponent.isMandatory}
-                    onChange={handleComponentChange}
-                    className="w-4 h-4"
-                  />
-                  <label className="text-sm">Mandatory</label>
-                </div>
-                <Button type="button" variant="outline" onClick={addComponent}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Amount Display */}
-          <div className="bg-blue-50 p-3 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold">Total Template Amount:</span>
-              <span className="text-lg font-bold text-blue-600">
-                PKR{' '}
-                {(
-                  parseFloat(formData.baseAmount || 0) +
-                  formData.components.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0)
-                ).toLocaleString()}
-              </span>
-            </div>
           </div>
         </form>
       </Modal>
