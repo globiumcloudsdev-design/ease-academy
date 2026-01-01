@@ -139,12 +139,12 @@ export default function Navbar() {
 
             {/* CTA Buttons */}
             <div className="hidden lg:flex items-center gap-4">
-              <Link href="/login">
+              {/* <Link href="/login">
                 <Button variant="ghost" className="text-slate-700 hover:text-[var(--ease-primary)] font-medium">
                   Sign In
                 </Button>
-              </Link>
-              <Link href="/auth/sign-up">
+              </Link> */}
+              <Link href="/login">
                 <Button className="bg-gradient-to-r from-[var(--ease-gradient-start)] to-[var(--ease-gradient-end)] hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 group">
                   Get Started
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -230,12 +230,12 @@ export default function Navbar() {
               
               {/* Mobile CTA Buttons */}
               <div className="flex flex-col gap-3 mt-6 pt-6 border-t border-slate-200">
-                <Link href="/login" onClick={() => setIsOpen(false)}>
+                {/* <Link href="/login" onClick={() => setIsOpen(false)}>
                   <Button variant="outline" className="w-full justify-center">
                     Sign In
                   </Button>
-                </Link>
-                <Link href="/auth/sign-up" onClick={() => setIsOpen(false)}>
+                </Link> */}
+                <Link href="/login" onClick={() => setIsOpen(false)}>
                   <Button className="w-full justify-center bg-gradient-to-r from-[var(--ease-gradient-start)] to-[var(--ease-gradient-end)]">
                     Get Started Free
                     <ArrowRight className="ml-2 h-4 w-4" />

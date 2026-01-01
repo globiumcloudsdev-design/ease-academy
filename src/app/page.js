@@ -147,21 +147,21 @@ export default function Home() {
     {
       icon: Phone,
       title: "Phone Support",
-      details: "+1 (555) 123-4567",
+      details: "+92 335 2778488 || 02137520456",
       description: "Mon-Fri, 9am-6pm EST",
       color: "blue"
     },
     {
       icon: Mail,
       title: "Email Us",
-      details: "support@easeacademy.com",
+      details: "globiumclouds@gmail.com",
       description: "Response within 2 hours",
       color: "purple"
     },
     {
       icon: MapPin,
       title: "Visit Our Office",
-      details: "123 Education St, Learning City",
+      details: "House R-84 , near Al.Habeeb Resturent, Sector 15-A/4 Sector 15 A 4 Buffer Zone, Karachi, Pakistan, Karachi Lines, Pakistan",
       description: "Schedule a visit anytime",
       color: "emerald"
     }
@@ -267,7 +267,7 @@ export default function Home() {
 
               {/* Responsive CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-16 md:mb-24 animate-fade-in-up delay-300 px-4">
-                <Link href="/auth/sign-up" className="w-full sm:w-auto group">
+                <Link href="#" className="w-full sm:w-auto group">
                   <Button size="lg" className="w-full sm:w-auto h-14 md:h-16 px-8 md:px-12 text-base md:text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 group-hover:scale-105 relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
                     <Rocket className="mr-2 md:mr-3 h-5 w-5 md:h-6 md:w-6 group-hover:rotate-12 transition-transform duration-300" />
@@ -617,7 +617,7 @@ export default function Home() {
                       <input
                         type="text"
                         className="w-full px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none text-sm md:text-base"
-                        placeholder="John"
+                        placeholder="Abdur"
                       />
                     </div>
                     <div className="space-y-2">
@@ -625,7 +625,7 @@ export default function Home() {
                       <input
                         type="text"
                         className="w-full px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none text-sm md:text-base"
-                        placeholder="Doe"
+                        placeholder="Rehman"
                       />
                     </div>
                   </div>
@@ -642,7 +642,7 @@ export default function Home() {
                       <input
                         type="email"
                         className="w-full px-3 py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 outline-none text-sm md:text-base"
-                        placeholder="john@school.edu"
+                        placeholder="green@school.edu"
                       />
                     </div>
                     <Button className="w-full h-12 md:h-14 text-base md:text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1">

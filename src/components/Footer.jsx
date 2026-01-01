@@ -69,15 +69,15 @@ export default function Footer() {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-blue-600" />
-                <span className="text-gray-600">+1 (555) 123-4567</span>
+                <span className="text-gray-600">+92 335 2778488 || 02137520456</span>
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-blue-600" />
-                <span className="text-gray-600">support@easeacademy.com</span>
+                <span className="text-gray-600">globiumclouds@gmail.com</span>
               </div>
               <div className="flex items-start gap-3">
-                <MapPin className="h-5 w-5 text-blue-600 mt-0.5" />
-                <span className="text-gray-600">123 Education St<br />Learning City, LC 12345</span>
+                <MapPin className="h-full w-8 text-blue-600 mt-0.5" />
+                <span className="text-gray-600">House R-84 , near Al.Habeeb Resturent, <br /> Sector 15-A/4 Sector 15 A 4 <br /> Buffer Zone, Karachi, Pakistan, Karachi Lines, Pakistan</span>
               </div>
             </div>
           </div>
