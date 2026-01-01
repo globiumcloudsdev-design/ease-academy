@@ -18,29 +18,21 @@ import {
   X,
   FolderOpen,
   Calendar,
-  Banknote,
+  Wallet,
   BarChart3,
   Briefcase,
-  Shield,
   Receipt,
-  Wallet,
-  TrendingUp,
-  Cog,
-  Activity,
-  Bell,
   Building2,
-  UserPlus,
+  UserCheck,
   UserCog,
   GraduationCap,
-  Keyboard,
   QrCode,
-  UserCheck,
-  LayoutDashboardIcon,
-  ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+
+/* ===================== MENU CONFIG ===================== */
 
 const ROLE_MENUS = {
   super_admin: [
@@ -242,7 +234,6 @@ const ROLE_MENUS = {
     {
       category: "Finance Management",
       items: [
-        { name: "Fees", path: "/branch-admin/fees", icon: DollarSign },
         {
           name: "Fee Voucher",
           path: "/branch-admin/fee-vouchers",
@@ -360,348 +351,239 @@ const ROLE_MENUS = {
   ],
 };
 
-// Helper function to determine if section should be collapsible
-const shouldBeCollapsible = (group) => {
-  // If already marked as collapsible, return true
-  if (group.isCollapsible) return true;
-
-  // If more than 1 item, make it collapsible
-  return group.items.length > 1;
-};
-
+/* ===================== SIDEBAR ===================== */
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  /* ---------- Persisted States ---------- */
   const [isOpen, setIsOpen] = useState(true);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({});
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [expanded, setExpanded] = useState({});
 
-  const userRole = user?.role || "student";
-  const menuGroups = ROLE_MENUS[userRole] || ROLE_MENUS.student;
-
+  /* ---------- Restore sidebar state ---------- */
   useEffect(() => {
-    // Auto-expand sections that contain the current path
-    if (user) {
-      menuGroups.forEach((group) => {
-        if (
-          group.items.some(
-            (item) =>
-              pathname === item.path || pathname.startsWith(item.path + "/")
-          )
-        ) {
-          setExpandedSections((prev) => ({
-            ...prev,
-            [group.category]: true,
-          }));
-        }
-      });
-    }
-  }, [pathname, menuGroups, user]);
+    const savedOpen = localStorage.getItem("sidebar-open");
+    const savedExpanded = localStorage.getItem("sidebar-expanded");
 
-  // Early return AFTER all hooks
-  if (!user) {
-    return null;
-  }
+    if (savedOpen !== null) setIsOpen(savedOpen === "true");
+    if (savedExpanded) setExpanded(JSON.parse(savedExpanded));
+  }, []);
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  /* ---------- Save sidebar state ---------- */
+  useEffect(() => {
+    localStorage.setItem("sidebar-open", isOpen);
+    localStorage.setItem("sidebar-expanded", JSON.stringify(expanded));
+  }, [isOpen, expanded]);
 
-  const toggleSection = (sectionName) => {
-    setExpandedSections((prev) => ({
-      ...prev,
-      [sectionName]: !prev[sectionName],
-    }));
-  };
+  const role = user?.role || "student";
+  const menus = ROLE_MENUS[role] || ROLE_MENUS.student;
 
-  const isSectionActive = (items) => {
-    return items.some((item) => pathname.startsWith(item.path));
-  };
+  /* ---------- Auto expand active section ---------- */
+  useEffect(() => {
+    menus.forEach((group) => {
+      if (
+        group.items.some(
+          (item) =>
+            pathname === item.path ||
+            pathname.startsWith(item.path + "/")
+        )
+      ) {
+        setExpanded((prev) => ({
+          ...prev,
+          [group.category]: true,
+        }));
+      }
+    });
+  }, [pathname, menus]);
 
-  const sidebarClasses = cn(
-    "bg-white border-r border-gray-200 h-screen overflow-y-auto transition-all duration-300 flex flex-col",
-    isOpen ? "w-64" : "w-20",
-    "fixed md:sticky top-0 z-40 md:z-0"
-  );
+  if (!user) return null;
 
-  // Check if current page is inside this section
-  const isCurrentSection = (items) => {
-    return items.some(
-      (item) => pathname === item.path || pathname.startsWith(item.path + "/")
-    );
-  };
+  const toggleSection = (key) =>
+    setExpanded((p) => ({ ...p, [key]: !p[key] }));
 
-  // Simple Collapsible Component (inline)
-  const CollapsibleSection = ({ group, groupIndex }) => {
-    const isExpanded = expandedSections[group.category] || false;
-    const Icon = group.items[0]?.icon || FolderOpen;
-
-    // Check if current page is in this section
-    const hasActiveItem = isCurrentSection(group.items);
-
-    return (
-      <div key={groupIndex} className="px-2 py-1">
-        <button
-          onClick={() => toggleSection(group.category)}
-          className={cn(
-            "flex items-center justify-between w-full px-2 py-2 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
-            hasActiveItem
-              ? "bg-blue-50 text-blue-600 font-medium"
-              : "text-gray-700"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 shrink-0 transition-all duration-200 group-hover:h-5 group-hover:w-5" />
-            <span className="text-base font-medium hover:text-blue-600 transition-colors duration-200">{group.category}</span>
-          </div>
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3 transition-all duration-200 group-hover:h-4 group-hover:w-4" />
-          ) : (
-            <ChevronRight className="h-3 w-3 transition-all duration-200 group-hover:h-4 group-hover:w-4" />
-          )}
-        </button>
-
-        <div
-          className={cn(
-            "overflow-hidden transition-all duration-300 ease-in-out",
-            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-          )}
-        >
-          <div className="ml-6 space-y-1">
-            {group.items.map((item) => {
-              const ItemIcon = item.icon;
-              const isItemActive =
-                pathname === item.path || pathname.startsWith(item.path + "/");
-
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setIsMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2 px-2 py-1 rounded-lg transition-all duration-200 text-base hover:bg-gray-100 cursor-pointer",
-                    isItemActive
-                      ? "bg-blue-50 text-blue-600 font-medium"
-                      : "text-gray-600 hover:text-gray-900"
-                  )}
-                >
-                  <ItemIcon className="h-3 w-3 shrink-0 transition-all duration-200 hover:h-4 hover:w-4" />
-                  <span>{item.name}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Single Item Section (not collapsible)
-  const SingleItemSection = ({ group, groupIndex }) => {
-    // For single item sections, just show the item directly
-    const item = group.items[0];
-    const Icon = item.icon;
-    const isActive =
-      pathname === item.path || pathname.startsWith(item.path + "/");
-
-    return (
-      <div key={groupIndex} className="px-3 py-2">
-        <Link
-          href={item.path}
-          onClick={() => setIsMobileOpen(false)}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
-            isActive ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"
-          )}
-        >
-          <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
-          <span className="text-base font-medium">{item.name}</span>
-        </Link>
-      </div>
-    );
-  };
-
-  // Simple Section for sidebar collapsed view
-  const CollapsedViewSection = ({ group, groupIndex }) => {
-    if (group.isCollapsible || group.items.length > 1) {
-      return (
-        <div key={groupIndex} className="px-2 py-1">
-          {group.items.slice(0, 2).map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              pathname === item.path || pathname.startsWith(item.path + "/");
-
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                onClick={() => setIsMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
-                  isActive
-                    ? "bg-blue-50 text-blue-600 font-medium"
-                    : "text-gray-700"
-                )}
-                title={item.name}
-              >
-                <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
-              </Link>
-            );
-          })}
-        </div>
-      );
-    }
-
-    // Single item in collapsed view
-    const item = group.items[0];
-    const Icon = item.icon;
-    const isActive =
-      pathname === item.path || pathname.startsWith(item.path + "/");
-
-    return (
-      <div key={groupIndex} className="px-2 py-1">
-        <Link
-          href={item.path}
-          onClick={() => setIsMobileOpen(false)}
-          className={cn(
-            "flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 mb-1 hover:bg-gray-100 cursor-pointer",
-            isActive ? "bg-blue-50 text-blue-600 font-medium" : "text-gray-700"
-          )}
-          title={item.name}
-        >
-          <Icon className="h-5 w-5 shrink-0 transition-all duration-200 hover:h-6 hover:w-6" />
-        </Link>
-      </div>
-    );
-  };
+  /* ===================== UI ===================== */
 
   return (
     <>
-      {/* Mobile Toggle */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 p-4 z-50 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Ease Academy</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="font-semibold text-gray-900">Ease Academy</h1>
+        </div>
+        <Button 
+          size="sm" 
+          variant="ghost" 
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="h-9 w-9"
         >
-          {isMobileOpen ? (
-            <X className="h-6 w-6" />
-          ) : (
-            <Menu className="h-6 w-6" />
-          )}
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </Button>
       </div>
 
-      {/* Overlay for mobile */}
-      {isMobileOpen && (
+      {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 md:hidden z-30"
-          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
         className={cn(
-          sidebarClasses,
-          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "fixed md:sticky top-0 z-50 h-screen flex flex-col transition-all duration-300 ease-in-out",
+          "bg-white border-r border-gray-200",
+          isOpen ? "w-72" : "w-20",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
-        {/* Header */}
-        <div
-          className={cn(
-            "border-b border-gray-200 flex items-center justify-between",
-            isOpen ? "p-4" : "p-2"
-          )}
-        >
-          {isOpen && (
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Ease</h1>
-              <p className="text-sm text-gray-500">Academy</p>
+        {/* Logo & Toggle */}
+        <div className="h-16 flex items-center justify-between px-5 border-b border-gray-200">
+          {isOpen ? (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-base text-gray-900">Ease Academy</h2>
+                <p className="text-xs text-gray-500">School Management</p>
+              </div>
+            </div>
+          ) : (
+            <div className="w-10 h-10 mx-auto rounded-xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <GraduationCap className="w-6 h-6 text-white" />
             </div>
           )}
           <Button
+            size="icon"
             variant="ghost"
-            size="sm"
+            className="hidden md:flex h-9 w-9 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
             onClick={() => setIsOpen(!isOpen)}
-            className="hidden md:flex"
           >
-            <Menu className="h-3 w-3" />
+            <Menu size={20} />
           </Button>
         </div>
 
-        {/* User Info */}
-        <div className={cn("border-b border-gray-200", isOpen ? "p-3" : "p-2")}>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold shrink-0 text-sm">
-              {user.fullName?.charAt(0).toUpperCase()}
+        {/* User Profile */}
+        <div className="px-4 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center font-bold text-base shadow-md">
+                {user.fullName?.[0]}
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-green-500 border-2 border-white"></div>
             </div>
             {isOpen && (
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.fullName}
-                </p>
-                <p className="text-sm text-gray-500 capitalize">
-                  {user.role?.replace("_", " ")}
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user.fullName}</p>
+                <p className="text-xs text-gray-500 capitalize font-medium">{role.replace("_", " ")}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto">
-          {menuGroups.map((group, groupIndex) => {
-            // If sidebar is collapsed
-            if (!isOpen) {
-              return (
-                <CollapsedViewSection
-                  key={groupIndex}
-                  group={group}
-                  groupIndex={groupIndex}
-                />
-              );
-            }
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 custom-scrollbar">
+          {menus.map((group) => {
+            const open = expanded[group.category];
+            const hasActive = group.items.some((i) => pathname.startsWith(i.path));
 
-            // Expanded sidebar
-            if (group.isCollapsible || group.items.length > 1) {
-              return (
-                <CollapsibleSection
-                  key={groupIndex}
-                  group={group}
-                  groupIndex={groupIndex}
-                />
-              );
-            }
-
-            // Single item section in expanded view
             return (
-              <SingleItemSection
-                key={groupIndex}
-                group={group}
-                groupIndex={groupIndex}
-              />
+              <div key={group.category} className="mb-3">
+                {isOpen && (
+                  <button
+                    onClick={() => group.isCollapsible && toggleSection(group.category)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-3 py-2 mb-1 text-xs font-bold uppercase tracking-wide rounded-lg transition-colors",
+                      group.isCollapsible ? "cursor-pointer" : "cursor-default",
+                      hasActive ? "text-indigo-600" : "text-gray-400"
+                    )}
+                  >
+                    <span>{group.category}</span>
+                    {group.isCollapsible && (
+                      <ChevronRight 
+                        size={14} 
+                        className={cn("transition-transform duration-200", open && "rotate-90")}
+                      />
+                    )}
+                  </button>
+                )}
+
+                {(!group.isCollapsible || open || !isOpen) && (
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+
+                      return (
+                        <Link
+                          key={item.path}
+                          href={item.path}
+                          scroll={false}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                            isActive
+                              ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25"
+                              : "text-gray-700 hover:bg-gray-100",
+                            !isOpen && "justify-center"
+                          )}
+                        >
+                          <Icon size={19} className={cn("transition-transform", !isActive && "group-hover:scale-110")} />
+                          {isOpen && <span className="truncate">{item.name}</span>}
+                          
+                          {/* Tooltip for collapsed state */}
+                          {!isOpen && (
+                            <div className="fixed left-24 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-[9999] shadow-2xl pointer-events-none">
+                              {item.name}
+                              <div className="absolute right-full top-1/2 -translate-y-1/2 border-[6px] border-transparent border-r-gray-900"></div>
+                            </div>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
 
-        {/* Footer - Logout */}
-        <div className={cn("border-t border-gray-200", isOpen ? "p-3" : "p-2")}>
-
+        {/* Logout */}
+        <div className="border-t border-gray-200 px-3 py-3">
           <Button
-            onClick={handleLogout}
             variant="ghost"
+            onClick={logout}
             className={cn(
-              "w-full justify-start text-gray-700 hover:text-red-600 hover:bg-red-50",
-              isOpen ? "" : "px-2"
+              "w-full rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 font-medium transition-colors",
+              isOpen ? "justify-start" : "justify-center"
             )}
+            title={!isOpen ? "Logout" : undefined}
           >
-            <LogOut className="h-4 w-4" />
-            {isOpen && <span className="ml-2">Logout</span>}
+            <LogOut size={19} />
+            {isOpen && <span className="ml-3">Logout</span>}
           </Button>
         </div>
       </aside>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e5e7eb;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #d1d5db;
+        }
+      `}</style>
     </>
   );
 }

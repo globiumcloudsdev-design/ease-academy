@@ -70,7 +70,7 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
     ['Phone:', teacher.phone || 'N/A'],
   ];
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [],
     body: employeeData,
@@ -104,7 +104,7 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
     ['Other Allowances', '', `PKR ${payroll.allowances.other.toLocaleString()}`],
   ];
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [['Earnings', '', 'Amount']],
     body: earningsData,
@@ -150,7 +150,7 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
     ]);
   }
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [['Deductions', '', 'Amount']],
     body: deductionsData,
@@ -195,7 +195,7 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
       ['Leave Days', payroll.attendanceDeduction.leaveDays.toString()],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       body: attendanceData,
       theme: 'striped',
@@ -242,7 +242,7 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
       ['IBAN:', bankAccount.iban || 'N/A'],
     ];
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       body: bankData,
       theme: 'plain',

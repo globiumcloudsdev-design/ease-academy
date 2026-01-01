@@ -264,7 +264,7 @@ class ApiClient {
       });
       
       // Create blob link to download
-      const url = window.URL.createObjectURL(response.data);
+      const url = window.URL.createObjectURL(response);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', filename);
@@ -272,7 +272,7 @@ class ApiClient {
       link.click();
       link.parentNode.removeChild(link);
       
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }

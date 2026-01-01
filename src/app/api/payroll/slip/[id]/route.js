@@ -14,7 +14,7 @@ async function downloadSlipHandler(request, user, userDoc, context) {
   try {
     await connectDB();
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const currentUser = user;
 
     // Get payroll record

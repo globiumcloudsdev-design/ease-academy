@@ -226,21 +226,10 @@ export default function SuperAdminPayrollPage() {
     try {
       setDownloading(prev => ({ ...prev, [payrollId]: true }));
       
-      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.PAYROLL.SLIP(payrollId),);
-
-      if (!response.ok) {
-        throw new Error('Failed to download salary slip');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Salary_Slip_${selectedMonth}_${selectedYear}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await apiClient.download(
+        API_ENDPOINTS.SUPER_ADMIN.PAYROLL.SLIP(payrollId),
+        `Salary_Slip_${selectedMonth}_${selectedYear}.pdf`
+      );
       
       toast.success('Salary slip downloaded successfully');
     } catch (error) {

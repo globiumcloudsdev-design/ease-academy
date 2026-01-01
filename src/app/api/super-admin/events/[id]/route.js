@@ -11,7 +11,7 @@ export async function GET(request, { params }) {
   return withAuth(
     async (request, user) => {
       try {
-        const { id } = params;
+        const { id } = await params;
         const result = await getEventById(id);
         
         return NextResponse.json(result, { status: 200 });
@@ -31,7 +31,7 @@ export async function PUT(request, { params }) {
   return withAuth(
     async (request, user) => {
       try {
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
         
         const result = await updateEvent(id, body);
@@ -53,7 +53,7 @@ export async function DELETE(request, { params }) {
   return withAuth(
     async (request, user) => {
       try {
-        const { id } = params;
+        const { id } = await params;
         const result = await deleteEvent(id);
         
         return NextResponse.json(result, { status: 200 });

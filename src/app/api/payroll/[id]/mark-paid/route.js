@@ -13,7 +13,7 @@ async function markPaidHandler(request, user, userDoc, context) {
   try {
     await connectDB();
 
-    const { id } = context.params;
+    const { id } = await context.params;
     const { paymentMethod, transactionReference, paymentDate, remarks } = await request.json();
 
     const currentUser = user;

@@ -54,7 +54,8 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       payment.status = 'approved';
       payment.approvedBy = userDoc._id;
       payment.approvedAt = new Date();
-      if (remarks) payment.approvalRemarks = remarks;
+      payment.receivedBy = userDoc._id;
+      if (remarks) payment.remarks = remarks;
 
       // Update voucher amounts
       voucher.paidAmount += payment.amount;
@@ -63,15 +64,16 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       // Update voucher status
       if (voucher.remainingAmount <= 0) {
         voucher.status = 'paid';
+        voucher.remainingAmount = 0;
       } else if (voucher.paidAmount > 0) {
         voucher.status = 'partial';
       }
     } else {
       // Reject payment
       payment.status = 'rejected';
-      payment.rejectedBy = userDoc._id;
-      payment.rejectedAt = new Date();
-      payment.rejectionRemarks = remarks || 'Payment rejected by admin';
+      payment.approvedBy = userDoc._id;
+      payment.approvedAt = new Date();
+      payment.rejectionReason = remarks || 'Payment rejected by admin';
     }
 
     voucher.updatedBy = userDoc._id;

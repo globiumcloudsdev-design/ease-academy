@@ -241,7 +241,9 @@ async function processPayrollHandler(request, user, userDoc) {
     return NextResponse.json({
       success: true,
       message: 'Payroll processing completed',
-      results,
+      data: {
+        results,
+      },
     });
   } catch (error) {
     console.error('Payroll processing error:', error);

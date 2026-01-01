@@ -105,6 +105,25 @@ const feeVoucherSchema = new mongoose.Schema(
         enum: ['cash', 'bank-transfer', 'online', 'cheque', 'card'],
       },
       transactionId: String,
+      screenshot: {
+        url: String,
+        publicId: String,
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
+      submittedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      approvedAt: Date,
+      rejectionReason: String,
       receivedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
@@ -139,6 +158,34 @@ feeVoucherSchema.index({ month: 1, year: 1 });
 
 // Compound index to prevent duplicate vouchers
 feeVoucherSchema.index({ studentId: 1, templateId: 1, month: 1, year: 1 }, { unique: true });
+
+// Pre-save middleware to check for overdue status
+feeVoucherSchema.pre('save', function(next) {
+  const now = new Date();
+  
+  // Auto-update to overdue if past due date and not fully paid
+  if (this.dueDate < now && this.remainingAmount > 0 && this.status !== 'paid' && this.status !== 'cancelled') {
+    this.status = 'overdue';
+  }
+  
+  next();
+});
+
+// Static method to update all overdue vouchers
+feeVoucherSchema.statics.updateOverdueVouchers = async function() {
+  const now = new Date();
+  const result = await this.updateMany(
+    {
+      dueDate: { $lt: now },
+      remainingAmount: { $gt: 0 },
+      status: { $nin: ['paid', 'cancelled', 'overdue'] }
+    },
+    {
+      $set: { status: 'overdue' }
+    }
+  );
+  return result;
+};
 
 const FeeVoucher = mongoose.models.FeeVoucher || mongoose.model('FeeVoucher', feeVoucherSchema);
 
