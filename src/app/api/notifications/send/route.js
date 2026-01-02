@@ -1,30 +1,22 @@
 import { NextResponse } from 'next/server';
 import { Expo } from 'expo-server-sdk';
 import mongoose from 'mongoose';
-import Notification from '@/models/Notification'; // Tumhara Notification Model
-import User from '@/models/User'; // Tumhara User Model
 import connectDB from '@/lib/database';
-
-// middleware auth.js mein se currentUser milna chahiye or middleware ke folder mein hai
+import User from '@/backend/models/User';
+import Notification from '@/backend/models/Notification';
+import { withAuth, requireRole } from '@/backend/middleware/auth';
 
 // Expo SDK Initialize
 const expo = new Expo();
 
-export async function POST(req) {
+async function sendNotification(request, currentUser, userDoc) {
   try {
-    // 1. Admin verify kro (Session/Token check)
-    // Maan lo tumhe 'currentUser' mil gya auth check se
-    // const currentUser = ... (get user from session/token)
-    
-    // DEMO DATA (Isy replace krna real auth user se)
-    const currentUser = { 
-        _id: "admin_id_123", 
-        role: "branch_admin", // Ya "super_admin"
-        branchId: "branch_xyz_123" 
-    };
+    await connectDB();
 
-    const body = await req.json();
+    const body = await request.json();
     const { title, message, type, targetRole, metadata } = body;
+
+    console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
 
     // ============================================================
     // STEP A: LOGIC - Kisko bhejna hai? (Super vs Branch Admin)
@@ -35,7 +27,7 @@ export async function POST(req) {
     // Agar BRANCH ADMIN hai, toh filter restrict kro
     if (currentUser.role === 'branch_admin') {
       if (!currentUser.branchId) {
-        return NextResponse.json({ error: "Branch ID missing" }, { status: 400 });
+        return NextResponse.json({ success: false, error: "Branch ID missing" }, { status: 400 });
       }
       filter.branchId = currentUser.branchId; // Sirf apni branch walo ko dhoondo
     }
@@ -45,8 +37,10 @@ export async function POST(req) {
     const users = await User.find(filter).select('_id expoPushToken');
 
     if (!users.length) {
-      return NextResponse.json({ message: "No users found" }, { status: 404 });
+      return NextResponse.json({ success: false, message: "No users found" }, { status: 404 });
     }
+
+    console.log(`✅ Found ${users.length} users to notify`);
 
     // ============================================================
     // STEP B: DATABASE MEIN SAVE KRO (In-App List ke liye)
@@ -82,6 +76,8 @@ export async function POST(req) {
       }
     }
 
+    console.log(`📱 Sending push to ${messages.length} devices`);
+
     // Expo ko chunks me bhejte hain (optimization)
     let chunks = expo.chunkPushNotifications(messages);
     
@@ -95,11 +91,16 @@ export async function POST(req) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Notification saved and sent to ${messages.length} devices` 
+      message: `Notification saved and sent to ${messages.length} devices`,
+      totalUsers: users.length,
+      devicesNotified: messages.length
     });
 
   } catch (error) {
     console.error("Notification Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
+
+// Export with Auth Protection - Only super_admin and branch_admin can send notifications
+export const POST = withAuth(sendNotification, [requireRole(['super_admin', 'branch_admin'])]);

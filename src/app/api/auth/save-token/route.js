@@ -1,41 +1,37 @@
 import { NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import User from '@/models/User';
-import { getServerSession } from "next-auth"; 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Tumhara auth path
+import connectDB from '@/lib/database';
+import User from '@/backend/models/User';
+import { withAuth } from '@/backend/middleware/auth';
 
-export async function POST(req) {
+async function saveToken(request, currentUser, userDoc) {
   try {
-    // 1. Check kro kaun user login hai
-    // Agar next-auth use kr rhy ho:
-    const session = await getServerSession(authOptions); 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await connectDB();
 
-    const { token } = await req.json();
+    const { token } = await request.json();
 
     if (!token) {
-      return NextResponse.json({ error: "Token is required" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Token is required" }, { status: 400 });
     }
 
-    // 2. DB connect (agar nahi hai)
-    if (mongoose.connection.readyState === 0) await mongoose.connect(process.env.MONGODB_URI);
+    console.log('💾 Saving push token for user:', currentUser.email);
 
-    // 3. User ke record me token update kro
-    // session.user.id ya session.user.email se user dhundo
-    const userEmail = session.user.email; 
+    // Update user's expo push token
+    userDoc.expoPushToken = token;
+    await userDoc.save();
 
-    const updatedUser = await User.findOneAndUpdate(
-      { email: userEmail },
-      { expoPushToken: token }, // Token save kr dia
-      { new: true }
-    );
+    console.log('✅ Push token saved successfully');
 
-    return NextResponse.json({ success: true, message: "Token saved successfully" });
+    return NextResponse.json({ 
+      success: true, 
+      message: "Token saved successfully",
+      userId: currentUser.userId
+    });
 
   } catch (error) {
     console.error("Save Token Error:", error);
-    return NextResponse.json({ error: "Server Error" }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || "Server Error" }, { status: 500 });
   }
 }
+
+// Export with Auth Protection - All authenticated users can save their tokens
+export const POST = withAuth(saveToken);
