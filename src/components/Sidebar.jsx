@@ -358,7 +358,7 @@ export default function Sidebar() {
 
   /* ---------- Persisted States ---------- */
   const [isOpen, setIsOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(true);
   const [expanded, setExpanded] = useState({});
 
   /* ---------- Restore sidebar state ---------- */
@@ -414,9 +414,9 @@ export default function Sidebar() {
           </div>
           <h1 className="font-semibold text-gray-900">Ease Academy</h1>
         </div>
-        <Button 
-          size="sm" 
-          variant="ghost" 
+        <Button
+          size="sm"
+          variant="ghost"
           onClick={() => setMobileOpen(!mobileOpen)}
           className="h-9 w-9"
         >
@@ -434,10 +434,10 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed md:sticky top-0 z-50 h-screen flex flex-col transition-all duration-300 ease-in-out",
+          "fixed md:sticky top-0 md:top-0 z-[60] h-screen flex flex-col transition-all duration-300 ease-in-out",
           "bg-white border-r border-gray-200",
           isOpen ? "w-72" : "w-20",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          mobileOpen ? "translate-x-0 top-[60px] md:top-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         {/* Logo & Toggle */}
@@ -587,3 +587,7 @@ export default function Sidebar() {
     </>
   );
 }
+
+
+
+
