@@ -553,6 +553,7 @@ export const API_ENDPOINTS = {
       HISTORY: '/api/teacher/attendance/history',
       REPORT: '/api/teacher/attendance/report',
       BULK_MARK: '/api/teacher/attendance/bulk-mark',
+      SCAN: '/api/teacher/attendance/scan',
     },
 
     // Assignments

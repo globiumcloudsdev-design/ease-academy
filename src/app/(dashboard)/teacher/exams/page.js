@@ -71,10 +71,12 @@ export default function TeacherExamsPage() {
 
   const [classes, setClasses] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [myClasses, setMyClasses] = useState([]); // Store teacher's class assignments with sections
 
   useEffect(() => {
     loadExams();
     loadClasses();
+    loadMyClasses();
   }, []);
 
   const loadClasses = async () => {
@@ -85,6 +87,17 @@ export default function TeacherExamsPage() {
       }
     } catch (error) {
       console.error("Error loading classes:", error);
+    }
+  };
+
+  const loadMyClasses = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.TEACHER.MY_CLASSES.LIST);
+      if (response.success) {
+        setMyClasses(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading teacher classes:", error);
     }
   };
 
@@ -142,30 +155,54 @@ export default function TeacherExamsPage() {
     }
     
     try {
-      // Fetch students for this class
-      const response = await apiClient.get(API_ENDPOINTS.TEACHER.CLASSES.STUDENTS.replace(':id', exam.classId._id || exam.classId));
-      if (response.success) {
-        setStudents(response.data.students);
+      // Get students from teacher's assigned classes (already filtered by section)
+      const classId = exam.classId._id || exam.classId;
+      
+      // Find matching classes from myClasses
+      const matchingClasses = myClasses.filter(c => 
+        (c.classId === classId || c.classId?._id === classId)
+      );
+      
+      // Collect all students from matching classes
+      let filteredStudents = [];
+      matchingClasses.forEach(classItem => {
+        if (classItem.students && Array.isArray(classItem.students)) {
+          filteredStudents.push(...classItem.students);
+        }
+      });
+      
+      // Remove duplicate students (if any)
+      const uniqueStudents = [];
+      const seenIds = new Set();
+      filteredStudents.forEach(student => {
+        const studentId = student._id || student.id;
+        if (!seenIds.has(studentId)) {
+          seenIds.add(studentId);
+          uniqueStudents.push(student);
+        }
+      });
+      
+      setStudents(uniqueStudents);
+      
+      // Initialize results from exam.results if they exist
+      const initialResults = {};
+      exam.results?.forEach(r => {
+        const studentId = r.studentId._id || r.studentId;
+        const subjectId = r.subjectId._id || r.subjectId;
         
-        // Initialize results from exam.results if they exist
-        const initialResults = {};
-        exam.results?.forEach(r => {
-          const studentId = r.studentId._id || r.studentId;
-          const subjectId = r.subjectId._id || r.subjectId;
-          
-          if (!initialResults[studentId]) initialResults[studentId] = {};
-          initialResults[studentId][subjectId] = {
-            marksObtained: r.marksObtained,
-            grade: r.grade,
-            remarks: r.remarks,
-            isAbsent: r.isAbsent,
-            attachments: r.attachments || []
-          };
-        });
-        setResults(initialResults);
-        setShowResultModal(true);
-      }
+        if (!initialResults[studentId]) initialResults[studentId] = {};
+        initialResults[studentId][subjectId] = {
+          marksObtained: r.marksObtained,
+          grade: r.grade,
+          remarks: r.remarks,
+          isAbsent: r.isAbsent,
+          attachments: r.attachments || []
+        };
+      });
+      setResults(initialResults);
+      setShowResultModal(true);
     } catch (error) {
+      console.error("Error loading students:", error);
       toast.error("Failed to load students");
     }
   };
@@ -178,13 +215,40 @@ export default function TeacherExamsPage() {
 
     try {
       setSavingResults(true);
-      const resultsArray = students.map(student => {
+      
+      // Upload files for each student first
+      const resultsArray = [];
+      for (const student of students) {
         const studentResult = results[student._id]?.[selectedSubjectId] || {};
-        return {
+        let uploadedAttachments = studentResult.attachments || [];
+        
+        // Upload new files if any
+        if (studentResult.files && studentResult.files.length > 0) {
+          const formData = new FormData();
+          studentResult.files.forEach(file => {
+            formData.append('attachments', file);
+          });
+          
+          try {
+            const uploadResponse = await apiClient.post(API_ENDPOINTS.COMMON.UPLOADS.MULTIPLE, formData);
+            if (uploadResponse.success && uploadResponse.urls) {
+              uploadedAttachments = [...uploadedAttachments, ...uploadResponse.urls];
+            }
+          } catch (uploadError) {
+            console.error('File upload error:', uploadError);
+            toast.error(`Failed to upload files for ${student.fullName}`);
+          }
+        }
+        
+        resultsArray.push({
           studentId: student._id,
-          ...studentResult
-        };
-      });
+          marksObtained: studentResult.marksObtained,
+          grade: studentResult.grade,
+          remarks: studentResult.remarks,
+          isAbsent: studentResult.isAbsent,
+          attachments: uploadedAttachments
+        });
+      }
 
       const response = await apiClient.post(`${API_ENDPOINTS.TEACHER.EXAMS.RESULTS.replace(':id', selectedExam._id)}`, { 
         results: resultsArray,
@@ -302,35 +366,26 @@ export default function TeacherExamsPage() {
     }
   };
 
-  const handleFileUpload = async (studentId, files) => {
+  const handleFileUpload = (studentId, files) => {
     if (!selectedSubjectId) {
       toast.error("Please select a subject first");
       return;
     }
 
-    const formData = new FormData();
-    Array.from(files).forEach(file => {
-      formData.append('files', file); // Backend expects 'files'
-    });
-
-    try {
-      const response = await apiClient.post(API_ENDPOINTS.COMMON.UPLOADS.MULTIPLE, formData);
-      if (response.success) {
-        setResults(prev => ({
-          ...prev,
-          [studentId]: {
-            ...prev[studentId],
-            [selectedSubjectId]: {
-              ...(prev[studentId]?.[selectedSubjectId] || {}),
-              attachments: [...(prev[studentId]?.[selectedSubjectId]?.attachments || []), ...response.data]
-            }
-          }
-        }));
-        toast.success("Files uploaded successfully");
+    // Store files locally without uploading yet
+    const fileArray = Array.from(files);
+    setResults(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        [selectedSubjectId]: {
+          ...(prev[studentId]?.[selectedSubjectId] || {}),
+          files: fileArray,
+          attachments: prev[studentId]?.[selectedSubjectId]?.attachments || []
+        }
       }
-    } catch (error) {
-      toast.error("Failed to upload files");
-    }
+    }));
+    toast.success(`${fileArray.length} file(s) selected`);
   };
 
   const filteredExams = exams.filter((exam) => {
@@ -600,8 +655,10 @@ export default function TeacherExamsPage() {
                             onChange={(e) => handleFileUpload(student._id, e.target.files)}
                           />
                         </label>
-                        {results[student._id]?.[selectedSubjectId]?.attachments?.length > 0 && (
-                          <span className="text-xs">{results[student._id][selectedSubjectId].attachments.length} files</span>
+                        {(results[student._id]?.[selectedSubjectId]?.files?.length > 0 || results[student._id]?.[selectedSubjectId]?.attachments?.length > 0) && (
+                          <span className="text-xs">
+                            {results[student._id][selectedSubjectId].files?.length || 0} new + {results[student._id][selectedSubjectId].attachments?.length || 0} uploaded
+                          </span>
                         )}
                       </div>
                     </TableCell>

@@ -47,7 +47,7 @@ const getMyClasses = async (req, user, userDoc) => {
 
           if (!classesMap.has(key)) {
             classesMap.set(key, {
-              _id: tt._id,
+              _id: key, // Use unique key as ID instead of timetable ID
               classId: tt.classId._id,
               name: `${tt.classId.name}${tt.section ? ` - Section ${tt.section}` : ''}`,
               code: tt.classId.code,

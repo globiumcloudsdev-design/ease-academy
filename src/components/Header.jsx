@@ -182,20 +182,24 @@ export default function Header() {
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
-                {/* Profile Option - Using Link instead of router.push */}
-                <Link
-                  href="/profile"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-5 h-5 mr-3 text-gray-500">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <span className="font-medium">Profile</span>
-                </Link>
-                
-                {/* Divider */}
-                <div className="border-t border-gray-100 mx-3 my-1"></div>
+                {/* Profile Option - Hidden for teachers */}
+                {user?.role !== 'teacher' && (
+                  <>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-5 h-5 mr-3 text-gray-500">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <span className="font-medium">Profile</span>
+                    </Link>
+                    
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 mx-3 my-1"></div>
+                  </>
+                )}
                 
                 <button
                   onClick={handleLogoutClick}

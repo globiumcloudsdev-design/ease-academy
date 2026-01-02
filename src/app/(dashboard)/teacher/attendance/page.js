@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import DashboardSkeleton from "@/components/teacher/DashboardSkeleton";
 import { toast } from "sonner";
+import apiClient from "@/lib/api-client";
+import { API_ENDPOINTS } from "@/constants/api-endpoints";
 
 export default function TeacherAttendancePage() {
   const [attendanceData, setAttendanceData] = useState(null);
@@ -29,6 +31,7 @@ export default function TeacherAttendancePage() {
   );
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [scannedStudents, setScannedStudents] = useState([]);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     loadAttendanceData();
@@ -106,31 +109,67 @@ export default function TeacherAttendancePage() {
     }
   };
 
-  const handleScan = (studentData) => {
-    if (studentData) {
+  const handleScan = async (studentData) => {
+    if (studentData && !scanning) {
+      setScanning(true);
       try {
-        // studentData is already parsed by LiveJsQRScanner
-        const id = studentData.studentId || studentData.id || studentData.raw || `id-${Date.now()}`;
+        // Send QR data to backend
+        const response = await apiClient.post(API_ENDPOINTS.TEACHER.ATTENDANCE.SCAN, {
+          qr: studentData,
+          date: selectedDate,
+          attendanceType: 'daily'
+        });
 
-        // Check if student already scanned
-        if (scannedStudents.some((s) => s.id === id)) {
-          return;
+        if (response.success) {
+          const student = response.data.student;
+          const alreadyMarked = response.data.alreadyMarked;
+          
+          // Check if student already in scanned list (for UI only)
+          const existingIndex = scannedStudents.findIndex(s => s.id === student._id);
+          
+          if (existingIndex >= 0) {
+            // Update existing entry
+            setScannedStudents(prev => {
+              const updated = [...prev];
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                time: new Date().toLocaleTimeString(),
+                alreadyMarked: true
+              };
+              return updated;
+            });
+            toast.info(`${student.fullName || student.firstName} - Attendance updated`);
+          } else {
+            // Add new entry
+            const newStudent = {
+              id: student._id,
+              name: student.fullName || `${student.firstName} ${student.lastName}`,
+              roll: student.rollNumber || student.registrationNumber,
+              section: student.section,
+              time: new Date().toLocaleTimeString(),
+              avatar: student.profilePhoto?.url || student.fullName?.substring(0, 2).toUpperCase() || "ST",
+              hasPaidFees: student.hasPaidFees,
+              feeStatus: student.feeStatus,
+              alreadyMarked
+            };
+
+            setScannedStudents((prev) => [newStudent, ...prev]);
+            
+            if (alreadyMarked) {
+              toast.success(`${newStudent.name} - Attendance updated (was already marked)`);
+            } else {
+              toast.success(`${newStudent.name} - Attendance marked successfully!`);
+            }
+          }
+        } else {
+          toast.error(response.message || 'Failed to mark attendance');
         }
-
-        // Add student to scanned list
-        const newStudent = {
-          id: id,
-          name: studentData.name || studentData.raw || "Unknown Student",
-          roll: studentData.roll || "N/A",
-          time: new Date().toLocaleTimeString(),
-          avatar:
-            studentData.avatar ||
-            (studentData.name ? studentData.name.substring(0, 2).toUpperCase() : "QR"),
-        };
-
-        setScannedStudents((prev) => [newStudent, ...prev]);
       } catch (error) {
-        console.error("Error processing QR code:", error);
+        console.error("Error marking attendance:", error);
+        toast.error(error.message || 'Failed to mark attendance');
+      } finally {
+        // Delay before allowing next scan
+        setTimeout(() => setScanning(false), 1500);
       }
     }
   };
@@ -145,13 +184,9 @@ export default function TeacherAttendancePage() {
   };
 
   const handleSaveAttendance = () => {
-    // Here you would save the attendance to backend
-    console.log("Saving attendance:", {
-      date: selectedDate,
-      students: scannedStudents,
-    });
+    // Attendance is already saved via API on each scan
     toast.success(
-      `Attendance saved successfully! ${scannedStudents.length} students marked present.`
+      `Attendance session completed! ${scannedStudents.length} student(s) marked present.`
     );
     handleCloseScanner();
   };
@@ -416,24 +451,57 @@ export default function TeacherAttendancePage() {
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="p-3 hover:bg-muted/50 transition-colors"
+                            className={`p-3 hover:bg-muted/50 transition-colors ${student.alreadyMarked ? 'bg-yellow-50' : ''}`}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white font-semibold text-sm">
-                                {student.avatar}
+                              {typeof student.avatar === 'string' && student.avatar.startsWith('http') ? (
+                                <img 
+                                  src={student.avatar} 
+                                  alt={student.name}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className={`w-10 h-10 rounded-full ${student.alreadyMarked ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' : 'bg-gradient-to-br from-green-500 to-green-600'} flex items-center justify-center text-white font-semibold text-sm`}>
+                                  {student.avatar}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm truncate">
+                                    {student.name}
+                                  </p>
+                                  {student.alreadyMarked && (
+                                    <Badge variant="outline" className="text-[9px] text-yellow-700 border-yellow-400 px-1 py-0">
+                                      Updated
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>Roll: {student.roll}</span>
+                                  {student.section && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Sec: {student.section}</span>
+                                    </>
+                                  )}
+                                </div>
+                                {student.feeStatus && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-[9px] mt-1 ${
+                                      student.hasPaidFees 
+                                        ? 'text-green-700 border-green-300 bg-green-50' 
+                                        : 'text-red-700 border-red-300 bg-red-50'
+                                    }`}
+                                  >
+                                    Fee: {student.feeStatus}
+                                  </Badge>
+                                )}
                               </div>
-                              <div className="flex-1">
-                                <p className="font-medium text-sm">
-                                  {student.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  Roll: {student.roll}
-                                </p>
-                              </div>
-                              <div className="text-right">
+                              <div className="text-right shrink-0">
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] text-green-600 border-green-300"
+                                  className={`text-[10px] ${student.alreadyMarked ? 'text-yellow-600 border-yellow-300' : 'text-green-600 border-green-300'}`}
                                 >
                                   {student.time}
                                 </Badge>

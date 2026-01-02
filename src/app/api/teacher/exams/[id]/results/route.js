@@ -33,12 +33,32 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
     // Verify access for teachers
     if (userDoc.role === 'teacher') {
       const teacherId = userDoc._id;
+      
+      // Get the target subject ID first
+      const targetSubjectId = formData ? formData.get('subjectId') : bodyData.subjectId;
+      
+      if (!targetSubjectId) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Subject ID is required' 
+        }, { status: 400 });
+      }
+
+      // Check if exam belongs to a class the teacher teaches
       const timetables = await Timetable.find({
         'periods.teacherId': teacherId,
-        classId: exam.classId,
-        status: 'active'
+        classId: exam.classId
       });
 
+      if (timetables.length === 0) {
+        console.log(`Teacher ${teacherId} has no timetable for class ${exam.classId}`);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Access denied. You are not assigned to teach this class.' 
+        }, { status: 403 });
+      }
+
+      // Collect all subjects this teacher teaches in this class
       const teacherSubjects = new Set();
       timetables.forEach(tt => {
         // If exam is for a specific section, teacher must teach in that section
@@ -51,34 +71,53 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
         });
       });
 
-      const targetSubjectId = formData ? formData.get('subjectId') : bodyData.subjectId;
+      console.log(`Teacher subjects for class ${exam.classId}:`, Array.from(teacherSubjects));
+      console.log(`Target subject:`, targetSubjectId.toString());
       
-      if (!targetSubjectId || !teacherSubjects.has(targetSubjectId.toString())) {
+      if (teacherSubjects.size === 0) {
+        console.log('No subjects found for teacher');
         return NextResponse.json({ 
           success: false, 
-          message: 'Access denied. You do not teach this subject in this class/section.' 
+          message: 'Access denied. You have no subjects assigned in this class.' 
+        }, { status: 403 });
+      }
+      
+      if (!teacherSubjects.has(targetSubjectId.toString())) {
+        console.log('Target subject not in teacher subjects');
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Access denied. You do not teach this subject in this class.' 
         }, { status: 403 });
       }
 
+      console.log('Subject access granted');
+
       // If exam is for all sections, verify teacher only edits students in their assigned sections
       if (!exam.section) {
+        console.log('Exam has no specific section, checking teacher sections...');
         const teacherSections = new Set();
         timetables.forEach(tt => {
           if (tt.section) teacherSections.add(tt.section);
         });
 
+        console.log('Teacher sections:', Array.from(teacherSections));
+
         if (teacherSections.size > 0) {
           if (formData) {
             const studentId = formData.get('studentId');
             const student = await User.findById(studentId).select('studentProfile.section').lean();
+            console.log('Student section:', student?.studentProfile?.section);
             if (!teacherSections.has(student?.studentProfile?.section)) {
+              console.log('Student section not in teacher sections');
               return NextResponse.json({ success: false, message: 'Access denied to this student' }, { status: 403 });
             }
           } else {
             const studentIds = bodyData.results.map(r => r.studentId);
             const students = await User.find({ _id: { $in: studentIds } }).select('studentProfile.section').lean();
+            console.log('Students sections:', students.map(s => s.studentProfile?.section));
             const invalidStudent = students.find(s => !teacherSections.has(s.studentProfile?.section));
             if (invalidStudent) {
+              console.log('Invalid student found:', invalidStudent._id, 'section:', invalidStudent.studentProfile?.section);
               return NextResponse.json({ 
                 success: false, 
                 message: 'Access denied. Some students are not in your assigned sections.' 
@@ -87,6 +126,8 @@ export const POST = withAuth(async (request, user, userDoc, context) => {
           }
         }
       }
+      
+      console.log('All access checks passed for teacher');
     }
 
     if (formData) {

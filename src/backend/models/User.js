@@ -92,6 +92,12 @@ const userSchema = new mongoose.Schema(
     },
 
     // ==================== AUTHENTICATION ====================
+    expoPushToken: {
+      type: String, // Mobile ka token yahan save hoga
+      default: null,
+      trim: true,
+    },
+    
     passwordHash: {
       type: String,
       required: true,
