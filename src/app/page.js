@@ -605,6 +605,7 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+              
 
               {/* Contact Form */}
               <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl md:rounded-2xl p-6 md:p-10 border border-slate-200 shadow-lg md:shadow-xl">
