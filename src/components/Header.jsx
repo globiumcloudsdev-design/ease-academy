@@ -111,13 +111,13 @@ export default function Header({ mobileOpen, setMobileOpen }) {
       "bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm",
       mobileOpen && "md:block hidden"
     )}>
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
         {/* Page Title */}
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
             {getPageTitle()}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 truncate">
             {getWelcomeMessage()}
           </p>
         </div>

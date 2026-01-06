@@ -12,6 +12,22 @@ export default function DashboardLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    // Check if device is mobile and set sidebar open by default
+    const checkMobile = () => {
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      setMobileOpen(isMobile);
+    };
+
+    // Check on mount
+    checkMobile();
+
+    // Listen for window resize
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
     // if (!loading && !user) {
     //   router.push('/login');
     // }
