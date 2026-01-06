@@ -342,13 +342,12 @@ const ROLE_MENUS = {
 };
 
 /* ===================== SIDEBAR ===================== */
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   /* ---------- Persisted States ---------- */
   const [isOpen, setIsOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState({});
 
   /* ---------- Restore sidebar state ---------- */
@@ -396,24 +395,6 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200/50 px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-sm">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="font-semibold text-gray-900">Ease Academy</h1>
-        </div>
-        <Button 
-          size="sm" 
-          variant="ghost" 
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="h-9 w-9"
-        >
-          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        </Button>
-      </div>
-
       {/* Mobile Overlay */}
       {mobileOpen && (
         <div
@@ -427,7 +408,7 @@ export default function Sidebar() {
         className={cn(
           "fixed md:sticky left-0 z-50 flex flex-col transition-transform duration-300 ease-in-out",
           "bg-white border-r border-gray-200",
-          "top-[60px] h-[calc(100vh-60px)] md:top-0 md:h-screen",
+          "top-0 h-screen md:top-0 md:h-screen",
           "md:w-auto",
           isOpen ? "w-72" : "w-20",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -450,14 +431,26 @@ export default function Sidebar() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
           )}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="hidden md:flex h-9 w-9 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <Menu size={20} />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Mobile Close Button */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="md:hidden h-9 w-9 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X size={20} />
+            </Button>
+            {/* Desktop Toggle Button */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="hidden md:flex h-9 w-9 text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <Menu size={20} />
+            </Button>
+          </div>
         </div>
 
         {/* User Profile */}
