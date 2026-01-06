@@ -100,9 +100,6 @@ export default function Footer() {
               </Link>
             </div>
           </div>
-          <p className="text-gray-600 text-sm mt-4 text-center">
-            <span className="font-mono font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Powered By: Globium Clouds</span>
-          </p>
         </div>
       </div>
     </footer>

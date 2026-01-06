@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { Search, Bell, User, ChevronDown, Menu, X } from 'lucide-react';
+import { Search, Bell, User, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Header() {
@@ -106,7 +106,7 @@ export default function Header() {
   };
 
   return (
-    <header className="hidden md:block bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
         {/* Page Title */}
         <div>
@@ -182,20 +182,24 @@ export default function Header() {
             {/* Dropdown Menu */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
-                {/* Profile Option - Using Link instead of router.push */}
-                <Link
-                  href="/profile"
-                  onClick={() => setIsDropdownOpen(false)}
-                  className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="w-5 h-5 mr-3 text-gray-500">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <span className="font-medium">Profile</span>
-                </Link>
-                
-                {/* Divider */}
-                <div className="border-t border-gray-100 mx-3 my-1"></div>
+                {/* Profile Option - Hidden for teachers */}
+                {user?.role !== 'teacher' && (
+                  <>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="flex items-center w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-5 h-5 mr-3 text-gray-500">
+                        <User className="h-4 w-4" />
+                      </div>
+                      <span className="font-medium">Profile</span>
+                    </Link>
+                    
+                    {/* Divider */}
+                    <div className="border-t border-gray-100 mx-3 my-1"></div>
+                  </>
+                )}
                 
                 <button
                   onClick={handleLogoutClick}

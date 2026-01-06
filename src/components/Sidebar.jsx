@@ -126,11 +126,6 @@ const ROLE_MENUS = {
       isCollapsible: true,
       items: [
         {
-          name: "Fee Categories",
-          path: "/super-admin/fee-management/categories",
-          icon: DollarSign,
-        },
-        {
           name: "Fee Templates",
           path: "/super-admin/fee-management/templates",
           icon: Receipt,
@@ -238,11 +233,6 @@ const ROLE_MENUS = {
           name: "Fee Voucher",
           path: "/branch-admin/fee-vouchers",
           icon: Receipt,
-        },
-        {
-          name: "Fee Categories",
-          path: "/branch-admin/fee-categories",
-          icon: DollarSign,
         },
         {
           name: "Fee Templates",
@@ -358,7 +348,7 @@ export default function Sidebar() {
 
   /* ---------- Persisted States ---------- */
   const [isOpen, setIsOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [expanded, setExpanded] = useState({});
 
   /* ---------- Restore sidebar state ---------- */
@@ -414,9 +404,9 @@ export default function Sidebar() {
           </div>
           <h1 className="font-semibold text-gray-900">Ease Academy</h1>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
+        <Button 
+          size="sm" 
+          variant="ghost" 
           onClick={() => setMobileOpen(!mobileOpen)}
           className="h-9 w-9"
         >
@@ -424,6 +414,7 @@ export default function Sidebar() {
         </Button>
       </div>
 
+      {/* Mobile Overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
@@ -434,10 +425,12 @@ export default function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed md:sticky top-0 md:top-0 z-[60] h-screen flex flex-col transition-all duration-300 ease-in-out",
+          "fixed md:sticky left-0 z-50 flex flex-col transition-transform duration-300 ease-in-out",
           "bg-white border-r border-gray-200",
+          "top-[60px] h-[calc(100vh-60px)] md:top-0 md:h-screen",
+          "md:w-auto",
           isOpen ? "w-72" : "w-20",
-          mobileOpen ? "translate-x-0 top-[60px] md:top-0" : "-translate-x-full md:translate-x-0"
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         )}
       >
         {/* Logo & Toggle */}
@@ -587,7 +580,3 @@ export default function Sidebar() {
     </>
   );
 }
-
-
-
-
