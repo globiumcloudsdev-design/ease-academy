@@ -65,6 +65,11 @@ const ROLE_MENUS = {
           path: "/super-admin/user-management/parents",
           icon: UserCheck,
         },
+        {
+          name: "Staff",
+          path: "/super-admin/staff",
+          icon: Users,
+        },
       ],
     },
     {
@@ -165,6 +170,16 @@ const ROLE_MENUS = {
       ],
     },
     {
+      category: "Notifications",
+      items: [
+        {
+          name: "Notifications",
+          path: "/super-admin/notifications",
+          icon: Calendar,
+        },
+      ],
+    },
+    {
       category: "Salary Management",
       isCollapsible: true,
       items: [
@@ -195,6 +210,7 @@ const ROLE_MENUS = {
       items: [
         { name: "Teachers", path: "/branch-admin/teachers", icon: Users },
         { name: "Students", path: "/branch-admin/students", icon: BookOpen },
+        { name: "Staff", path: "/branch-admin/staff", icon: Users },
         { name: "Classes", path: "/branch-admin/classes", icon: School },
         { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
         { name: "Subjects", path: "/branch-admin/subjects", icon: BookOpen },
@@ -217,6 +233,7 @@ const ROLE_MENUS = {
       items: [
         { name: "Attendance", path: "/branch-admin/attendance", icon: Clock },
         { name: "Events", path: "/branch-admin/events", icon: Calendar },
+        { name: "Notifications", path: "/branch-admin/notifications", icon: Calendar },
         { name: "Exams", path: "/branch-admin/exams", icon: FileText },
       ],
     },

@@ -104,7 +104,7 @@ async function getReportsHandler(request, user, userDoc) {
 
     // Get top 10 highest salaries
     const topSalaries = await Payroll.find(query)
-      .populate('teacherId', 'firstName lastName teacherProfile')
+      .populate('userId', 'firstName lastName teacherProfile staffProfile role')
       .populate('branchId', 'name')
       .sort({ netSalary: -1 })
       .limit(10)

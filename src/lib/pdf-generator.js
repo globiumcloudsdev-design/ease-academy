@@ -24,9 +24,9 @@ const getMonthName = (month) => {
 };
 
 /**
- * Generate Salary Slip PDF for Teachers
+ * Generate Salary Slip PDF
  */
-export const generateSalarySlipPDF = async (payroll, teacher) => {
+export const generateSalarySlipPDF = async (payroll, employee) => {
   const doc = new jsPDF();
 
   // Colors
@@ -61,13 +61,17 @@ export const generateSalarySlipPDF = async (payroll, teacher) => {
 
   yPos += 8;
 
+  // Determine profile data
+  const profile = employee.teacherProfile || employee.staffProfile || {};
+  const designation = profile.designation || (employee.role === 'teacher' ? 'Teacher' : (employee.role === 'branch_admin' ? 'Branch Admin' : 'Staff'));
+
   // Employee details table
   const employeeData = [
-    ['Employee Name:', `${teacher.firstName} ${teacher.lastName}`],
-    ['Employee ID:', teacher.teacherProfile?.employeeId || 'N/A'],
-    ['Designation:', teacher.teacherProfile?.designation || 'Teacher'],
-    ['Email:', teacher.email],
-    ['Phone:', teacher.phone || 'N/A'],
+    ['Employee Name:', `${employee.firstName} ${employee.lastName}`],
+    ['Employee ID:', profile.employeeId || 'N/A'],
+    ['Designation:', designation],
+    ['Email:', employee.email],
+    ['Phone:', employee.phone || 'N/A'],
   ];
 
   autoTable(doc, {

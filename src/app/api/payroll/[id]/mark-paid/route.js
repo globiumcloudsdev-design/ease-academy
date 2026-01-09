@@ -19,7 +19,7 @@ async function markPaidHandler(request, user, userDoc, context) {
     const currentUser = user;
 
     // Get payroll record
-    const payroll = await Payroll.findById(id).populate('teacherId', 'firstName lastName email');
+    const payroll = await Payroll.findById(id).populate('userId', 'firstName lastName email');
 
     if (!payroll) {
       return NextResponse.json(
@@ -51,12 +51,12 @@ async function markPaidHandler(request, user, userDoc, context) {
 
     await payroll.save();
 
-    // Create notification for teacher
+    // Create notification for employee
     await Notification.create({
       type: 'general',
       title: 'Salary Payment Received',
       message: `Your salary for ${getMonthName(payroll.month)} ${payroll.year} has been paid. Amount: PKR ${payroll.netSalary.toLocaleString()}`,
-      targetUser: payroll.teacherId._id,
+      targetUser: payroll.userId._id,
       metadata: {
         payrollId: payroll._id,
         month: payroll.month,

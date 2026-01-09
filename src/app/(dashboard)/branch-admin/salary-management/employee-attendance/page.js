@@ -542,10 +542,20 @@ export default function BranchAdminEmployeeAttendancePage() {
             <Dropdown
               value={formData.userId}
               onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-              options={users.map(user => ({
-                value: user._id,
-                label: `${user.firstName} ${user.lastName} - ${user.role}`
-              }))}
+              options={users.map(user => {
+                let roleLabel = user.role;
+                // Add staff type if available
+                if (user.role === 'staff' && user.staffProfile?.staffType) {
+                  roleLabel += ` - ${user.staffProfile.staffType}`;
+                }
+                // Normalize role formatting
+                roleLabel = roleLabel.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                return {
+                  value: user._id,
+                  label: `${user.firstName} ${user.lastName} (${roleLabel})`
+                };
+              })}
               placeholder="Select Employee"
               required
             />

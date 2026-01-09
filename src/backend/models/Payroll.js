@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const payrollSchema = new mongoose.Schema(
   {
-    teacherId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
@@ -121,7 +121,7 @@ const payrollSchema = new mongoose.Schema(
 );
 
 // Indexes for efficient queries
-payrollSchema.index({ teacherId: 1, month: 1, year: 1 }, { unique: true });
+payrollSchema.index({ userId: 1, month: 1, year: 1 }, { unique: true });
 payrollSchema.index({ branchId: 1, month: 1, year: 1 });
 payrollSchema.index({ paymentStatus: 1 });
 payrollSchema.index({ createdAt: -1 });

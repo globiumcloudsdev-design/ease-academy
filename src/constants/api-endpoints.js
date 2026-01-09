@@ -196,6 +196,14 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/subjects/:id',
     },
 
+    STAFF: {
+      CREATE: '/api/super-admin/staff',
+      LIST: '/api/super-admin/staff',
+      GET: '/api/super-admin/staff/:id',
+      UPDATE: '/api/super-admin/staff/:id',
+      DELETE: '/api/super-admin/staff/:id',
+    },
+
     // Timetables Management
     TIMETABLES: {
       CREATE: '/api/super-admin/timetables',
@@ -352,6 +360,15 @@ export const API_ENDPOINTS = {
       GET: '/api/school/grades/:id',
       UPDATE: '/api/school/grades/:id',
       DELETE: '/api/school/grades/:id',
+    },
+
+    // Staff Management
+    STAFF: {
+      CREATE: '/api/branch-admin/staff',
+      LIST: '/api/branch-admin/staff',
+      GET: '/api/branch-admin/staff/:id',
+      UPDATE: '/api/branch-admin/staff/:id',
+      DELETE: '/api/branch-admin/staff/:id',
     },
 
     // Subjects Management

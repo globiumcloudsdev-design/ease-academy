@@ -19,7 +19,7 @@ async function downloadSlipHandler(request, user, userDoc, context) {
 
     // Get payroll record
     const payroll = await Payroll.findById(id)
-      .populate('teacherId', 'firstName lastName email phone teacherProfile')
+      .populate('userId', 'firstName lastName email phone teacherProfile staffProfile role')
       .populate('branchId', 'name code address')
       .lean();
 
@@ -31,7 +31,10 @@ async function downloadSlipHandler(request, user, userDoc, context) {
     }
 
     // Authorization check
-    if (currentUser.role === 'teacher' && payroll.teacherId._id.toString() !== currentUser._id.toString()) {
+    const isOwner = payroll.userId._id.toString() === currentUser._id.toString();
+    const isAdmin = ['super_admin', 'branch_admin'].includes(currentUser.role);
+
+    if (!isOwner && !isAdmin) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized access' },
         { status: 403 }
@@ -46,7 +49,7 @@ async function downloadSlipHandler(request, user, userDoc, context) {
     }
 
     // Generate PDF
-    const pdfBuffer = await generateSalarySlipPDF(payroll, payroll.teacherId);
+    const pdfBuffer = await generateSalarySlipPDF(payroll, payroll.userId);
 
     // Return PDF as response
     return new NextResponse(pdfBuffer, {
@@ -64,4 +67,4 @@ async function downloadSlipHandler(request, user, userDoc, context) {
   }
 }
 
-export const GET = withAuth(downloadSlipHandler, [requireRole(['super_admin', 'branch_admin', 'teacher'])]);
+export const GET = withAuth(downloadSlipHandler, [requireRole(['super_admin', 'branch_admin', 'teacher', 'staff'])]);
