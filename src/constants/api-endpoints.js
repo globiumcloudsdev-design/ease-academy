@@ -26,6 +26,10 @@ export const API_ENDPOINTS = {
   SUPER_ADMIN: {
     DASHBOARD: '/api/super-admin/dashboard',
     DASHBOARD_STATS: '/api/super-admin/dashboard/stats',
+    NOTIFICATIONS: {
+      LIST: '/api/notifications',
+      MARK_READ: '/api/notifications',
+    },
 
     // Branch Management
     BRANCHES: {
@@ -288,6 +292,10 @@ export const API_ENDPOINTS = {
   // Branch Admin Endpoints
   BRANCH_ADMIN: {
     DASHBOARD: '/api/branch-admin/dashboard',
+    NOTIFICATIONS: {
+      LIST: '/api/notifications',
+      MARK_READ: '/api/notifications',
+    },
 
     // Users Management (Branch Admin - restricted to their branch)
     USERS: {
@@ -539,6 +547,10 @@ export const API_ENDPOINTS = {
   // Teacher Endpoints
   TEACHER: {
     DASHBOARD: '/api/teacher/dashboard',
+    NOTIFICATIONS: {
+      LIST: '/api/notifications',
+      MARK_READ: '/api/notifications',
+    },
 
     // My Classes (app route: src/app/api/teacher/my-classes)
     MY_CLASSES: {
@@ -618,6 +630,10 @@ export const API_ENDPOINTS = {
   // Student Endpoints
   STUDENT: {
     DASHBOARD: '/student/dashboard',
+    NOTIFICATIONS: {
+      LIST: '/api/notifications',
+      MARK_READ: '/api/notifications',
+    },
 
     // Profile
     PROFILE: {
@@ -683,11 +699,8 @@ export const API_ENDPOINTS = {
 
     // Notifications
     NOTIFICATIONS: {
-      LIST: '/common/notifications',
-      READ: '/common/notifications/:id/read',
-      READ_ALL: '/common/notifications/read-all',
-      UNREAD_COUNT: '/common/notifications/unread-count',
-      DELETE: '/common/notifications/:id',
+      LIST: '/api/notifications',
+      MARK_READ: '/api/notifications', // PATCH request
     },
 
     // Search
@@ -735,6 +748,12 @@ export const API_ENDPOINTS = {
   PARENT: {
     SIGNUP: '/api/parent/auth/signup',
 
+    // General Parent Notifications
+    NOTIFICATIONS: {
+      LIST: '/api/parent/notifications', // Specific parent route we created
+      MARK_READ: '/api/notifications', // We can use common for marking read or add specific
+    },
+
     // Get all children of authenticated parent
     CHILDREN: '/api/parent',
 
@@ -757,7 +776,10 @@ export const API_ENDPOINTS = {
 
       // Communication
       MESSAGES: '/api/parent/:childId/messages',
-      NOTIFICATIONS: '/api/parent/:childId/notifications',
+      NOTIFICATIONS: {
+        LIST: '/api/parent/:childId/notifications',
+        MARK_READ: '/api/parent/:childId/notifications', // PATCH request
+      },
 
       // Progress tracking
       ATTENDANCE: '/api/parent/:childId/attendance',

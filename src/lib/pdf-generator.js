@@ -23,275 +23,467 @@ const getMonthName = (month) => {
   return months[month - 1];
 };
 
-/**
- * Generate Salary Slip PDF
- */
+// /**
+//  * Generate Salary Slip PDF
+//  */
+// export const generateSalarySlipPDF = async (payroll, employee) => {
+//   const doc = new jsPDF();
+
+//   // Colors
+//   const primaryColor = [41, 128, 185]; // Blue
+//   const secondaryColor = [52, 73, 94]; // Dark gray
+//   const greenColor = [39, 174, 96]; // Green
+//   const redColor = [231, 76, 60]; // Red
+
+//   // Header Section
+//   doc.setFillColor(...primaryColor);
+//   doc.rect(0, 0, 210, 30, 'F'); // Reduced height
+
+//   doc.setTextColor(255, 255, 255);
+//   doc.setFontSize(22);
+//   doc.setFont('helvetica', 'bold');
+//   doc.text('EASE ACADEMY', 105, 12, { align: 'center' }); // Adjusted Y
+
+//   doc.setFontSize(14);
+//   doc.setFont('helvetica', 'normal');
+//   doc.text('Salary Slip', 105, 20, { align: 'center' }); // Adjusted Y
+
+//   doc.setFontSize(10);
+//   doc.text(`${getMonthName(payroll.month)} ${payroll.year}`, 105, 26, { align: 'center' }); // Adjusted Y
+
+//   // Employee Information Section
+//   let yPos = 40; // Reduced starting Y
+
+//   doc.setTextColor(...secondaryColor);
+//   doc.setFontSize(12);
+//   doc.setFont('helvetica', 'bold');
+//   doc.text('Employee Information', 15, yPos);
+
+//   yPos += 6; // Reduced spacing
+
+//   // Determine profile data and designation based on role
+//   let designation = '';
+//   let employeeId = 'N/A';
+  
+//   if (employee.role === 'teacher' && employee.teacherProfile) {
+//     designation = employee.teacherProfile.designation || 'Teacher';
+//     employeeId = employee.teacherProfile.employeeId || 'N/A';
+//   } else if (employee.role === 'staff' && employee.staffProfile) {
+//     designation = employee.staffProfile.role || 'Staff'; // Use role for staff designation
+//     employeeId = employee.staffProfile.employeeId || 'N/A';
+//   } else {
+//     designation = employee.role === 'branch_admin' ? 'Branch Admin' : (employee.role || 'Employee');
+//     // Try to get ID from any profile
+//     const p = employee.teacherProfile || employee.staffProfile;
+//     if (p) employeeId = p.employeeId || 'N/A';
+//   }
+
+//   // Rounding helper for currency
+//   const formatMoney = (amount) => `PKR ${Math.round(amount || 0).toLocaleString()}`;
+
+//   // Employee details table
+//   const employeeData = [
+//     ['Employee Name:', `${employee.firstName} ${employee.lastName}`],
+//     ['Employee ID:', employeeId],
+//     ['Designation:', designation],
+//     ['Email:', employee.email],
+//     ['Phone:', employee.phone || 'N/A'],
+//   ];
+
+//   autoTable(doc, {
+//     startY: yPos,
+//     head: [],
+//     body: employeeData,
+//     theme: 'plain',
+//     styles: {
+//       fontSize: 9, // Reduced font size
+//       cellPadding: 2, // Reduced padding
+//     },
+//     columnStyles: {
+//       0: { fontStyle: 'bold', cellWidth: 40 }, // Reduced width
+//       1: { cellWidth: 120 },
+//     },
+//   });
+
+//   yPos = doc.lastAutoTable.finalY + 6; // Reduced spacing
+
+//   // Salary Breakdown Section
+//   doc.setFontSize(12);
+//   doc.setFont('helvetica', 'bold');
+//   doc.setTextColor(...primaryColor);
+//   doc.text('Salary Breakdown', 15, yPos);
+
+//   yPos += 4; // Reduced spacing
+
+//   // Earnings Table
+//   const earningsData = [
+//     ['Basic Salary', '', formatMoney(payroll.basicSalary)],
+//     ['House Rent Allowance', '', formatMoney(payroll.allowances.houseRent)],
+//     ['Medical Allowance', '', formatMoney(payroll.allowances.medical)],
+//     ['Transport Allowance', '', formatMoney(payroll.allowances.transport)],
+//     ['Other Allowances', '', formatMoney(payroll.allowances.other)],
+//   ];
+
+//   autoTable(doc, {
+//     startY: yPos,
+//     head: [['Earnings', '', 'Amount']],
+//     body: earningsData,
+//     foot: [['Gross Salary', '', formatMoney(payroll.grossSalary)]],
+//     theme: 'grid',
+//     headStyles: {
+//       fillColor: [...primaryColor],
+//       fontSize: 10,
+//       fontStyle: 'bold',
+//     },
+//     footStyles: {
+//       fillColor: [...greenColor],
+//       fontSize: 10, // Reduced font size
+//       fontStyle: 'bold',
+//     },
+//     styles: {
+//       fontSize: 9, // Reduced font size
+//       cellPadding: 3, // Reduced padding
+//     },
+//     columnStyles: {
+//       0: { cellWidth: 80 },
+//       1: { cellWidth: 30 },
+//       2: { cellWidth: 60, halign: 'right' },
+//     },
+//   });
+
+//   yPos = doc.lastAutoTable.finalY + 6; // Reduced spacing
+
+//   // Deductions Table
+//   const deductionsData = [
+//     ['Tax', '', formatMoney(payroll.deductions.tax)],
+//     ['Provident Fund', '', formatMoney(payroll.deductions.providentFund)],
+//     ['Insurance', '', formatMoney(payroll.deductions.insurance)],
+//     ['Other Deductions', '', formatMoney(payroll.deductions.other)],
+//   ];
+
+//   // Add attendance deduction if applicable
+//   if (payroll.attendanceDeduction.calculatedDeduction > 0) {
+//     deductionsData.push([
+//       `Absence Deduction (${payroll.attendanceDeduction.absentDays} days)`,
+//       '',
+//       formatMoney(payroll.attendanceDeduction.calculatedDeduction),
+//     ]);
+//   }
+
+//   autoTable(doc, {
+//     startY: yPos,
+//     head: [['Deductions', '', 'Amount']],
+//     body: deductionsData,
+//     foot: [['Total Deductions', '', formatMoney(payroll.totalDeductions)]],
+//     theme: 'grid',
+//     headStyles: {
+//       fillColor: [...secondaryColor],
+//       fontSize: 10,
+//       fontStyle: 'bold',
+//     },
+//     footStyles: {
+//       fillColor: [...redColor],
+//       fontSize: 10, // Reduced font size
+//       fontStyle: 'bold',
+//     },
+//     styles: {
+//       fontSize: 9, // Reduced font size
+//       cellPadding: 3, // Reduced padding
+//     },
+//     columnStyles: {
+//       0: { cellWidth: 80 },
+//       1: { cellWidth: 30 },
+//       2: { cellWidth: 60, halign: 'right' },
+//     },
+//   });
+
+//   yPos = doc.lastAutoTable.finalY + 8; // Reduced spacing
+
+//   // Attendance Details (if available)
+//   if (payroll.attendanceDeduction.totalWorkingDays > 0) {
+//     doc.setFontSize(11);
+//     doc.setFont('helvetica', 'bold');
+//     doc.setTextColor(...secondaryColor);
+//     doc.text('Attendance Summary', 15, yPos);
+
+//     yPos += 4; // Reduced spacing
+
+//     const attendanceData = [
+//       ['Total Working Days', payroll.attendanceDeduction.totalWorkingDays.toString()],
+//       ['Present Days', payroll.attendanceDeduction.presentDays.toString()],
+//       ['Absent Days', payroll.attendanceDeduction.absentDays.toString()],
+//       ['Leave Days', payroll.attendanceDeduction.leaveDays.toString()],
+//     ];
+
+//     autoTable(doc, {
+//       startY: yPos,
+//       body: attendanceData,
+//       theme: 'striped',
+//       styles: {
+//         fontSize: 9, // Reduced font size
+//         cellPadding: 2, // Reduced padding
+//       },
+//       columnStyles: {
+//         0: { fontStyle: 'bold', cellWidth: 80 },
+//         1: { cellWidth: 90 },
+//       },
+//     });
+
+//     yPos = doc.lastAutoTable.finalY + 8; // Reduced spacing
+//   }
+
+//   // Net Salary Box
+//   doc.setFillColor(...greenColor);
+//   doc.rect(15, yPos, 180, 16, 'F'); // Reduced height
+
+//   doc.setTextColor(255, 255, 255);
+//   doc.setFontSize(13); // Reduced font size
+//   doc.setFont('helvetica', 'bold');
+//   doc.text('Net Salary:', 25, yPos + 10);
+//   doc.setFontSize(15);
+//   doc.text(formatMoney(payroll.netSalary), 175, yPos + 10, { align: 'right' });
+
+//   yPos += 20; // Reduced spacing
+
+//   // Bank Details (if available)
+//   // Check in teacherProfile (where it is defined in schema)
+//   const bankAccount = employee.teacherProfile?.bankAccount;
+
+//   if (bankAccount && (bankAccount.bankName || bankAccount.accountNumber)) {
+    
+//     doc.setFontSize(11);
+//     doc.setFont('helvetica', 'bold');
+//     doc.setTextColor(...secondaryColor);
+//     doc.text('Bank Account Details', 15, yPos);
+
+//     yPos += 4; // Reduced spacing
+
+//     const bankData = [
+//       ['Bank Name:', bankAccount.bankName || 'N/A'],
+//       ['Account Number:', bankAccount.accountNumber || 'N/A'],
+//       ['IBAN:', bankAccount.iban || 'N/A'],
+//     ];
+
+//     autoTable(doc, {
+//       startY: yPos,
+//       body: bankData,
+//       theme: 'plain',
+//       styles: {
+//         fontSize: 9,
+//         cellPadding: 2,
+//       },
+//       columnStyles: {
+//         0: { fontStyle: 'bold', cellWidth: 50 },
+//         1: { cellWidth: 120 },
+//       },
+//     });
+
+//     yPos = doc.lastAutoTable.finalY + 8; // Reduced spacing
+//   }
+
+//   // Remarks (if available)
+//   if (payroll.remarks) {
+//     doc.setFontSize(10);
+//     doc.setFont('helvetica', 'bold');
+//     doc.setTextColor(...secondaryColor);
+//     doc.text('Remarks:', 15, yPos);
+    
+//     doc.setFont('helvetica', 'normal');
+//     doc.setFontSize(9);
+//     const splitRemarks = doc.splitTextToSize(payroll.remarks, 170);
+//     doc.text(splitRemarks, 15, yPos + 5);
+    
+//     yPos += 5 + (splitRemarks.length * 5) + 5;
+//   }
+
+//   // Footer
+//   const pageHeight = doc.internal.pageSize.height;
+//   doc.setFontSize(8);
+//   doc.setFont('helvetica', 'italic');
+//   doc.setTextColor(128, 128, 128);
+//   doc.text('This is a computer-generated salary slip and does not require a signature.', 105, pageHeight - 20, { align: 'center' });
+//   doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, pageHeight - 15, { align: 'center' });
+//   doc.text('© Ease Academy - School Management System', 105, pageHeight - 10, { align: 'center' });
+
+//   // Return PDF as buffer for email attachment
+//   return Buffer.from(doc.output('arraybuffer'));
+// };
+
 export const generateSalarySlipPDF = async (payroll, employee) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF('p', 'mm', 'a4');
+  
+  // Colors from the image
+  const tealColor = [0, 153, 168]; // Primary Teal
+  const textBlack = [30, 30, 30];
+  const borderGray = [220, 220, 220];
 
-  // Colors
-  const primaryColor = [41, 128, 185]; // Blue
-  const secondaryColor = [52, 73, 94]; // Dark gray
-  const greenColor = [39, 174, 96]; // Green
-  const redColor = [231, 76, 60]; // Red
+  // --- 1. THE MODERN HEADER (Exact Image Style) ---
+  doc.setFillColor(...tealColor);
+  doc.rect(0, 0, 210, 45, 'F'); // Top bar
 
-  // Header Section
-  doc.setFillColor(...primaryColor);
-  doc.rect(0, 0, 210, 35, 'F');
+  // Drawing the white diagonal shape like in the image
+  doc.setFillColor(255, 255, 255);
+  doc.triangle(90, 45, 120, 0, 120, 45, 'F');
+  doc.rect(120, 0, 90, 45, 'F');
 
+  // School Logo Icon (Geometric rectangles for a modern look)
+  doc.setFillColor(255, 255, 255);
+  doc.rect(20, 15, 3, 12, 'F');
+  doc.rect(25, 10, 3, 17, 'F');
+  doc.rect(30, 18, 3, 9, 'F');
+
+  // School Text
   doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text('EASE ACADEMY', 105, 15, { align: 'center' });
-
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Salary Slip', 105, 25, { align: 'center' });
-
+  doc.text('EASE ACADEMY', 40, 22);
   doc.setFontSize(10);
-  doc.text(`${getMonthName(payroll.month)} ${payroll.year}`, 105, 32, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text('Fulfilling Your Educational Needs', 40, 28);
 
-  // Employee Information Section
-  let yPos = 45;
-
-  doc.setTextColor(...secondaryColor);
-  doc.setFontSize(12);
+  // PAYSLIP Text (Right Aligned Teal)
+  doc.setTextColor(...tealColor);
+  doc.setFontSize(48);
   doc.setFont('helvetica', 'bold');
-  doc.text('Employee Information', 15, yPos);
+  doc.text('PAYSLIP', 195, 30, { align: 'right' });
 
-  yPos += 8;
+  // --- 2. EMPLOYEE INFORMATION ---
+  let yPos = 60;
+  doc.setTextColor(...textBlack);
+  doc.setFontSize(20);
+  doc.text('EMPLOYEE INFORMATION:', 105, yPos, { align: 'center' });
 
-  // Determine profile data
-  const profile = employee.teacherProfile || employee.staffProfile || {};
-  const designation = profile.designation || (employee.role === 'teacher' ? 'Teacher' : (employee.role === 'branch_admin' ? 'Branch Admin' : 'Staff'));
+  yPos += 15;
+  const designation = employee.role === 'teacher' ? (employee.teacherProfile?.designation || 'Teacher') : (employee.staffProfile?.role || 'Staff');
+  const employeeId = employee.teacherProfile?.employeeId || employee.staffProfile?.employeeId || 'N/A';
 
-  // Employee details table
-  const employeeData = [
-    ['Employee Name:', `${employee.firstName} ${employee.lastName}`],
-    ['Employee ID:', profile.employeeId || 'N/A'],
-    ['Designation:', designation],
-    ['Email:', employee.email],
-    ['Phone:', employee.phone || 'N/A'],
-  ];
-
-  autoTable(doc, {
-    startY: yPos,
-    head: [],
-    body: employeeData,
-    theme: 'plain',
-    styles: {
-      fontSize: 10,
-      cellPadding: 3,
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 50 },
-      1: { cellWidth: 120 },
-    },
-  });
-
-  yPos = doc.lastAutoTable.finalY + 10;
-
-  // Salary Breakdown Section
-  doc.setFontSize(12);
+  doc.setFontSize(11);
+  // Left Side
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...primaryColor);
-  doc.text('Salary Breakdown', 15, yPos);
+  doc.text('Employee Name:', 20, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${employee.firstName} ${employee.lastName}`, 58, yPos);
 
-  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Position:', 20, yPos + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(designation, 58, yPos + 8);
 
-  // Earnings Table
-  const earningsData = [
-    ['Basic Salary', '', `PKR ${payroll.basicSalary.toLocaleString()}`],
-    ['House Rent Allowance', '', `PKR ${payroll.allowances.houseRent.toLocaleString()}`],
-    ['Medical Allowance', '', `PKR ${payroll.allowances.medical.toLocaleString()}`],
-    ['Transport Allowance', '', `PKR ${payroll.allowances.transport.toLocaleString()}`],
-    ['Other Allowances', '', `PKR ${payroll.allowances.other.toLocaleString()}`],
+  // Right Side
+  doc.setFont('helvetica', 'bold');
+  doc.text('Employee ID:', 115, yPos);
+  doc.setFont('helvetica', 'normal');
+  doc.text(employeeId, 150, yPos);
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Department:', 115, yPos + 8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(employee.role.replace('_', ' ').toUpperCase(), 150, yPos + 8);
+
+  // --- 3. SALARY BREAKDOWN TABLE ---
+  yPos += 22;
+  const formatMoney = (amount) => `Rp${Math.round(amount || 0).toLocaleString()}`;
+
+  const tableRows = [
+    ['Basic Salary', formatMoney(payroll.basicSalary)],
+    ['Transportation Allowance', formatMoney(payroll.allowances.transport)],
+    ['Meal Allowance', formatMoney(payroll.allowances.medical)],
+    ['Performance Allowance', formatMoney(payroll.performanceAllowance || 0)],
+    ['Overtime', formatMoney(payroll.overtime || 0)],
+    ['Bonus', formatMoney(payroll.bonus || 0)],
+    ['Total Earnings', formatMoney(payroll.grossSalary)],
+    ['Income Tax (21%)', formatMoney(payroll.deductions.tax)]
   ];
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Earnings', '', 'Amount']],
-    body: earningsData,
-    foot: [['Gross Salary', '', `PKR ${payroll.grossSalary.toLocaleString()}`]],
-    theme: 'grid',
-    headStyles: {
-      fillColor: [...primaryColor],
-      fontSize: 10,
-      fontStyle: 'bold',
+    head: [['Description', 'Amount']],
+    body: tableRows,
+    theme: 'striped',
+    headStyles: { 
+      fillColor: [30, 30, 30], 
+      textColor: 255, 
+      fontSize: 12, 
+      fontStyle: 'bold', 
+      halign: 'left',
+      cellPadding: 4
     },
-    footStyles: {
-      fillColor: [...greenColor],
-      fontSize: 11,
-      fontStyle: 'bold',
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 4,
+    bodyStyles: { 
+      fontSize: 10, 
+      cellPadding: 5, 
+      textColor: [50, 50, 50] 
     },
     columnStyles: {
-      0: { cellWidth: 80 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 60, halign: 'right' },
+      0: { cellWidth: 120 },
+      1: { cellWidth: 50, halign: 'right', fontStyle: 'bold', textColor: [0, 0, 0] }
     },
+    alternateRowStyles: { fillColor: [248, 248, 248] },
+    margin: { left: 20, right: 20 },
+    didParseCell: (data) => {
+      // Bold the "Total Earnings" row like in the image
+      if (data.row.index === 6) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 11;
+      }
+    }
   });
 
+  // --- 4. FOOTER INFO (Bank & Signature Side-by-Side) ---
   yPos = doc.lastAutoTable.finalY + 10;
 
-  // Deductions Table
-  const deductionsData = [
-    ['Tax', '', `PKR ${payroll.deductions.tax.toLocaleString()}`],
-    ['Provident Fund', '', `PKR ${payroll.deductions.providentFund.toLocaleString()}`],
-    ['Insurance', '', `PKR ${payroll.deductions.insurance.toLocaleString()}`],
-    ['Other Deductions', '', `PKR ${payroll.deductions.other.toLocaleString()}`],
-  ];
-
-  // Add attendance deduction if applicable
-  if (payroll.attendanceDeduction.calculatedDeduction > 0) {
-    deductionsData.push([
-      `Absence Deduction (${payroll.attendanceDeduction.absentDays} days)`,
-      '',
-      `PKR ${payroll.attendanceDeduction.calculatedDeduction.toLocaleString()}`,
-    ]);
-  }
-
-  autoTable(doc, {
-    startY: yPos,
-    head: [['Deductions', '', 'Amount']],
-    body: deductionsData,
-    foot: [['Total Deductions', '', `PKR ${payroll.totalDeductions.toLocaleString()}`]],
-    theme: 'grid',
-    headStyles: {
-      fillColor: [...secondaryColor],
-      fontSize: 10,
-      fontStyle: 'bold',
-    },
-    footStyles: {
-      fillColor: [...redColor],
-      fontSize: 11,
-      fontStyle: 'bold',
-    },
-    styles: {
-      fontSize: 10,
-      cellPadding: 4,
-    },
-    columnStyles: {
-      0: { cellWidth: 80 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 60, halign: 'right' },
-    },
-  });
-
-  yPos = doc.lastAutoTable.finalY + 10;
-
-  // Attendance Details (if available)
-  if (payroll.attendanceDeduction.totalWorkingDays > 0) {
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...secondaryColor);
-    doc.text('Attendance Summary', 15, yPos);
-
-    yPos += 5;
-
-    const attendanceData = [
-      ['Total Working Days', payroll.attendanceDeduction.totalWorkingDays.toString()],
-      ['Present Days', payroll.attendanceDeduction.presentDays.toString()],
-      ['Absent Days', payroll.attendanceDeduction.absentDays.toString()],
-      ['Leave Days', payroll.attendanceDeduction.leaveDays.toString()],
-    ];
-
-    autoTable(doc, {
-      startY: yPos,
-      body: attendanceData,
-      theme: 'striped',
-      styles: {
-        fontSize: 10,
-        cellPadding: 3,
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 80 },
-        1: { cellWidth: 90 },
-      },
-    });
-
-    yPos = doc.lastAutoTable.finalY + 10;
-  }
-
-  // Net Salary Box
-  doc.setFillColor(...greenColor);
-  doc.rect(15, yPos, 180, 20, 'F');
-
+  // NET SALARY HIGHLIGHT (Teal Box)
+  doc.setFillColor(...tealColor);
+  doc.rect(20, yPos, 100, 15, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('Net Salary:', 25, yPos + 12);
-  doc.setFontSize(16);
-  doc.text(`PKR ${payroll.netSalary.toLocaleString()}`, 175, yPos + 12, { align: 'right' });
+  doc.text('NET SALARY', 25, yPos + 10);
+  doc.text(formatMoney(payroll.netSalary), 115, yPos + 10, { align: 'right' });
 
-  yPos += 30;
+  // Bank Info (Right of Net Salary)
+  const bank = employee.teacherProfile?.bankAccount;
+  doc.setTextColor(...textBlack);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Bank Details:', 130, yPos + 4);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${bank?.bankName || 'N/A'}`, 130, yPos + 9);
+  doc.text(`A/C: ${bank?.accountNumber || 'N/A'}`, 130, yPos + 13);
 
-  // Bank Details (if available)
-  if (teacher.teacherProfile?.salaryDetails?.bankAccount) {
-    const bankAccount = teacher.teacherProfile.salaryDetails.bankAccount;
-    
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...secondaryColor);
-    doc.text('Bank Account Details', 15, yPos);
+  yPos += 25;
 
-    yPos += 5;
+  // Bottom Row: Paid Date & Signature
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Paid on: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`, 20, yPos);
 
-    const bankData = [
-      ['Bank Name:', bankAccount.bankName || 'N/A'],
-      ['Account Number:', bankAccount.accountNumber || 'N/A'],
-      ['IBAN:', bankAccount.iban || 'N/A'],
-    ];
+  // Signature Section
+  doc.text('Prepared by:', 140, yPos - 5);
+  doc.setFontSize(18);
+  doc.setFont('courier', 'bolditalic'); // Signature font effect
+  doc.text('Benjamin', 140, yPos + 3); 
+  doc.line(140, yPos + 5, 185, yPos + 5); // Signature line
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Benjamin Shah', 140, yPos + 10);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('HR Manager', 140, yPos + 15);
 
-    autoTable(doc, {
-      startY: yPos,
-      body: bankData,
-      theme: 'plain',
-      styles: {
-        fontSize: 9,
-        cellPadding: 2,
-      },
-      columnStyles: {
-        0: { fontStyle: 'bold', cellWidth: 50 },
-        1: { cellWidth: 120 },
-      },
-    });
-
-    yPos = doc.lastAutoTable.finalY + 10;
-  }
-
-  // Remarks (if available)
-  if (payroll.remarks) {
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...secondaryColor);
-    doc.text('Remarks:', 15, yPos);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    const splitRemarks = doc.splitTextToSize(payroll.remarks, 170);
-    doc.text(splitRemarks, 15, yPos + 5);
-    
-    yPos += 5 + (splitRemarks.length * 5) + 5;
-  }
-
-  // Footer
+  // Bottom Teal Strip
   const pageHeight = doc.internal.pageSize.height;
+  doc.setFillColor(...tealColor);
+  doc.rect(0, pageHeight - 15, 80, 15, 'F');
+  doc.triangle(80, pageHeight, 80, pageHeight - 15, 100, pageHeight, 'F');
+  
   doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(128, 128, 128);
-  doc.text('This is a computer-generated salary slip and does not require a signature.', 105, pageHeight - 20, { align: 'center' });
-  doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, pageHeight - 15, { align: 'center' });
-  doc.text('© Ease Academy - School Management System', 105, pageHeight - 10, { align: 'center' });
+  doc.setTextColor(255, 255, 255);
+  doc.text('computer-generated document', 10, pageHeight - 6);
+  doc.setTextColor(150, 150, 150);
+  doc.text('© Ease Academy School System', 195, pageHeight - 6, { align: 'right' });
 
-  // Return PDF as buffer for email attachment
   return Buffer.from(doc.output('arraybuffer'));
 };
-
-
 
 export const generateFeeVoucherPDF = (voucher) => {
   const doc = new jsPDF();

@@ -31,7 +31,7 @@ async function downloadSlipHandler(request, user, userDoc, context) {
     }
 
     // Authorization check
-    const isOwner = payroll.userId._id.toString() === currentUser._id.toString();
+    const isOwner = payroll.userId._id.toString() === currentUser.userId;
     const isAdmin = ['super_admin', 'branch_admin'].includes(currentUser.role);
 
     if (!isOwner && !isAdmin) {
@@ -41,7 +41,7 @@ async function downloadSlipHandler(request, user, userDoc, context) {
       );
     }
 
-    if (currentUser.role === 'branch_admin' && payroll.branchId._id.toString() !== currentUser.branchId.toString()) {
+    if (currentUser.role === 'branch_admin' && payroll.branchId._id.toString() !== currentUser.branchId) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized access' },
         { status: 403 }
