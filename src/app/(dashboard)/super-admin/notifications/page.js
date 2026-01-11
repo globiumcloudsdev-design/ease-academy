@@ -2,24 +2,55 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import Input from '@/components/ui/input';
+import Textarea from '@/components/ui/textarea';
+import Dropdown from '@/components/ui/dropdown';
+import MultiSelectDropdown from '@/components/ui/multi-select';
+import ButtonLoader from '@/components/ui/button-loader';
+import { Bell, Users, Type, Building2, Megaphone, History, Clock, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
-// Notification Types List
+// Notification Types
 const NOTIFICATION_TYPES = [
   { value: 'announcement', label: '📢 Announcement' },
   { value: 'general', label: 'ℹ️ General' },
+  { value: 'assignment', label: '📝 Assignment' },
   { value: 'fee_reminder', label: '💰 Fee Reminder' },
-  { value: 'exam', label: '🎓 Exam Update' },
-  { value: 'result', label: '📊 Result Declared' },
   { value: 'event', label: '🎉 Event' },
   { value: 'holiday', label: '🏖️ Holiday' },
+  { value: 'exam', label: '🎓 Exam Update' },
+  { value: 'result', label: '📊 Result Declared' },
 ];
 
-export default function CreateNotification() {
+const TARGET_ROLES = [
+  { value: 'student', label: '👨‍🎓 Students' },
+  { value: 'parent', label: '👨‍👩‍👦 Parents' },
+  { value: 'teacher', label: '👩‍🏫 Teachers' },
+  { value: 'staff', label: '💼 Staff' },
+];
+
+export default function SuperAdminNotification() {
   const router = useRouter();
+  
   const [loading, setLoading] = useState(false);
+  const [branchesLoading, setBranchesLoading] = useState(true);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  
+  // Branches State
   const [branches, setBranches] = useState([]);
-  const [status, setStatus] = useState({ type: '', message: '' });
+  
+  // Specific Targeting State
+  const [isSpecificTargeting, setIsSpecificTargeting] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  
+  // History State
+  const [history, setHistory] = useState([]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -28,272 +59,346 @@ export default function CreateNotification() {
     targetRole: 'student',
     targetBranch: 'all',
   });
-  
-  const getBrowserCookie = (name) => {
-    if (typeof document === 'undefined') return null;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
+
+  // Fetch Branches on mount
+  useEffect(() => {
+    fetchBranches();
+    fetchHistory();
+  }, []);
+
+  // Fetch Users when role/branch changes or specific targeting is toggled
+  useEffect(() => {
+    if (isSpecificTargeting) {
+      fetchUsers();
+    }
+  }, [isSpecificTargeting, formData.targetRole, formData.targetBranch]);
+
+  const fetchBranches = async () => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.LIST);
+      if (response.success) {
+        setBranches(response.data.branches || response.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch branches:', error);
+      toast.error('Failed to load branches');
+    } finally {
+      setBranchesLoading(false);
+    }
   };
 
-  // 1. Page Load hote hi Branches fetch karo
-  useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        console.log("🔵 Fetching branches started...");
-
-       
-        let token = getBrowserCookie('token') || getBrowserCookie('accessToken');
-
-        if (!token) {
-          token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-        }
-
-        console.log("🔑 Token Found:", token ? "YES (Ready)" : "NO (Missing)");
-
-        if (!token) {
-          console.error("❌ No token found anywhere!");
-          return;
-        }
-
-        // ✅ STEP 2: Token ke sath API call
-        const response = await fetch(API_ENDPOINTS.SUPER_ADMIN.BRANCHES.DROPDOWN, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // Token bhej diya
-          }
-        });
-
-        console.log("🔵 Response Status:", response.status);
-
-        if (response.status === 401) {
-          console.error("❌ Error: 401 Unauthorized. Token invalid.");
-          alert("Session Expired. Please Login Again.");
-          return;
-        }
-
-        const result = await response.json();
-        console.log("🔵 Full API Data:", result);
-
-        if (result.success) {
-          if (result.data && Array.isArray(result.data.branches)) {
-            setBranches(result.data.branches);
-          }
-          else if (result.branches && Array.isArray(result.branches)) {
-            setBranches(result.branches);
-          }
-          else if (Array.isArray(result.data)) { // Kabhi kabhi direct array bhi aa jata hai
-            setBranches(result.data);
-          }
-        }
-
-      } catch (error) {
-        console.error('❌ Failed to fetch branches:', error);
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const params = { 
+        role: formData.targetRole,
+        branchId: formData.targetBranch,
+        format: 'dropdown'
+      };
+      console.log('🔍 Fetching users with params:', params);
+      console.log('📍 Endpoint:', API_ENDPOINTS.SUPER_ADMIN.USERS.LIST);
+      
+      const response = await apiClient.get(API_ENDPOINTS.SUPER_ADMIN.USERS.LIST, params);
+      console.log('✅ Users response:', response);
+      
+      if (response.success) {
+        setAvailableUsers(response.data);
+      } else {
+        console.error('❌ Failed response:', response);
+        setAvailableUsers([]);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      toast.error(`Failed to load users: ${error.message || 'Network error'}`);
+      setAvailableUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
-    fetchBranches();
-  }, []);
+  const fetchHistory = async () => {
+    try {
+      if (!API_ENDPOINTS.NOTIFICATIONS?.HISTORY) {
+        setHistoryLoading(false);
+        return;
+      }
+
+      const response = await apiClient.get(API_ENDPOINTS.NOTIFICATIONS.HISTORY);
+      if (response.success && response.data) {
+        const notifications = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data.notifications || []);
+        setHistory(notifications);
+      } else {
+        setHistory([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+      setHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Reset selection if role or branch changes
+    if (e.target.name === 'targetRole' || e.target.name === 'targetBranch') {
+      setSelectedUserIds([]);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatus({ type: '', message: '' });
 
     try {
-      // Ensure we use the same robust token lookup as on page load
-      let token = getBrowserCookie('token') || getBrowserCookie('accessToken') || localStorage.getItem('token') || localStorage.getItem('accessToken');
+      const payload = {
+        ...formData,
+        targetUserIds: isSpecificTargeting ? selectedUserIds : undefined,
+      };
 
-      if (!token) {
-        setStatus({ type: 'error', message: '❌ You are not authenticated. Please login again.' });
+      if (isSpecificTargeting && selectedUserIds.length === 0) {
+        toast.error('Please select at least one user');
         setLoading(false);
         return;
       }
 
-      const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const response = await apiClient.post(API_ENDPOINTS.NOTIFICATIONS.SEND, payload);
 
-      const response = await fetch('/api/notifications/send', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(formData),
-      });
-
-      console.log('🔵 /api/notifications/send status', response.status);
-
-      let data;
-      try {
-        data = await response.json();
-        console.log('🔵 /api/notifications/send response JSON:', data);
-      } catch (err) {
-        const text = await response.text();
-        console.log('🔵 /api/notifications/send response text:', text);
-        data = { message: text };
-      }
-
-      if (response.ok) {
-        setStatus({ type: 'success', message: `✅ Success! ${data.message}` });
+      if (response.success) {
+        const targetDesc = isSpecificTargeting 
+          ? `${selectedUserIds.length} specific users`
+          : formData.targetBranch === 'all' 
+            ? 'all branches' 
+            : branches.find(b => b._id === formData.targetBranch)?.name || 'selected branch';
+        
+        toast.success(`✅ Notification sent to ${targetDesc}!`);
         setFormData({
+          ...formData,
           title: '',
           message: '',
-          type: 'announcement',
-          targetRole: 'student',
-          targetBranch: 'all',
         });
+        setSelectedUserIds([]);
+        setIsSpecificTargeting(false);
+        fetchHistory();
       } else {
-        setStatus({ type: 'error', message: `❌ Error: ${data.message || 'Failed to send'}` });
+        toast.error(`❌ Error: ${response.message || 'Failed to send'}`);
       }
     } catch (error) {
       console.error(error);
-      setStatus({ type: 'error', message: '❌ Server Error. Please try again.' });
+      toast.error('❌ Server Error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="bg-white p-6 rounded-xl shadow border border-gray-100 mb-6 transition-shadow">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2 leading-tight tracking-tight">
-          📢 Create Broadcast Notification
-        </h1>
-        <p className="text-gray-500 mt-1 text-sm">
-          Super Admins can send push notifications to specific branches or the entire school network.
-        </p>
-      </div>
+    <div className="p-6 max-w-5xl mx-auto space-y-8">
+      
+      {/* Send Notification Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Bell className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <CardTitle>Super Admin Notification Center</CardTitle>
+              <CardDescription>
+                Send announcements and alerts to specific branches or all schools in the network.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
 
-      {status.message && (
-        <div role="status" className={`p-4 mb-6 rounded-lg text-sm font-medium transition-colors ${status.type === 'success'
-          ? 'bg-green-50 text-green-700 border border-green-200'
-          : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-          {status.message}
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="p-8">
+        <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Select Branch <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <select
-                        name="targetBranch"
-                        value={formData.targetBranch}
-                        onChange={handleChange}
-                        className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none cursor-pointer transition-shadow duration-150"
-                      >
-                        <option value="all" className="font-bold text-blue-600">🌍 All Branches (Global)</option>
-                        <option disabled>──────────────</option>
-                        {branches.length === 0 && <option disabled>Loading...</option>}
-                        {branches.map((branch) => (
-                          <option key={branch._id} value={branch._id}>🏢 {branch.name} ({branch.code})</option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Recipient Role <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <select
-                        name="targetRole"
-                        value={formData.targetRole}
-                        onChange={handleChange}
-                        className="w-full p-3 pl-4 border border-gray-300 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none appearance-none transition-shadow duration-150"
-                      >
-                        <option value="student">👨‍🎓 Students</option>
-                        <option value="parent">👨‍👩‍👦 Parents</option>
-                        <option value="teacher">👩‍🏫 Teachers</option>
-                        <option value="staff">💼 Staff</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <hr className="border-gray-100" />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Notification Type</label>
-                    <select
-                      name="type"
-                      value={formData.type}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow duration-150"
-                    >
-                      {NOTIFICATION_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Title <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                      name="title"
-                      required
-                      value={formData.title}
-                      onChange={handleChange}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-shadow duration-150"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Message <span className="text-red-500">*</span></label>
-                  <textarea
-                    name="message"
-                    required
-                    rows="6"
-                    value={formData.message}
-                    onChange={handleChange}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none transition-shadow duration-150"
-                  ></textarea>
-                </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Target Branch */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Target Branch
+                </label>
+                <Dropdown
+                  name="targetBranch"
+                  value={formData.targetBranch}
+                  onChange={handleChange}
+                  options={[
+                    { value: 'all', label: '🌍 All Branches (Global)' },
+                    ...branches.map(b => ({ value: b._id, label: `🏢 ${b.name} (${b.code})` }))
+                  ]}
+                  icon={Building2}
+                  placeholder={branchesLoading ? "Loading branches..." : "Select Branch"}
+                  disabled={branchesLoading}
+                />
               </div>
 
-              <aside className="md:col-span-1 bg-gradient-to-b from-white to-gray-50 p-4 rounded-lg border border-gray-100 min-w-0">
-                <h3 className="text-sm font-semibold text-gray-600 mb-3">Live Preview</h3>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 max-h-44 w-full overflow-y-auto overflow-x-hidden min-w-0">
-                  <div className="flex items-start gap-3">
-                    <div className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold whitespace-nowrap">{NOTIFICATION_TYPES.find(t => t.value === formData.type)?.label}</div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-gray-800 truncate">{formData.title || 'Notification title will appear here'}</h4>
-                      <p className="text-xs text-gray-500 mt-1 truncate">{formData.targetRole.charAt(0).toUpperCase() + formData.targetRole.slice(1)} • {formData.targetBranch === 'all' ? 'All Branches' : branches.find(b=>b._id===formData.targetBranch)?.name || formData.targetBranch}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-700 mt-3 break-words whitespace-pre-wrap max-h-28 overflow-y-auto overflow-x-hidden pr-2">{formData.message || 'Message preview...'}</p>
+              {/* Target Role */}
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Send To
+                </label>
+                <Dropdown
+                  name="targetRole"
+                  value={formData.targetRole}
+                  onChange={handleChange}
+                  options={TARGET_ROLES}
+                  icon={Users}
+                  placeholder="Select Role"
+                />
+                
+                {/* Specific Targeting Toggle */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="specificTarget"
+                    checked={isSpecificTargeting}
+                    onChange={(e) => setIsSpecificTargeting(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <label htmlFor="specificTarget" className="text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                    Select specific people only
+                  </label>
                 </div>
-                <div className="mt-4 text-xs text-gray-500">Tip: Keep the title short and the message concise for better push delivery.</div>
-              </aside>
+              </div>
             </div>
 
-            <div className="pt-4 flex justify-end gap-4">
-              <button type="button" onClick={() => router.back()} className="px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-200">Cancel</button>
-              <button type="submit" disabled={loading} className={`px-8 py-3 text-white text-sm font-bold rounded-lg shadow-md ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} transition transform duration-150 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500`}>
-                {loading ? 'Sending...' : '🚀 Send Notification'}
-              </button>
+            {/* Multi Select for Specific Users */}
+            {isSpecificTargeting && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+                  Select Recipients ({availableUsers.length} available)
+                </label>
+                <MultiSelectDropdown
+                  options={availableUsers}
+                  value={selectedUserIds}
+                  onChange={(e) => setSelectedUserIds(e.target.value)}
+                  placeholder={usersLoading ? "Loading users..." : "Search and select users..."}
+                  disabled={usersLoading}
+                />
+                {usersLoading && <p className="text-xs text-muted-foreground mt-1">Fetching users...</p>}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Notification Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+                  Type
+                </label>
+                <Dropdown
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  options={NOTIFICATION_TYPES}
+                  icon={Megaphone}
+                  placeholder="Select Type"
+                />
+              </div>
+
+              {/* Title */}
+              <div className="md:col-span-2">
+                <Input
+                  label="Subject / Title"
+                  type="text"
+                  name="title"
+                  required
+                  placeholder="e.g. Important School Announcement"
+                  value={formData.title}
+                  onChange={handleChange}
+                  icon={Type}
+                />
+              </div>
             </div>
+
+            {/* Message */}
+            <Textarea
+              label="Message Content"
+              name="message"
+              required
+              rows={5}
+              placeholder="Type your message here..."
+              value={formData.message}
+              onChange={handleChange}
+            />
+
+            <div className="pt-4 flex justify-end gap-3 border-t dark:border-gray-800">
+              <Button type="button" variant="outline" onClick={() => router.back()}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? <ButtonLoader /> : (
+                  <>
+                    <Bell className="w-4 h-4 mr-2" />
+                    {isSpecificTargeting 
+                      ? `Send to ${selectedUserIds.length} Users` 
+                      : formData.targetBranch === 'all' 
+                        ? 'Broadcast to All Branches' 
+                        : 'Send to Selected Branch'}
+                  </>
+                )}
+              </Button>
+            </div>
+
           </form>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* History Section */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-200">
+          <History className="w-5 h-5" />
+          Recent Campaigns
+        </h3>
+        
+        {historyLoading ? (
+            <div className="text-center py-8 text-gray-500">Loading history...</div>
+        ) : !Array.isArray(history) || history.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                No notifications sent recently.
+            </div>
+        ) : (
+            <div className="grid gap-4">
+                {history.map((item, index) => (
+                    <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="p-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 capitalize`}>
+                                        {item.type || 'general'}
+                                    </span>
+                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {new Date(item.createdAt).toLocaleString()}
+                                    </span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{item.title}</h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-1">{item.message}</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-6 text-sm text-gray-500">
+                                <div className="text-right">
+                                    <p className="text-xs uppercase tracking-wider font-semibold">Recipients</p>
+                                    <p className="font-medium text-gray-900 dark:text-gray-100">{item.recipientCount || 0} Users</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs uppercase tracking-wider font-semibold">Status</p>
+                                    <div className="flex items-center justify-end gap-1 text-green-600">
+                                        <CheckCircle className="w-4 h-4" />
+                                        <span className="font-medium">Sent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+        )}
       </div>
+
     </div>
   );
 }

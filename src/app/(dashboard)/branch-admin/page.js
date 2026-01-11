@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import apiClient from '@/lib/api-client';
-import { Users, GraduationCap, BookOpen, Calendar, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { Users, GraduationCap, BookOpen, Calendar, TrendingUp, TrendingDown, Clock, Library } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function BranchAdminDashboard() {
@@ -116,6 +116,13 @@ export default function BranchAdminDashboard() {
       color: 'bg-orange-500',
       href: '/branch-admin/subjects',
     },
+    {
+      title: 'Library Books',
+      value: stats.books?.total || 0,
+      icon: Library,
+      color: 'bg-indigo-500',
+      href: '/branch-admin/library',
+    },
   ];
 
   return (
@@ -129,7 +136,7 @@ export default function BranchAdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {statsCards.map((stat) => (
           <Card
             key={stat.title}
@@ -253,7 +260,7 @@ export default function BranchAdminDashboard() {
       {/* Quick Actions */}
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <button
             onClick={() => router.push('/branch-admin/students')}
             className="p-4 text-left border rounded-lg hover:bg-muted transition-colors"

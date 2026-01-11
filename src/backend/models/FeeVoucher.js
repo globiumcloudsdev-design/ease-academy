@@ -123,6 +123,11 @@ const feeVoucherSchema = new mongoose.Schema(
         ref: 'User',
       },
       approvedAt: Date,
+      rejectedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      rejectedAt: Date,
       rejectionReason: String,
       receivedBy: {
         type: mongoose.Schema.Types.ObjectId,

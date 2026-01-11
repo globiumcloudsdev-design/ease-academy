@@ -14,15 +14,16 @@ async function sendNotification(request, currentUser, userDoc) {
     await connectDB();
 
     const body = await request.json();
-    const { title, message, type, targetRole, metadata } = body;
+    const { title, message, type, targetRole, targetBranch, metadata } = body;
 
     console.log('📨 Sending notification from:', currentUser.role, currentUser.branchId);
+    console.log('🎯 Target Branch:', targetBranch);
 
     // ============================================================
     // STEP A: LOGIC - Kisko bhejna hai? (Super vs Branch Admin)
     // ============================================================
     
-    let filter = { role: targetRole }; // e.g. 'student'
+    let filter = { role: targetRole, isActive: true }; // e.g. 'student'
 
     // Agar BRANCH ADMIN hai, toh filter restrict kro
     if (currentUser.role === 'branch_admin') {
@@ -31,7 +32,18 @@ async function sendNotification(request, currentUser, userDoc) {
       }
       filter.branchId = currentUser.branchId; // Sirf apni branch walo ko dhoondo
     }
-    // Note: Super admin ke liye filter me branchId nahi lagega, wo sab uthayega
+    // Agar SUPER ADMIN hai aur specific branch select ki hai
+    else if (currentUser.role === 'super_admin' && targetBranch && targetBranch !== 'all') {
+      filter.branchId = targetBranch; // Specific branch ko target kro
+      console.log('🏢 Filtering by specific branch:', targetBranch);
+    }
+    // Agar 'all' hai toh koi branch filter nahi lagegi
+
+    // Handle Specific Users (e.g. specific students)
+    if (body.targetUserIds && Array.isArray(body.targetUserIds) && body.targetUserIds.length > 0) {
+      filter._id = { $in: body.targetUserIds };
+      console.log(`🎯 Targeting ${body.targetUserIds.length} specific users`);
+    }
 
     // Users dhoondo unke Tokens k sath
     const users = await User.find(filter).select('_id expoPushToken');
@@ -46,12 +58,23 @@ async function sendNotification(request, currentUser, userDoc) {
     // STEP B: DATABASE MEIN SAVE KRO (In-App List ke liye)
     // ============================================================
     
+    // Add Sender Info to Metadata for History Tracking
+    const senderName = currentUser.fullName || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Unknown';
+    
+    const enhancedMetadata = {
+      ...metadata,
+      senderId: currentUser.userId,
+      senderName: senderName,
+      senderRole: currentUser.role,
+      sentAt: new Date()
+    };
+
     const dbNotifications = users.map(user => ({
       type,
       title,
       message,
       targetUser: user._id,
-      metadata,
+      metadata: enhancedMetadata,
       isRead: false
     }));
 

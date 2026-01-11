@@ -13,8 +13,9 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     const branchId = searchParams.get('branchId');
     const isActive = searchParams.get('isActive');
     const search = searchParams.get('search');
+    const format = searchParams.get('format'); // 'dropdown' for notification selection
     const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 50;
+    const limit = parseInt(searchParams.get('limit')) || (format === 'dropdown' ? 100 : 50);
 
     const filter = {};
 
@@ -24,21 +25,29 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
       filter.role = { $in: roles };
     }
 
-    // Filter by branch
-    if (branchId) {
+    // Filter by branch (support 'all' keyword)
+    if (branchId && branchId !== 'all') {
       filter.branchId = branchId;
     }
 
     // Filter by active status
     if (isActive !== null && isActive !== undefined) {
       filter.isActive = isActive === 'true';
+    } else if (format === 'dropdown') {
+      filter.isActive = true; // Only active users for dropdown
+      filter.status = { $in: ['active', 'approved'] };
     }
 
     // Search by name or email
     if (search) {
       filter.$or = [
         { fullName: { $regex: search, $options: 'i' } },
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
+        { 'studentProfile.registrationNumber': { $regex: search, $options: 'i' } },
+        { 'teacherProfile.employeeId': { $regex: search, $options: 'i' } },
+        { 'staffProfile.employeeId': { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -47,12 +56,30 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     const [users, total] = await Promise.all([
       User.find(filter)
         .populate('branchId', 'name code address')
-        .select('-passwordHash -refreshToken')
+        .select(format === 'dropdown' 
+          ? '_id firstName lastName email studentProfile.registrationNumber teacherProfile.employeeId staffProfile.employeeId branchId'
+          : '-passwordHash -refreshToken'
+        )
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       User.countDocuments(filter),
     ]);
+
+    // If dropdown format requested, return simplified structure
+    if (format === 'dropdown') {
+      const formattedUsers = users.map(u => ({
+        value: u._id.toString(),
+        label: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email,
+        subLabel: `${u.studentProfile?.registrationNumber || u.teacherProfile?.employeeId || u.staffProfile?.employeeId || u.email}${u.branchId?.name ? ' | ' + u.branchId.name : ''}`
+      }));
+
+      return NextResponse.json({
+        success: true,
+        data: formattedUsers
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -105,6 +105,17 @@ const ROLE_MENUS = {
       ],
     },
     {
+      category: "Library Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Library Books",
+          path: "/super-admin/library",
+          icon: BookOpen,
+        },
+      ],
+    },
+    {
       category: "Student Management",
       isCollapsible: true,
       items: [
@@ -139,6 +150,11 @@ const ROLE_MENUS = {
           name: "Fee Voucher",
           path: "/super-admin/fee-vouchers",
           icon: Receipt,
+        },
+        {
+          name: "Pending Fees",
+          path: "/super-admin/pending-fees",
+          icon: DollarSign,
         },
       ],
     },
@@ -205,26 +221,44 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: "Academic Management",
+      category: "User Management",
+      isCollapsible: true,
+      items: [
+        { name: "Staff", path: "/branch-admin/staff", icon: Users },
+        { name: "Parents", path: "/branch-admin/parents", icon: UserCheck },
+      ],
+    },
+    {
+      category: "Student Management",
+      isCollapsible: true,
+      items: [
+        { name: "Students", path: "/branch-admin/students", icon: Users },
+      ],
+    },
+    {
+      category: "Teacher Management",
       isCollapsible: true,
       items: [
         { name: "Teachers", path: "/branch-admin/teachers", icon: Users },
-        { name: "Students", path: "/branch-admin/students", icon: BookOpen },
-        { name: "Staff", path: "/branch-admin/staff", icon: Users },
+      ],
+    },
+    {
+      category: "Academic",
+      isCollapsible: true,
+      items: [
         { name: "Classes", path: "/branch-admin/classes", icon: School },
-        { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
         { name: "Subjects", path: "/branch-admin/subjects", icon: BookOpen },
-        {
-          name: "Departments",
-          path: "/branch-admin/departments",
-          icon: Building2,
-        },
+        { name: "Departments", path: "/branch-admin/departments", icon: Building2 },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
-        {
-          name: "Parents",
-          path: "/branch-admin/parents",
-          icon: UserCheck,
-        },
+        { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
+        { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
+      ],
+    },
+    {
+      category: "Library Management",
+      isCollapsible: true,
+      items: [
+        { name: "Library Books", path: "/branch-admin/library", icon: BookOpen },
       ],
     },
     {
@@ -233,29 +267,22 @@ const ROLE_MENUS = {
       items: [
         { name: "Attendance", path: "/branch-admin/attendance", icon: Clock },
         { name: "Events", path: "/branch-admin/events", icon: Calendar },
-        { name: "Notifications", path: "/branch-admin/notifications", icon: Calendar },
         { name: "Exams", path: "/branch-admin/exams", icon: FileText },
       ],
     },
     {
-      category: "Academic Structure",
+      category: "Notifications",
       items: [
-        { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
+        { name: "Notifications", path: "/branch-admin/notifications", icon: Calendar },
       ],
     },
     {
       category: "Finance Management",
+      isCollapsible: true,
       items: [
-        {
-          name: "Fee Voucher",
-          path: "/branch-admin/fee-vouchers",
-          icon: Receipt,
-        },
-        {
-          name: "Fee Templates",
-          path: "/branch-admin/fee-templates",
-          icon: Receipt,
-        },
+        { name: "Fee Voucher", path: "/branch-admin/fee-vouchers", icon: Receipt },
+        { name: "Fee Templates", path: "/branch-admin/fee-templates", icon: Receipt },
+        { name: "Pending Fees", path: "/branch-admin/pending-fees", icon: DollarSign },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
       ],
     },
@@ -327,6 +354,7 @@ const ROLE_MENUS = {
         { name: "Attendance", path: "/parent/attendance", icon: Clock },
         { name: "Results", path: "/parent/results", icon: BarChart3 },
         { name: "Fee Status", path: "/parent/fees", icon: DollarSign },
+        { name: "Notifications", path: "/parent/notifications", icon: Calendar },
       ],
     },
   ],
@@ -392,7 +420,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         group.items.some(
           (item) =>
             pathname === item.path ||
-            pathname.startsWith(item.path + "/")
+            (item.name !== 'Dashboard' && pathname.startsWith(item.path + "/"))
         )
       ) {
         setExpanded((prev) => ({
@@ -519,7 +547,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      const isActive = pathname === item.path || (item.name !== 'Dashboard' && pathname.startsWith(item.path + "/"));
 
                       return (
                         <Link
