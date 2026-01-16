@@ -10,16 +10,16 @@ export const API_CONFIG = {
 export const API_ENDPOINTS = {
   // Authentication Endpoints
   AUTH: {
-    LOGIN: '/api/auth/login', // POST
-    REGISTER: '/api/auth/register', // POST
-    LOGOUT: '/api/auth/logout', // POST
-    REFRESH: '/api/auth/refresh', // POST
-    FORGOT_PASSWORD: '/api/auth/forgot-password', // POST
-    RESET_PASSWORD: '/api/auth/reset-password', // POST
-    VERIFY_EMAIL: '/api/auth/verify-email', // POST
-    RESEND_VERIFICATION: '/api/auth/resend-verification', // POST
-    CHANGE_PASSWORD: '/api/auth/change-password', // POST
-    ME: '/api/auth/me', // GET
+    LOGIN: '/api/auth/login',
+    ME: '/api/auth/me',
+    REGISTER: '/api/auth/register',
+    LOGOUT: '/api/auth/logout',
+    REFRESH: '/api/auth/refresh',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
+    VERIFY_EMAIL: '/api/auth/verify-email',
+    RESEND_VERIFICATION: '/api/auth/resend-verification',
+    CHANGE_PASSWORD: '/api/auth/change-password',
   },
 
   // Super Admin Endpoints
