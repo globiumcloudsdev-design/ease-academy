@@ -7,6 +7,13 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@
 import Dropdown from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import FullPageLoader from '@/components/ui/full-page-loader';
+import SuperAdminStudentTrends from '@/components/dashboard/SuperAdminStudentTrends';
+import SuperAdminClassWiseStudents from '@/components/dashboard/SuperAdminClassWiseStudents';
+import SuperAdminBranchWiseStudents from '@/components/dashboard/SuperAdminBranchWiseStudents';
+import SuperAdminStudentAttendance from '@/components/dashboard/SuperAdminStudentAttendance';
+import SuperAdminMonthlyFeeCollection from '@/components/dashboard/SuperAdminMonthlyFeeCollection';
+import SuperAdminPassFailRatio from '@/components/dashboard/SuperAdminPassFailRatio';
+import { API_ENDPOINTS } from '@/constants/api-endpoints';
 import {
   Users,
   Building2,
@@ -47,8 +54,17 @@ export default function SuperAdminDashboard() {
   const [selectedBranch, setSelectedBranch] = useState('all');
   const { execute } = useApi();
 
+  // Chart data states
+  const [chartsLoading, setChartsLoading] = useState(true);
+  const [studentTrendsData, setStudentTrendsData] = useState([]);
+  const [classWiseStudentsData, setClassWiseStudentsData] = useState([]);
+  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
+  const [monthlyFeeCollectionData, setMonthlyFeeCollectionData] = useState([]);
+  const [passFailRatioData, setPassFailRatioData] = useState([]);
+
   useEffect(() => {
     loadDashboardData();
+    fetchChartData();
   }, [selectedTimeRange, selectedBranch]);
 
   const loadDashboardData = async () => {
@@ -70,6 +86,89 @@ export default function SuperAdminDashboard() {
       console.error('Failed to load dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchChartData = async () => {
+    try {
+      setChartsLoading(true);
+
+      // Fetch all chart data in parallel using API endpoints
+      const [
+        studentTrendsRes,
+        classWiseStudentsRes,
+        studentAttendanceRes,
+        monthlyFeeCollectionRes,
+        passFailRatioRes
+      ] = await Promise.allSettled([
+        execute({
+          method: 'GET',
+          url: API_ENDPOINTS.SUPER_ADMIN.CHARTS.STUDENT_TRENDS,
+          params: { branch: selectedBranch, timeRange: selectedTimeRange }
+        }),
+        execute({
+          method: 'GET',
+          url: API_ENDPOINTS.SUPER_ADMIN.CHARTS.CLASS_WISE_STUDENTS,
+          params: { branch: selectedBranch }
+        }),
+        execute({
+          method: 'GET',
+          url: API_ENDPOINTS.SUPER_ADMIN.CHARTS.STUDENT_ATTENDANCE,
+          params: { branch: selectedBranch }
+        }),
+        execute({
+          method: 'GET',
+          url: API_ENDPOINTS.SUPER_ADMIN.CHARTS.MONTHLY_FEE_COLLECTION,
+          params: { branch: selectedBranch }
+        }),
+        execute({
+          method: 'GET',
+          url: API_ENDPOINTS.SUPER_ADMIN.CHARTS.PASS_FAIL_RATIO,
+          params: { branch: selectedBranch }
+        })
+      ]);
+
+      // Set data for each chart with API data or empty arrays
+      setStudentTrendsData(
+        (studentTrendsRes.status === 'fulfilled' && studentTrendsRes.value.success)
+          ? studentTrendsRes.value.data || []
+          : []
+      );
+
+      setClassWiseStudentsData(
+        (classWiseStudentsRes.status === 'fulfilled' && classWiseStudentsRes.value.success)
+          ? classWiseStudentsRes.value.data || []
+          : []
+      );
+
+      setStudentAttendanceData(
+        (studentAttendanceRes.status === 'fulfilled' && studentAttendanceRes.value.success)
+          ? studentAttendanceRes.value.data || []
+          : []
+      );
+
+      setMonthlyFeeCollectionData(
+        (monthlyFeeCollectionRes.status === 'fulfilled' && monthlyFeeCollectionRes.value.success)
+          ? monthlyFeeCollectionRes.value.data || []
+          : []
+      );
+
+      setPassFailRatioData(
+        (passFailRatioRes.status === 'fulfilled' && passFailRatioRes.value.success)
+          ? passFailRatioRes.value.data || []
+          : []
+      );
+
+    } catch (err) {
+      console.error('Chart data fetch error:', err);
+      // Set empty arrays on error
+      setStudentTrendsData([]);
+      setClassWiseStudentsData([]);
+      setStudentAttendanceData([]);
+      setMonthlyFeeCollectionData([]);
+      setPassFailRatioData([]);
+    } finally {
+      setChartsLoading(false);
     }
   };
 
@@ -131,11 +230,11 @@ export default function SuperAdminDashboard() {
   const summary = dashboardData?.summary || {};
 
   return (
-    <div className="p-4 md:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+    <div className="p-4 md:p-6 space-y-6  dark:from-gray-900 dark:via-blue-900 dark:to-purple-900 min-h-screen">
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pt-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl md:text-3xl font-bold  text-black dark:text-white">
             Super Admin Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm md:text-base">
@@ -578,88 +677,6 @@ export default function SuperAdminDashboard() {
         </Card>
       </div>
 
-      {/* Recent Activities & System Alerts */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Recent Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {recentActivities.slice(0, 10).map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-full flex-shrink-0">
-                    <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {activity.user}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(activity.timestamp).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {activity.action} <span className="font-medium">{activity.target}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{activity.branch}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card> */}
-
-        {/* System Alerts */}
-        {/* <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5" />
-              System Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {systemAlerts.map((alert) => (
-                <div key={alert.id} className={`p-4 border rounded-lg ${getPriorityColor(alert.priority)}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium">{alert.category}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          alert.priority === 'high' ? 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200' :
-                          alert.priority === 'medium' ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
-                          'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
-                        }`}>
-                          {alert.priority}
-                        </span>
-                      </div>
-                      <h4 className="font-medium text-sm mb-1">{alert.title}</h4>
-                      <p className="text-sm opacity-90">{alert.message}</p>
-                      <p className="text-xs mt-2 opacity-75">
-                        {new Date(alert.timestamp).toLocaleString()}
-                      </p>
-                    </div>
-                    {alert.actionRequired && (
-                      <Button size="sm" variant="outline" className="ml-2 flex-shrink-0">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card> */}
-      </div>
-
-    
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -696,6 +713,29 @@ export default function SuperAdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Analytics Charts */}
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Analytics Overview</h2>
+
+        {/* Row 1: Student Trends and Class-wise Students Count */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <SuperAdminStudentTrends selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminClassWiseStudents selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+        </div>
+
+        {/* Row 2: Branch-wise Students and Student Attendance Percentage */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <SuperAdminBranchWiseStudents selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminStudentAttendance selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+        </div>
+
+        {/* Row 3: Monthly Fee Collection and Pass vs Fail Ratio */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <SuperAdminMonthlyFeeCollection selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+          <SuperAdminPassFailRatio selectedBranch={selectedBranch} branchPerformance={branchPerformance} />
+        </div>
+      </div>
     </div>
   );
 }

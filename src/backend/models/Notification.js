@@ -37,6 +37,10 @@ const notificationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isHidden: { // 🔥 Ye nayi field add karein
+      type: Boolean,
+      default: false,
+    },
     metadata: {
       type: mongoose.Schema.Types.Mixed, // For additional data like quiz duration, assignment resources
     },

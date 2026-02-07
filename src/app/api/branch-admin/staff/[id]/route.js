@@ -16,7 +16,7 @@ async function getStaff(request, currentUser, userDoc, context) {
       role: 'staff',
       branchId: currentUser.branchId 
     })
-      .populate('branchId', 'name code')
+      .populate('branchId', 'name code address contact')
       .select('-passwordHash -refreshToken');
 
     if (!staff) {

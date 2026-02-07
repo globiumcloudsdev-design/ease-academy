@@ -38,6 +38,7 @@ async function getTeacher(request, authenticatedUser, userDoc, context) {
       role: 'teacher',
       branchId: authenticatedUser.branchId,
     })
+      .populate('branchId', 'name code address contact')
       .populate('teacherProfile.departmentId', 'name code')
       .populate('teacherProfile.subjects', 'name code')
       .lean();

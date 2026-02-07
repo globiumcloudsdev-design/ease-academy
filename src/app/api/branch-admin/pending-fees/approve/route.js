@@ -4,11 +4,12 @@ import connectDB from '@/lib/database';
 import FeeVoucher from '@/backend/models/FeeVoucher';
 import User from '@/backend/models/User';
 import Notification from '@/backend/models/Notification';
+import { ROLES } from '@/constants/roles';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
     // Check if user is branch admin
-    if (user.role !== 'branch-admin') {
+    if (user.role !== ROLES.BRANCH_ADMIN) {
       return NextResponse.json(
         { success: false, message: 'Only branch admins can approve payments' },
         { status: 403 }

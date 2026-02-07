@@ -11,11 +11,12 @@ import Department from '@/backend/models/Department';
 import Class from '@/backend/models/Class';
 
 // GET - Get single teacher
-export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
+export const GET = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
+    const params = await context.params;
+    const { id } = params;
     
     const teacher = await User.findOne({ _id: id, role: 'teacher' })
       .populate('branchId', 'name code city address')
@@ -55,11 +56,12 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
 });
 
 // PUT - Update teacher
-export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
+export const PUT = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
+    const params = await context.params;
+    const { id } = params;
     const body = await request.json();
     
     // Check if teacher exists
@@ -269,11 +271,12 @@ export const PUT = withAuth(async (request, authenticatedUser, userDoc) => {
 });
 
 // DELETE - Delete/Deactivate teacher
-export const DELETE = withAuth(async (request, authenticatedUser, userDoc) => {
+export const DELETE = withAuth(async (request, authenticatedUser, userDoc, context) => {
   try {
     await connectDB();
 
-    const id = request.url.split('/').pop();
+    const params = await context.params;
+    const { id } = params;
     
     // Check if teacher exists
     const teacher = await User.findOne({ _id: id, role: 'teacher' });

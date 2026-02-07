@@ -1,19 +1,36 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import Input from '@/components/ui/input';
-import Dropdown from '@/components/ui/dropdown';
-import Modal from '@/components/ui/modal';
-import FullPageLoader from '@/components/ui/full-page-loader';
-import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Edit, Trash2, Search, Calendar, Clock, Eye, FileText, BookOpen, Users } from 'lucide-react';
+import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/hooks/useAuth';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import Dropdown from '@/components/ui/dropdown';
+import FullPageLoader from '@/components/ui/full-page-loader';
+import Modal from '@/components/ui/modal';
+import ButtonLoader from '@/components/ui/button-loader';
+import ExamFormModal from '@/components/modals/ExamFormModal';
+import ExamDetailsModal from '@/components/modals/ExamDetailsModal';
+import ConfirmDeleteModal from '@/components/modals/ConfirmDeleteModal';
+import { toast } from 'sonner';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
-import { toast } from 'sonner';
+import {
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
+  Eye,
+  Calendar,
+  BookOpen,
+  Users,
+  RefreshCw,
+  FileText,
+  Clock
+} from 'lucide-react';
 
 const EXAM_TYPES = [
   { value: 'midterm', label: 'Mid-Term' },
@@ -335,6 +352,13 @@ export default function ExamsPage() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Fetch subjects when class is selected
+    if (name === 'classId' && value) {
+      fetchSubjectsForClass(value);
+    } else if (name === 'classId' && !value) {
+      setSubjects([]);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -588,60 +612,92 @@ export default function ExamsPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Exams</p>
-                <p className="text-2xl font-bold">{pagination.total}</p>
-              </div>
-              <FileText className="w-10 h-10 text-blue-500" />
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold">Exam Management</h1>
+        <p className="text-muted-foreground">
+          Manage and schedule exams for your branch
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Exams</p>
+              <p className="text-3xl font-bold mt-2">{pagination.total}</p>
             </div>
-          </CardContent>
+            <div className="p-3 rounded-full bg-blue-500 text-white">
+              <FileText className="w-6 h-6" />
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Scheduled</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {exams.filter(e => e.status === 'scheduled').length}
-                </p>
-              </div>
-              <Calendar className="w-10 h-10 text-yellow-500" />
+
+        <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Scheduled</p>
+              <p className="text-3xl font-bold mt-2">{exams.filter(e => e.status === 'scheduled').length}</p>
             </div>
-          </CardContent>
+            <div className="p-3 rounded-full bg-yellow-500 text-white">
+              <Calendar className="w-6 h-6" />
+            </div>
+          </div>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {exams.filter(e => e.status === 'completed').length}
-                </p>
-              </div>
-              <Clock className="w-10 h-10 text-green-500" />
+
+        <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Ongoing</p>
+              <p className="text-3xl font-bold mt-2">{exams.filter(e => e.status === 'ongoing').length}</p>
             </div>
-          </CardContent>
+            <div className="p-3 rounded-full bg-blue-500 text-white">
+              <Clock className="w-6 h-6" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Completed</p>
+              <p className="text-3xl font-bold mt-2">{exams.filter(e => e.status === 'completed').length}</p>
+            </div>
+            <div className="p-3 rounded-full bg-green-500 text-white">
+              <BookOpen className="w-6 h-6" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 cursor-pointer hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-muted-foreground">Classes</p>
+              <p className="text-3xl font-bold mt-2">{classes.length}</p>
+            </div>
+            <div className="p-3 rounded-full bg-purple-500 text-white">
+              <Users className="w-6 h-6" />
+            </div>
+          </div>
         </Card>
       </div>
 
       <Card>
         <CardHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <CardTitle>Exams Management</CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleBulkAddNew}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <CardTitle className="text-lg sm:text-xl">Exams Management</CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={handleBulkAddNew} className="text-sm">
                 <BookOpen className="w-4 h-4 mr-2" />
-                Bulk Schedule Exams
+                <span className="hidden sm:inline">Bulk Schedule Exams</span>
+                <span className="sm:hidden">Bulk Schedule</span>
               </Button>
-              <Button onClick={handleAddNew}>
+              <Button onClick={handleAddNew} className="text-sm">
                 <Plus className="w-4 h-4 mr-2" />
-                Schedule Single Exam
+                <span className="hidden sm:inline">Schedule Single Exam</span>
+                <span className="sm:hidden">Single Exam</span>
               </Button>
             </div>
           </div>
@@ -649,7 +705,7 @@ export default function ExamsPage() {
 
         <CardContent>
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <Input
               placeholder="Search exams..."
               value={search}
@@ -679,139 +735,241 @@ export default function ExamsPage() {
             />
           </div>
 
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Class</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Marks</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {exams.length === 0 ? (
+          {/* Mobile Card View */}
+          <div className="block lg:hidden space-y-4">
+            {exams.map((exam) => {
+              // Handle both old and new exam structures
+              const subjects = exam.subjects || (exam.subjectId ? [{
+                subjectId: exam.subjectId,
+                date: exam.date,
+                startTime: exam.startTime,
+                endTime: exam.endTime,
+                duration: exam.duration,
+                totalMarks: exam.totalMarks,
+                passingMarks: exam.passingMarks,
+                room: exam.room,
+                instructions: exam.instructions,
+                syllabus: exam.syllabus,
+              }] : []);
+
+              // Get unique dates for this exam
+              const uniqueDates = [...new Set(subjects.map(s => s.date))].sort();
+              const dateRange = uniqueDates.length === 1
+                ? new Date(uniqueDates[0]).toLocaleDateString()
+                : `${new Date(uniqueDates[0]).toLocaleDateString()} - ${new Date(uniqueDates[uniqueDates.length - 1]).toLocaleDateString()}`;
+
+              // Get subject names
+              const subjectNames = subjects.map(s => s.subjectId?.name || 'N/A').join(', ');
+
+              return (
+                <Card key={exam._id} className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100">{exam.title}</h3>
+                      <p className="text-sm text-gray-500">Type: {exam.examType.replace('_', ' ')}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm">{exam.classId?.name || 'N/A'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm">{subjectNames}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span className="text-sm">{dateRange}</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Badge className={`px-2 py-1 rounded-full text-xs ${
+                        exam.status === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : exam.status === 'ongoing'
+                          ? 'bg-blue-100 text-blue-700'
+                          : exam.status === 'scheduled'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : exam.status === 'cancelled'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {exam.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleView(exam)}
+                        className="flex-1"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(exam)}
+                        className="flex-1"
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(exam._id)}
+                        className="flex-1 text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-gray-500">
-                    No exams found
-                  </TableCell>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Marks</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ) : (
-                exams.map((exam) => {
-                  // Handle both old and new exam structures
-                  const subjects = exam.subjects || (exam.subjectId ? [{
-                    subjectId: exam.subjectId,
-                    date: exam.date,
-                    startTime: exam.startTime,
-                    endTime: exam.endTime,
-                    duration: exam.duration,
-                    totalMarks: exam.totalMarks,
-                    passingMarks: exam.passingMarks,
-                    room: exam.room,
-                    instructions: exam.instructions,
-                    syllabus: exam.syllabus,
-                  }] : []);
+              </TableHeader>
+              <TableBody>
+                {exams.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-gray-500">
+                      No exams found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  exams.map((exam) => {
+                    // Handle both old and new exam structures
+                    const subjects = exam.subjects || (exam.subjectId ? [{
+                      subjectId: exam.subjectId,
+                      date: exam.date,
+                      startTime: exam.startTime,
+                      endTime: exam.endTime,
+                      duration: exam.duration,
+                      totalMarks: exam.totalMarks,
+                      passingMarks: exam.passingMarks,
+                      room: exam.room,
+                      instructions: exam.instructions,
+                      syllabus: exam.syllabus,
+                    }] : []);
 
-                  // Get unique dates for this exam
-                  const uniqueDates = [...new Set(subjects.map(s => s.date))].sort();
-                  const dateRange = uniqueDates.length === 1
-                    ? new Date(uniqueDates[0]).toLocaleDateString()
-                    : `${new Date(uniqueDates[0]).toLocaleDateString()} - ${new Date(uniqueDates[uniqueDates.length - 1]).toLocaleDateString()}`;
+                    // Get unique dates for this exam
+                    const uniqueDates = [...new Set(subjects.map(s => s.date))].sort();
+                    const dateRange = uniqueDates.length === 1
+                      ? new Date(uniqueDates[0]).toLocaleDateString()
+                      : `${new Date(uniqueDates[0]).toLocaleDateString()} - ${new Date(uniqueDates[uniqueDates.length - 1]).toLocaleDateString()}`;
 
-                  // Get subject names
-                  const subjectNames = subjects.map(s => s.subjectId?.name || 'N/A').join(', ');
+                    // Get subject names
+                    const subjectNames = subjects.map(s => s.subjectId?.name || 'N/A').join(', ');
 
-                  return (
-                    <TableRow key={exam._id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          {exam.title}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="capitalize text-sm">{exam.examType.replace('_', ' ')}</span>
-                      </TableCell>
-                      <TableCell>{exam.classId?.name || 'N/A'}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {subjectNames}
-                          <div className="text-xs text-gray-500 mt-1">
-                            ({subjects.length} subject{subjects.length !== 1 ? 's' : ''})
+                    return (
+                      <TableRow key={exam._id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            {exam.title}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {dateRange}
+                        </TableCell>
+                        <TableCell>
+                          <span className="capitalize text-sm">{exam.examType.replace('_', ' ')}</span>
+                        </TableCell>
+                        <TableCell>{exam.classId?.name || 'N/A'}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {subjectNames}
+                            <div className="text-xs text-gray-500 mt-1">
+                              ({subjects.length} subject{subjects.length !== 1 ? 's' : ''})
+                            </div>
                           </div>
-                          {subjects.length === 1 && (
-                            <div className="flex items-center gap-1 text-gray-500 mt-1">
-                              <Clock className="w-3 h-3" />
-                              {subjects[0].startTime} - {subjects[0].endTime}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {dateRange}
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {subjects.length === 1 ? (
-                            <>
-                              <div>Total: {subjects[0].totalMarks}</div>
-                              <div className="text-gray-500">Pass: {subjects[0].passingMarks}</div>
-                            </>
-                          ) : (
-                            <div className="text-xs text-gray-500">
-                              Multiple subjects
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            exam.status === 'completed'
-                              ? 'bg-green-100 text-green-700'
-                              : exam.status === 'ongoing'
-                              ? 'bg-blue-100 text-blue-700'
-                              : exam.status === 'scheduled'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : exam.status === 'cancelled'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {exam.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleView(exam)} title="View Details">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(exam)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam._id)}>
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+                            {subjects.length === 1 && (
+                              <div className="flex items-center gap-1 text-gray-500 mt-1">
+                                <Clock className="w-3 h-3" />
+                                {subjects[0].startTime} - {subjects[0].endTime}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {subjects.length === 1 ? (
+                              <>
+                                <div>Total: {subjects[0].totalMarks}</div>
+                                <div className="text-gray-500">Pass: {subjects[0].passingMarks}</div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-gray-500">
+                                Multiple subjects
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              exam.status === 'completed'
+                                ? 'bg-green-100 text-green-700'
+                                : exam.status === 'ongoing'
+                                ? 'bg-blue-100 text-blue-700'
+                                : exam.status === 'scheduled'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : exam.status === 'cancelled'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {exam.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleView(exam)} title="View Details">
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(exam)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(exam._id)}>
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
           {/* Pagination */}
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
             <div className="text-sm text-gray-600">
               Showing {exams.length} of {pagination.total} exam records
             </div>
@@ -1104,9 +1262,15 @@ export default function ExamsPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Class *</label>
             <Dropdown
-              name="classId"
               value={formData.classId}
-              onChange={handleInputChange}
+              onChange={(value) => {
+                setFormData((prev) => ({ ...prev, classId: value }));
+                if (value) {
+                  fetchSubjectsForClass(value);
+                } else {
+                  setSubjects([]);
+                }
+              }}
               options={[
                 { value: '', label: 'Select Class' },
                 ...classes.map((c) => ({ value: c._id, label: `${c.name} - ${c.code}` })),

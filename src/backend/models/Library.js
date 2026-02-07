@@ -132,11 +132,30 @@ const librarySchema = new mongoose.Schema(
       uploadedAt: { type: Date },
     },
 
+    // Attachments (Cloudinary) - Support for PDF, DOCX, PPT, etc.
+    attachments: [{
+      url: { type: String, required: true },
+      publicId: { type: String, required: true },
+      filename: { type: String, required: true },
+      fileType: { type: String, required: true }, // e.g., 'pdf', 'docx', 'pptx'
+      mimeType: { type: String, required: true }, // e.g., 'application/pdf'
+      size: { type: Number, required: true }, // file size in bytes
+      uploadedAt: { type: Date, default: Date.now },
+      uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+
     // Branch Association
     branchId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Branch',
       required: [true, 'Branch is required'],
+      index: true,
+    },
+
+    // Class Association (for filtering books by class)
+    classId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
       index: true,
     },
 

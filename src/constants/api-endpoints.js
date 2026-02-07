@@ -52,6 +52,10 @@ export const API_ENDPOINTS = {
       DELETE: '/api/super-admin/branch-admins/:id', // DELETE
       ASSIGN_BRANCH: '/api/super-admin/branch-admins/:id/assign-branch', // POST
     },
+    SELF_ATTENDANCE: {
+      CHECK_IN: '/api/teacher/self-attendance/check-in', // POST
+      CHECK_OUT: '/api/teacher/self-attendance/check-out', // POST
+    },
 
     // Global Settings
     SETTINGS: {
@@ -118,6 +122,7 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/employee-attendance/summary',
       TODAY: '/api/employee-attendance/today',
       REPORTS: '/api/employee-attendance/reports',
+      UPDATE: '/api/employee-attendance', // PUT for [id]
     },
 
     // Users Management (Super Admin)
@@ -311,8 +316,17 @@ export const API_ENDPOINTS = {
       EXPORT: '/api/super-admin/users/export',
     },
 
+    // Library Management
+    LIBRARY: {
+      BOOKS: '/api/super-admin/library/books', // GET, POST
+      BOOK: (id) => `/api/super-admin/library/books/${id}`, // GET, PUT, DELETE
+    },
+
     // Employees Management
-    EMPLOYEES: '/api/super-admin/employees',
+    EMPLOYEES: {
+      LIST: '/api/super-admin/employees',
+      GET: '/api/super-admin/employees/:id',
+    },
 
     // Parent Approval Management
     PENDING_PARENTS: '/api/super-admin/pending-parents',
@@ -320,6 +334,20 @@ export const API_ENDPOINTS = {
     CHECK_CHILDREN_MATCHES: '/api/super-admin/check-children-matches',
     APPROVE_PARENT: '/api/super-admin/approve-parent/:id',
     REJECT_PARENT: '/api/super-admin/reject-parent/:id',
+
+    // Charts and Analytics
+    CHARTS: {
+      STUDENT_TRENDS: '/api/super-admin/charts/student-trends', // GET
+      CLASS_WISE_STUDENTS: '/api/super-admin/charts/class-wise-students', // GET
+      BRANCH_WISE_STUDENTS: '/api/super-admin/charts/branch-wise-students', // GET
+      STUDENT_ATTENDANCE: '/api/super-admin/charts/student-attendance', // GET
+      REVENUE_EXPENSE: '/api/super-admin/charts/revenue-expense', // GET
+      MONTHLY_FEE_COLLECTION: '/api/super-admin/charts/monthly-fee-collection', // GET
+      PASS_FAIL_RATIO: '/api/super-admin/charts/pass-fail-ratio', // GET
+      BRANCH_PERFORMANCE: '/api/super-admin/charts/branch-performance', // GET
+      USER_DISTRIBUTION: '/api/super-admin/charts/user-distribution', // GET
+      FINANCIAL_OVERVIEW: '/api/super-admin/charts/financial-overview', // GET
+    },
   },
 
   // Branch Admin Endpoints
@@ -544,7 +572,10 @@ export const API_ENDPOINTS = {
     },
 
     // Employees Management
-    EMPLOYEES: '/api/branch-admin/employees', // GET
+    EMPLOYEES: {
+      LIST: '/api/branch-admin/employees',
+      GET: '/api/branch-admin/employees/:id',
+    },
 
     // Payroll Management
     PAYROLL: {
@@ -567,6 +598,12 @@ export const API_ENDPOINTS = {
       SUMMARY: '/api/employee-attendance/summary', // GET
       TODAY: '/api/employee-attendance/today', // GET
       REPORTS: '/api/employee-attendance/reports', // GET
+      UPDATE: '/api/employee-attendance', // PUT
+    },
+
+    // Teacher Attendance Management
+    TEACHER_ATTENDANCE: {
+      LIST: '/api/branch-admin/teacher-attendance', // GET
     },
 
     // Pending Fees Management
@@ -574,6 +611,11 @@ export const API_ENDPOINTS = {
       LIST: '/api/branch-admin/pending-fees',
       APPROVE: '/api/branch-admin/pending-fees/approve',
       REJECT: '/api/branch-admin/pending-fees/reject',
+    },
+
+    // Library Management
+    LIBRARY_MANAGEMENT: {
+      BOOKS: '/api/branch-admin/library/books', // GET, POST, PUT, DELETE
     },
 
     // Parent Approval Management
@@ -599,6 +641,16 @@ export const API_ENDPOINTS = {
     // Notifications Management
     NOTIFICATIONS: {
       HISTORY: '/api/branch-admin/notifications/history', // GET
+    },
+
+    // Charts and Analytics
+    CHARTS: {
+      STUDENT_TRENDS: '/api/branch-admin/charts/student-trends', // GET
+      CLASS_WISE_STUDENTS: '/api/branch-admin/charts/class-wise-students', // GET
+      STUDENT_ATTENDANCE: '/api/branch-admin/charts/student-attendance', // GET
+      FEES_COLLECTED_PENDING: '/api/branch-admin/charts/fees-collected-pending', // GET
+      MONTHLY_FEE_COLLECTION: '/api/branch-admin/charts/monthly-fee-collection', // GET
+      PASS_FAIL_RATIO: '/api/branch-admin/charts/pass-fail-ratio', // GET
     },
   },
 
@@ -641,6 +693,14 @@ export const API_ENDPOINTS = {
       REPORT: '/api/teacher/attendance/report', // GET
       BULK_MARK: '/api/teacher/attendance/bulk-mark', // POST
       SCAN: '/api/teacher/attendance/scan', // POST
+
+    },
+    //self-attendece
+    SELF_ATTENDANCE: {
+      STATUS: '/api/teacher/self-attendance/status', // GET
+      CHECK_IN: '/api/teacher/self-attendance/check-in', // POST
+      CHECK_OUT: '/api/teacher/self-attendance/check-out', // POST
+      HISTORY: '/api/teacher/self-attendance/history', // GET
     },
 
     // Assignments

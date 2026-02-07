@@ -765,31 +765,53 @@ async function updateSystemSettings(request) {
 
 // Get Pending Fees (Super Admin - All Branches)
 async function getPendingFees() {
-  const feeVouchers = await FeeVoucher.find({ status: 'pending' })
-    .populate('studentId', 'firstName lastName')
+  // Find all fee vouchers that have pending payments in their history
+  const feeVouchers = await FeeVoucher.find({
+    'paymentHistory.status': 'pending'
+  })
+    .populate('studentId', 'firstName lastName fullName')
     .populate('classId', 'name')
     .populate('branchId', 'name')
     .sort({ createdAt: -1 });
 
-  const pendingPayments = feeVouchers.map(voucher => {
-    const pendingPayments = voucher.paymentHistory.filter(payment => payment.status === 'pending');
+  console.log('Super Admin - Found vouchers with pending payments:', feeVouchers.length);
 
-    return pendingPayments.map(payment => ({
-      id: `${voucher._id}_${payment._id}`,
-      voucherId: voucher._id,
-      studentName: `${voucher.studentId?.firstName} ${voucher.studentId?.lastName}`,
-      className: voucher.classId?.name || 'N/A',
-      branchName: voucher.branchId?.name || 'N/A',
-      amount: payment.amount,
-      dueDate: payment.dueDate,
-      paymentDate: payment.paymentDate,
-      description: payment.description || 'Fee Payment',
-      status: payment.status
-    }));
-  }).flat();
+  const pendingPayments = [];
 
-  // Sort by payment date (latest first)
+  for (const voucher of feeVouchers) {
+    const pendingHistoryItems = voucher.paymentHistory.filter(
+      (payment) => payment.status === 'pending'
+    );
+
+    for (let index = 0; index < voucher.paymentHistory.length; index++) {
+      const payment = voucher.paymentHistory[index];
+      if (payment.status === 'pending') {
+        pendingPayments.push({
+          paymentId: `${voucher._id}-${index}`,
+          voucherId: voucher._id,
+          paymentIndex: index,
+          voucherNumber: voucher.voucherNumber,
+          studentName: voucher.studentId?.fullName || `${voucher.studentId?.firstName || ''} ${voucher.studentId?.lastName || ''}`.trim() || 'Unknown',
+          className: voucher.classId?.name || 'N/A',
+          branchName: voucher.branchId?.name || 'N/A',
+          amount: payment.amount,
+          currency: 'PKR',
+          paymentMethod: payment.paymentMethod,
+          paymentDate: payment.paymentDate,
+          transactionId: payment.transactionId,
+          screenshotUrl: payment.screenshot?.url,
+          remarks: payment.remarks,
+          submittedBy: payment.submittedBy,
+          status: payment.status
+        });
+      }
+    }
+  }
+
+  // Sort by latest payment date first
   pendingPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+
+  console.log('Super Admin - Total pending payments:', pendingPayments.length);
 
   return NextResponse.json({
     success: true,

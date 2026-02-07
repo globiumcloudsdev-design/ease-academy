@@ -1,12 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
-import { Search, Bell, User, ChevronDown, Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import { useState, useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { Search, User, ChevronDown, Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Header({ mobileOpen, setMobileOpen }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -18,18 +19,18 @@ export default function Header({ mobileOpen, setMobileOpen }) {
   const handleProfileClick = () => {
     setIsDropdownOpen(false);
     // Directly use the correct path based on role
-    if (user?.role === 'super_admin') {
-      router.push('/super-admin/profile');
-    } else if (user?.role === 'branch_admin') {
-      router.push('/branch-admin/profile');
-    } else if (user?.role === 'teacher') {
-      router.push('/teacher/profile');
-    } else if (user?.role === 'parent') {
-      router.push('/parent/profile');
-    } else if (user?.role === 'student') {
-      router.push('/student/profile');
+    if (user?.role === "super_admin") {
+      router.push("/super-admin/profile");
+    } else if (user?.role === "branch_admin") {
+      router.push("/branch-admin/profile");
+    } else if (user?.role === "teacher") {
+      router.push("/teacher/profile");
+    } else if (user?.role === "parent") {
+      router.push("/parent/profile");
+    } else if (user?.role === "student") {
+      router.push("/student/profile");
     } else {
-      router.push('/profile');
+      router.push("/profile");
     }
   };
 
@@ -45,39 +46,32 @@ export default function Header({ mobileOpen, setMobileOpen }) {
 
   // Get page title based on pathname
   const getPageTitle = () => {
-    if (pathname.includes('/super-admin')) {
-      return pathname.includes('/profile') 
-        ? 'My Profile' 
-        : 'Super Admin Dashboard';
+    if (pathname.includes("/super-admin")) {
+      return pathname.includes("/profile")
+        ? "My Profile"
+        : "Super Admin Dashboard";
     }
-    if (pathname.includes('/branch-admin')) {
-      return pathname.includes('/profile')
-        ? 'My Profile'
-        : 'Branch Dashboard';
+    if (pathname.includes("/branch-admin")) {
+      return pathname.includes("/profile") ? "My Profile" : "Branch Dashboard";
     }
-    if (pathname.includes('/teacher')) {
-      return pathname.includes('/profile')
-        ? 'My Profile'
-        : 'Teacher Dashboard';
+    if (pathname.includes("/teacher")) {
+      return pathname.includes("/profile") ? "My Profile" : "Teacher Dashboard";
     }
-    if (pathname.includes('/parent')) {
-      return pathname.includes('/profile')
-        ? 'My Profile'
-        : 'Parent Dashboard';
+    if (pathname.includes("/parent")) {
+      return pathname.includes("/profile") ? "My Profile" : "Parent Dashboard";
     }
-    if (pathname.includes('/student')) {
-      return pathname.includes('/profile')
-        ? 'My Profile'
-        : 'Student Dashboard';
+    if (pathname.includes("/student")) {
+      return pathname.includes("/profile") ? "My Profile" : "Student Dashboard";
     }
-    
-    const role = user?.role || '';
-    return `${role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ')} Dashboard`;
+
+    const role = user?.role || "";
+    return `${role.charAt(0).toUpperCase() + role.slice(1).replace("_", " ")} Dashboard`;
   };
 
   // Get welcome message
   const getWelcomeMessage = () => {
-    const firstName = user?.fullName?.split(' ')[0] || user?.name?.split(' ')[0] || 'User';
+    const firstName =
+      user?.fullName?.split(" ")[0] || user?.name?.split(" ")[0] || "User";
     return `Welcome back, ${firstName}`;
   };
 
@@ -89,9 +83,9 @@ export default function Header({ mobileOpen, setMobileOpen }) {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -103,14 +97,16 @@ export default function Header({ mobileOpen, setMobileOpen }) {
     if (user?.name) {
       return user.name.charAt(0).toUpperCase();
     }
-    return 'U';
+    return "U";
   };
 
   return (
-    <header className={cn(
-      "bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm",
-      mobileOpen && "md:block hidden"
-    )}>
+    <header
+      className={cn(
+        "bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm",
+        mobileOpen && "md:block hidden",
+      )}
+    >
       <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
         {/* Page Title */}
         <div className="flex-1 min-w-0">
@@ -131,7 +127,11 @@ export default function Header({ mobileOpen, setMobileOpen }) {
             className="md:hidden hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />}
+            {mobileOpen ? (
+              <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
+            ) : (
+              <Menu className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
+            )}
           </Button>
 
           {/* Search */}
@@ -156,14 +156,7 @@ export default function Header({ mobileOpen, setMobileOpen }) {
           </Button>
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-gray-100 h-8 w-8 sm:h-9 sm:w-9"
-          >
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-          </Button>
+          <NotificationBell />
 
           {/* Profile Dropdown */}
           <div className="relative" ref={dropdownRef}>
@@ -179,16 +172,16 @@ export default function Header({ mobileOpen, setMobileOpen }) {
               {/* User Info - Hidden on mobile */}
               <div className="hidden md:block text-left min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate max-w-[100px] lg:max-w-[120px]">
-                  {user?.fullName || user?.name || 'User'}
+                  {user?.fullName || user?.name || "User"}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
-                  {user?.role?.replace('_', ' ') || 'Role'}
+                  {user?.role?.replace("_", " ") || "Role"}
                 </p>
               </div>
 
               <ChevronDown
                 className={`h-3 w-3 sm:h-4 sm:w-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
-                  isDropdownOpen ? 'rotate-180' : ''
+                  isDropdownOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
@@ -197,7 +190,7 @@ export default function Header({ mobileOpen, setMobileOpen }) {
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
                 {/* Profile Option - Hidden for teachers */}
-                {user?.role !== 'teacher' && (
+                {user?.role !== "teacher" && (
                   <>
                     <Link
                       href="/profile"
@@ -209,19 +202,29 @@ export default function Header({ mobileOpen, setMobileOpen }) {
                       </div>
                       <span className="font-medium">Profile</span>
                     </Link>
-                    
+
                     {/* Divider */}
                     <div className="border-t border-gray-100 mx-3 my-1"></div>
                   </>
                 )}
-                
+
                 <button
                   onClick={handleLogoutClick}
                   className="flex items-center w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <div className="w-5 h-5 mr-3">
-                    <svg className="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    <svg
+                      className="h-4 w-4 text-red-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                      />
                     </svg>
                   </div>
                   <span className="font-medium">Logout</span>

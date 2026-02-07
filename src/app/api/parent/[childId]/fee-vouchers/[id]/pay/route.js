@@ -36,19 +36,6 @@ const handler = withAuth(async (request, user, userDoc, context) => {
       return NextResponse.json({ success: false, message: 'Voucher already paid' }, { status: 400 });
     }
 
-    // Check if the branch has a branch admin
-    const branchAdmin = await User.findOne({
-      'branchProfile.branchId': voucher.branchId,
-      'branchProfile.role': 'admin',
-      role: 'branch-admin'
-    });
-    if (!branchAdmin) {
-      return NextResponse.json({
-        success: false,
-        message: 'Branch admin not found for this student\'s branch. Payment cannot be processed.'
-      }, { status: 400 });
-    }
-
     const formData = await request.formData();
     const amount = parseFloat(formData.get('amount'));
     const paymentMethod = formData.get('paymentMethod');

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -29,6 +30,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function SuperAdminStaffPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [filteredStaff, setFilteredStaff] = useState([]);
@@ -115,8 +117,7 @@ export default function SuperAdminStaffPage() {
 
   // Handle view staff
   const handleViewStaff = (staffMember) => {
-    setSelectedStaff(staffMember);
-    setShowViewModal(true);
+    router.push(`/super-admin/staff/${staffMember._id}`);
   };
 
   // Handle delete staff

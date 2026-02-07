@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -20,6 +21,7 @@ import TeacherForm from '@/components/teacher/teacher-form';
 import TeacherViewModal from '@/components/teacher/teacher-view-modal';
 
 export default function TeachersPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -137,8 +139,7 @@ export default function TeachersPage() {
   };
 
   const handleView = (teacher) => {
-    setSelectedTeacher(teacher);
-    setShowViewModal(true);
+    router.push(`/branch-admin/teachers/${teacher._id}`);
   };
 
   const handleAddNew = () => {
