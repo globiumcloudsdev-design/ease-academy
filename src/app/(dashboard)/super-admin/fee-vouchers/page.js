@@ -10,7 +10,7 @@ import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
 import BranchSelect from '@/components/ui/branch-select';
-import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Download, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
+import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Download, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, FileText, User, GraduationCap, Calendar, CreditCard, Check, X } from 'lucide-react';
 import Tabs, { TabPanel } from '@/components/ui/tabs';
 import Textarea from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -51,10 +51,23 @@ export default function SuperAdminFeeVouchersPage() {
   const [pendingVouchers, setPendingVouchers] = useState([]);
   const [paidVouchers, setPaidVouchers] = useState([]);
   const [cancelledVouchers, setCancelledVouchers] = useState([]);
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [approvedPayments, setApprovedPayments] = useState([]);
+  const [rejectedPayments, setRejectedPayments] = useState([]);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [actionType, setActionType] = useState(null); // 'approve', 'reject', or 'view'
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
   const [statistics, setStatistics] = useState({
     pending: { count: 0, totalAmount: 0 },
     paid: { count: 0, totalAmount: 0 },
     cancelled: { count: 0, totalAmount: 0 },
+  });
+  const [paymentStatistics, setPaymentStatistics] = useState({
+    pending: { count: 0, totalAmount: 0 },
+    approved: { count: 0, totalAmount: 0 },
+    rejected: { count: 0, totalAmount: 0 },
   });
   const [templates, setTemplates] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -151,7 +164,36 @@ export default function SuperAdminFeeVouchersPage() {
       }
     };
 
+    const fetchPendingPayments = async () => {
+      try {
+        // Fetch pending payments using direct fetch with auth header
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+        const res = await fetch('/api/super-admin/pending-fees', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const response = await res.json();
+        if (response.success) {
+          setPendingPayments(response.data || []);
+          setApprovedPayments(response.approvedPayments || []);
+          setRejectedPayments(response.rejectedPayments || []);
+          setPaymentStatistics(response.statistics || {
+            pending: { count: 0, totalAmount: 0 },
+            approved: { count: 0, totalAmount: 0 },
+            rejected: { count: 0, totalAmount: 0 },
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching pending payments:', err);
+      }
+    };
+
     fetchAllVouchers();
+    fetchPendingPayments();
   }, [authLoading, user, refreshKey]);
 
   useEffect(() => {
@@ -190,7 +232,25 @@ export default function SuperAdminFeeVouchersPage() {
     if (!authLoading && user) {
       fetchVouchers();
     }
-  }, [search, statusFilter, monthFilter, yearFilter, formData.branchId, pagination.page]);
+  }, [statusFilter, monthFilter, yearFilter, formData.branchId, pagination.page]);
+
+  // Client-side search filtering
+  const getFilteredVouchers = (voucherList) => {
+    if (!search.trim()) return voucherList;
+
+    const searchLower = search.toLowerCase();
+    return voucherList.filter((voucher) => {
+      const voucherNumber = voucher.voucherNumber?.toString().toLowerCase() || '';
+      const studentName = formatStudent(voucher.studentId).name.toLowerCase();
+      const registrationNumber = voucher.studentId?.studentProfile?.registrationNumber?.toString().toLowerCase() || '';
+      const rollNumber = voucher.studentId?.studentProfile?.rollNumber?.toString().toLowerCase() || '';
+
+      return voucherNumber.includes(searchLower) ||
+             studentName.includes(searchLower) ||
+             registrationNumber.includes(searchLower) ||
+             rollNumber.includes(searchLower);
+    });
+  };
 
   const fetchVouchers = async () => {
     try {
@@ -327,6 +387,97 @@ export default function SuperAdminFeeVouchersPage() {
     }
   };
 
+  const handleView = (payment) => {
+    console.log('View button clicked for payment:', payment);
+    setSelectedPayment(payment);
+    setActionType('view');
+    setShowPaymentModal(true);
+  };
+
+  const handleApprove = (payment) => {
+    console.log('Approve button clicked for payment:', payment);
+    setSelectedPayment(payment);
+    setActionType('approve');
+    setRejectionReason('');
+    setShowPaymentModal(true);
+  };
+
+  const handleReject = (payment) => {
+    console.log('Reject button clicked for payment:', payment);
+    setSelectedPayment(payment);
+    setActionType('reject');
+    setRejectionReason('');
+    setShowPaymentModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedPayment) return;
+
+    // Validate rejection reason for reject action
+    if (actionType === 'reject') {
+      const trimmedReason = rejectionReason.trim();
+      if (!trimmedReason) {
+        setError('Rejection reason is required');
+        return;
+      }
+    }
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      let endpoint;
+      let payload;
+
+      if (actionType === 'approve') {
+        endpoint = '/api/super-admin/pending-fees/approve';
+        payload = {
+          paymentId: `${selectedPayment.voucherId}-${selectedPayment.paymentIndex}`,
+          remarks: 'Payment approved by super admin',
+        };
+      } else if (actionType === 'reject') {
+        endpoint = '/api/super-admin/pending-fees/reject';
+        payload = {
+          paymentId: `${selectedPayment.voucherId}-${selectedPayment.paymentIndex}`,
+          remarks: rejectionReason.trim(),
+        };
+      }
+
+      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication token not found. Please login again.');
+        return;
+      }
+
+      const fetchResponse = await fetch(`${window.location.origin}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const response = await fetchResponse.json();
+
+      if (response.success) {
+        setSuccessMessage(actionType === 'approve' ? 'Payment approved successfully' : 'Payment rejected successfully');
+        setRefreshKey(prev => prev + 1);
+        setShowPaymentModal(false);
+        setSelectedPayment(null);
+        setRejectionReason('');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        setError(response.message || `Failed to ${actionType} payment`);
+      }
+    } catch (err) {
+      console.error('Network/Parse Error:', err);
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleManualPayment = (id) => {
     setSelectedVoucherId(id);
     setPaymentAmount('');
@@ -347,20 +498,29 @@ export default function SuperAdminFeeVouchersPage() {
 
     setSubmitting(true);
     try {
-      const res = await apiClient.post(API_ENDPOINTS.SUPER_ADMIN.FEE_VOUCHERS.APPROVE_PAYMENT.replace(':voucherId', selectedVoucherId), {
+      // Use the branch admin approve payment endpoint since super admin has cross-branch access
+      const res = await apiClient.post(API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.APPROVE_PAYMENT.replace(':voucherId', selectedVoucherId), {
+        voucherId: selectedVoucherId,
+        paymentIndex: 0,
         amount: amount,
-        paymentMethod: 'cash'
+        paymentMethod: 'cash',
+        remarks: `Manual cash payment of PKR ${amount} approved by Super Admin`,
+        action: 'manual_approve',
+        manualPayment: true
       });
+
       if (res && res.success) {
-        toast.success('Payment approved successfully!');
+        toast.success('Manual cash payment approved successfully!');
         setIsManualPaymentModalOpen(false);
         setSelectedVoucherId(null);
         setPaymentAmount('');
         fetchVouchers();
+      } else {
+        toast.error(res?.message || 'Failed to approve manual payment');
       }
     } catch (err) {
-      console.error('Error approving payment:', err);
-      toast.error(err?.message || 'Failed to approve payment');
+      console.error('Error approving manual payment:', err);
+      toast.error(err?.message || 'Failed to approve manual payment');
     } finally {
       setSubmitting(false);
     }
@@ -567,7 +727,7 @@ export default function SuperAdminFeeVouchersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
-              All Fee Vouchers ({vouchers.length})
+              All Fee Vouchers ({getFilteredVouchers(vouchers).length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -596,12 +756,12 @@ export default function SuperAdminFeeVouchersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vouchers.length === 0 ? (
+                {getFilteredVouchers(vouchers).length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-gray-500">No fee vouchers found</TableCell>
                   </TableRow>
                 ) : (
-                  vouchers.map((voucher) => (
+                  getFilteredVouchers(vouchers).map((voucher) => (
                     <TableRow key={voucher._id}>
                       <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
                       <TableCell>
@@ -652,78 +812,110 @@ export default function SuperAdminFeeVouchersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-yellow-600" />
-              Pending Fee Vouchers ({pendingVouchers.length})
+              Pending Payments ({pendingPayments.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-              <Input placeholder="Search vouchers..." value={search} onChange={(e) => setSearch(e.target.value)} icon={Search} />
-              <Dropdown placeholder="Filter by month" value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} options={[{ value: '', label: 'All Months' }, ...MONTHS]} />
-              <Input type="number" placeholder="Year" value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} />
-              <BranchSelect value={formData.branchId} onChange={(e) => setFormData(prev => ({ ...prev, branchId: e.target.value }))} branches={branches} placeholder="All Branches (optional)" />
-              <div></div> {/* Empty space for alignment */}
-            </div>
-
-            {/* Table */}
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Voucher #</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Template</TableHead>
-                  <TableHead>Branch</TableHead>
-                  <TableHead>Month/Year</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pendingVouchers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center text-gray-500">No pending fee vouchers found</TableCell>
-                  </TableRow>
-                ) : (
-                  pendingVouchers.map((voucher) => (
-                    <TableRow key={voucher._id}>
-                      <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
-                      <TableCell>
-                        {(() => {
-                          const { name, registrationNumber, rollNumber, section } = formatStudent(voucher.studentId);
-                          return (
-                            <div>
-                              <div className="font-medium">{name}</div>
-                              <div className="text-xs text-gray-500">
-                                Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{voucher.templateId?.name}</div>
-                        <div className="text-xs text-gray-500">{voucher.templateId?.code}</div>
-                      </TableCell>
-                      <TableCell>{voucher.branchId?.name}</TableCell>
-                      <TableCell>{MONTHS.find(m => m.value === voucher.month.toString())?.label} {voucher.year}</TableCell>
-                      <TableCell>{new Date(voucher.dueDate).toLocaleDateString('en-PK')}</TableCell>
-                      <TableCell className="font-semibold">PKR {voucher.totalAmount.toLocaleString()}</TableCell>
-                      <TableCell><span className={`px-2 py-1 rounded-full text-xs ${getStatusBadge(voucher.status)}`}>{voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1)}</span></TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="icon-sm" title="View Details" onClick={() => handleViewVoucher(voucher._id)}><Eye className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon-sm" title="Download PDF" onClick={() => handleDownloadVoucher(voucher)}><Download className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="icon-sm" title="Manual Cash Payment" onClick={() => handleManualPayment(voucher._id)}><DollarSign className="w-4 h-4 text-green-600" /></Button>
-                          <Button variant="ghost" size="icon-sm" onClick={() => handleCancelVoucher(voucher._id)} title="Cancel Voucher"><Trash2 className="w-4 h-4 text-red-600" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            {pendingPayments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No pending fee payments for your branch</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-center p-4 font-semibold text-base">Branch</th>
+                      <th className="text-center p-4 font-semibold text-base">Voucher #</th>
+                      <th className="text-center p-4 font-semibold text-base">Student</th>
+                      <th className="text-center p-4 font-semibold text-base">Class</th>
+                      <th className="text-center p-4 font-semibold text-base">Amount</th>
+                      <th className="text-center p-4 font-semibold text-base">Payment Method</th>
+                      <th className="text-center p-4 font-semibold text-base">Submitted Date</th>
+                      <th className="text-center p-4 font-semibold text-base">Transaction ID</th>
+                      <th className="text-center p-4 font-semibold text-base">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingPayments.map((payment) => (
+                      <tr key={payment.paymentId} className="border-b hover:bg-muted/50">
+                        <td className="p-4">
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            {payment.branchName}
+                          </Badge>
+                        </td>
+                        <td className="p-6 font-semibold text-base">{payment.voucherNumber}</td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            {payment.studentName}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                            {payment.className}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-green-600">
+                              PKR {payment.amount?.toFixed(2)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <Badge variant="secondary">
+                            <CreditCard className="w-3 h-3 mr-1" />
+                            {payment.paymentMethod?.replace('-', ' ').toUpperCase()}
+                          </Badge>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            {new Date(payment.paymentDate).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <code className="bg-muted px-2 py-1 rounded text-sm">
+                            {payment.transactionId}
+                          </code>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleView(payment)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApprove(payment)}
+                            >
+                              <Check className="w-4 h-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleReject(payment)}
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </TabPanel>
