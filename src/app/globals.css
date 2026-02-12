@@ -250,7 +250,8 @@ html {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -294,11 +295,11 @@ html {
     background: white;
     color: black;
   }
-  
+
   .no-print {
     display: none !important;
   }
-  
+
   @page {
     margin: 2cm;
   }
@@ -345,9 +346,11 @@ html {
 
 /* Custom Transitions */
 .transition-theme {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
 }
-
 
 /* Add to global.css */
 .gradient-text {
@@ -368,7 +371,8 @@ html {
 
 /* Pulse animation for CTA buttons */
 @keyframes pulse-soft {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
   }
   50% {
@@ -386,22 +390,36 @@ html {
   animation: slideInFromBottom 0.5s ease forwards;
 }
 
-.stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
-.stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
-.stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
-.stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
-.stagger-animation > *:nth-child(5) { animation-delay: 0.5s; }
-.stagger-animation > *:nth-child(6) { animation-delay: 0.6s; }
-
-
-
+.stagger-animation > *:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.stagger-animation > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.stagger-animation > *:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.stagger-animation > *:nth-child(4) {
+  animation-delay: 0.4s;
+}
+.stagger-animation > *:nth-child(5) {
+  animation-delay: 0.5s;
+}
+.stagger-animation > *:nth-child(6) {
+  animation-delay: 0.6s;
+}
 
 /* Add to your global.css */
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply tracking-tight;
   }
-  
+
   p {
     @apply leading-relaxed;
   }
@@ -418,16 +436,18 @@ html {
 }
 
 /* Focus styles */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   @apply outline-none ring-2 ring-blue-200 ring-offset-2;
 }
-
 
 /* Add to your existing animations in global.css */
 
 /* Slower pulse animation */
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.5;
   }
   50% {
@@ -441,7 +461,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Floating animations for different elements */
 @keyframes float-1 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -450,7 +471,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 @keyframes float-2 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -459,7 +481,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 @keyframes float-3 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -468,7 +491,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 @keyframes float-4 {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -497,7 +521,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Gradient flow animation */
 @keyframes gradient-flow {
-  0%, 100% {
+  0%,
+  100% {
     background-position: 0% 50%;
   }
   50% {
@@ -567,7 +592,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Slow bounce animation */
 @keyframes bounce-slow {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -619,9 +645,6 @@ input:focus, textarea:focus, select:focus {
   animation: shimmer 2s infinite;
 }
 
-
-
-
 /* Navbar specific animations */
 @keyframes slideDown {
   from {
@@ -655,7 +678,8 @@ input:focus, textarea:focus, select:focus {
 
 /* Gradient border animation */
 @keyframes gradientBorder {
-  0%, 100% {
+  0%,
+  100% {
     border-color: rgba(59, 130, 246, 0.5);
   }
   25% {
@@ -676,7 +700,9 @@ input:focus, textarea:focus, select:focus {
 
 /* Hover lift effect */
 .hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .hover-lift:hover {
@@ -712,4 +738,23 @@ input:focus, textarea:focus, select:focus {
   100% {
     transform: translateY(0);
   }
+}
+
+/* Custom Scrollbar for Notification Modal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #6366f1);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563eb, #4f46e5);
 }

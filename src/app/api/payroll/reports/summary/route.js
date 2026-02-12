@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import Payroll from '@/backend/models/Payroll';
 import User from '@/backend/models/User';
 import { withAuth, requireRole } from '@/backend/middleware/auth';
@@ -27,9 +28,16 @@ async function getReportsHandler(request, user, userDoc) {
 
     // Branch-specific logic
     if (currentUser.role === 'branch_admin') {
-      query.branchId = currentUser.branchId;
+      // Handle both object and string format for branchId
+      const bId = typeof currentUser.branchId === 'object' 
+        ? currentUser.branchId._id || currentUser.branchId
+        : currentUser.branchId;
+
+      if (bId) {
+        query.branchId = new mongoose.Types.ObjectId(String(bId));
+      }
     } else if (currentUser.role === 'super_admin' && branchId && branchId !== 'all') {
-      query.branchId = branchId;
+      query.branchId = new mongoose.Types.ObjectId(branchId);
     }
 
     // Get summary statistics
@@ -104,7 +112,7 @@ async function getReportsHandler(request, user, userDoc) {
 
     // Get top 10 highest salaries
     const topSalaries = await Payroll.find(query)
-      .populate('teacherId', 'firstName lastName teacherProfile')
+      .populate('userId', 'firstName lastName teacherProfile staffProfile role')
       .populate('branchId', 'name')
       .sort({ netSalary: -1 })
       .limit(10)

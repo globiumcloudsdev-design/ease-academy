@@ -20,6 +20,7 @@ async function getPayrollHandler(request, user, userDoc) {
     const branchId = searchParams.get('branchId');
     const status = searchParams.get('status');
     const teacherId = searchParams.get('teacherId');
+    const employeeId = searchParams.get('employeeId');
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 50;
 
@@ -31,7 +32,8 @@ async function getPayrollHandler(request, user, userDoc) {
     if (month) query.month = parseInt(month);
     if (year) query.year = parseInt(year);
     if (status) query.paymentStatus = status;
-    if (teacherId) query.teacherId = teacherId;
+    if (teacherId) query.userId = teacherId;
+    if (employeeId) query.userId = employeeId;
 
     // Branch-specific logic
     if (currentUser.role === 'branch_admin') {
@@ -45,7 +47,7 @@ async function getPayrollHandler(request, user, userDoc) {
 
     // Get payroll records
     const payrolls = await Payroll.find(query)
-      .populate('teacherId', 'firstName lastName email phone teacherProfile')
+      .populate('userId', 'firstName lastName email phone teacherProfile staffProfile role')
       .populate('branchId', 'name code')
       .populate('processedBy', 'firstName lastName')
       .populate('paidBy', 'firstName lastName')

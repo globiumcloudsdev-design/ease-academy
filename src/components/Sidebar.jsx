@@ -28,6 +28,7 @@ import {
   GraduationCap,
   QrCode,
   ChevronRight,
+  Library,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,11 @@ const ROLE_MENUS = {
           path: "/super-admin/branch-management/branches",
           icon: FolderOpen,
         },
+        {
+          name: "Library",
+          path: "/super-admin/library",
+          icon: Library,
+        }
       ],
     },
     {
@@ -64,6 +70,11 @@ const ROLE_MENUS = {
           name: "Parents",
           path: "/super-admin/user-management/parents",
           icon: UserCheck,
+        },
+        {
+          name: "Staff",
+          path: "/super-admin/staff",
+          icon: Users,
         },
       ],
     },
@@ -97,6 +108,18 @@ const ROLE_MENUS = {
           icon: FileText,
         },
         { name: "Timetable", path: "/super-admin/timetable", icon: Clock },
+        { name: "Exam Management", path: "/super-admin/exams", icon: FileText },
+      ],
+    },
+    {
+      category: "Library Management",
+      isCollapsible: true,
+      items: [
+        {
+          name: "Library Books",
+          path: "/super-admin/library",
+          icon: BookOpen,
+        },
       ],
     },
     {
@@ -135,6 +158,11 @@ const ROLE_MENUS = {
           path: "/super-admin/fee-vouchers",
           icon: Receipt,
         },
+        {
+          name: "Pending Fees",
+          path: "/super-admin/pending-fees",
+          icon: DollarSign,
+        },
       ],
     },
     {
@@ -165,6 +193,16 @@ const ROLE_MENUS = {
       ],
     },
     {
+      category: "Notifications",
+      items: [
+        {
+          name: "Notifications",
+          path: "/super-admin/notifications",
+          icon: Calendar,
+        },
+      ],
+    },
+    {
       category: "Salary Management",
       isCollapsible: true,
       items: [
@@ -190,25 +228,44 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: "Academic Management",
+      category: "User Management",
+      isCollapsible: true,
+      items: [
+        { name: "Staff", path: "/branch-admin/staff", icon: Users },
+        { name: "Parents", path: "/branch-admin/parents", icon: UserCheck },
+      ],
+    },
+    {
+      category: "Student Management",
+      isCollapsible: true,
+      items: [
+        { name: "Students", path: "/branch-admin/students", icon: Users },
+      ],
+    },
+    {
+      category: "Teacher Management",
       isCollapsible: true,
       items: [
         { name: "Teachers", path: "/branch-admin/teachers", icon: Users },
-        { name: "Students", path: "/branch-admin/students", icon: BookOpen },
+      ],
+    },
+    {
+      category: "Academic",
+      isCollapsible: true,
+      items: [
         { name: "Classes", path: "/branch-admin/classes", icon: School },
-        { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
         { name: "Subjects", path: "/branch-admin/subjects", icon: BookOpen },
-        {
-          name: "Departments",
-          path: "/branch-admin/departments",
-          icon: Building2,
-        },
+        { name: "Departments", path: "/branch-admin/departments", icon: Building2 },
         { name: "Syllabus", path: "/branch-admin/syllabus", icon: FileText },
-        {
-          name: "Parents",
-          path: "/branch-admin/parents",
-          icon: UserCheck,
-        },
+        { name: "Timetable", path: "/branch-admin/timetable", icon: Clock },
+        { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
+      ],
+    },
+    {
+      category: "Library Management",
+      isCollapsible: true,
+      items: [
+        { name: "Library Books", path: "/branch-admin/library", icon: BookOpen },
       ],
     },
     {
@@ -221,24 +278,18 @@ const ROLE_MENUS = {
       ],
     },
     {
-      category: "Academic Structure",
+      category: "Notifications",
       items: [
-        { name: "Academic Structure", path: "/branch-admin/academic-structure", icon: GraduationCap },
+        { name: "Notifications", path: "/branch-admin/notifications", icon: Calendar },
       ],
     },
     {
       category: "Finance Management",
+      isCollapsible: true,
       items: [
-        {
-          name: "Fee Voucher",
-          path: "/branch-admin/fee-vouchers",
-          icon: Receipt,
-        },
-        {
-          name: "Fee Templates",
-          path: "/branch-admin/fee-templates",
-          icon: Receipt,
-        },
+        { name: "Fee Voucher", path: "/branch-admin/fee-vouchers", icon: Receipt },
+        { name: "Fee Templates", path: "/branch-admin/fee-templates", icon: Receipt },
+        { name: "Pending Fees", path: "/branch-admin/pending-fees", icon: DollarSign },
         { name: "Expenses", path: "/branch-admin/expenses", icon: Wallet },
       ],
     },
@@ -272,6 +323,7 @@ const ROLE_MENUS = {
         { name: "My Classes", path: "/teacher/classes", icon: School },
         { name: "Assignments", path: "/teacher/assignments", icon: FileText },
         { name: "Attendance", path: "/teacher/attendance", icon: Clock },
+        { name: "Self Attendance", path: "/teacher/self-attendance", icon: UserCheck },
         { name: "Exams", path: "/teacher/exams", icon: Calendar },
         { name: "Results", path: "/teacher/results", icon: BarChart3 },
       ],
@@ -310,6 +362,7 @@ const ROLE_MENUS = {
         { name: "Attendance", path: "/parent/attendance", icon: Clock },
         { name: "Results", path: "/parent/results", icon: BarChart3 },
         { name: "Fee Status", path: "/parent/fees", icon: DollarSign },
+        { name: "Notifications", path: "/parent/notifications", icon: Calendar },
       ],
     },
   ],
@@ -375,7 +428,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
         group.items.some(
           (item) =>
             pathname === item.path ||
-            pathname.startsWith(item.path + "/")
+            (item.name !== 'Dashboard' && pathname.startsWith(item.path + "/"))
         )
       ) {
         setExpanded((prev) => ({
@@ -490,8 +543,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                   >
                     <span>{group.category}</span>
                     {group.isCollapsible && (
-                      <ChevronRight 
-                        size={14} 
+                      <ChevronRight
+                        size={14}
                         className={cn("transition-transform duration-200", open && "rotate-90")}
                       />
                     )}
@@ -502,7 +555,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive = pathname === item.path || pathname.startsWith(item.path + "/");
+                      const isActive = pathname === item.path || (item.name !== 'Dashboard' && pathname.startsWith(item.path + "/"));
 
                       return (
                         <Link
@@ -520,7 +573,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                         >
                           <Icon size={19} className={cn("transition-transform", !isActive && "group-hover:scale-110")} />
                           {isOpen && <span className="truncate">{item.name}</span>}
-                          
+
                           {/* Tooltip for collapsed state */}
                           {!isOpen && (
                             <div className="fixed left-24 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-[9999] shadow-2xl pointer-events-none">

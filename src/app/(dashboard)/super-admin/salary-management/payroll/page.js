@@ -38,7 +38,7 @@ import FullPageLoader from '@/components/ui/full-page-loader';
 export default function SuperAdminPayrollPage() {
   const { user } = useAuth();
   const [payrolls, setPayrolls] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -52,7 +52,7 @@ export default function SuperAdminPayrollPage() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   
   // Processing Settings
-  const [selectedTeachers, setSelectedTeachers] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [deductionType, setDeductionType] = useState('percentage');
   const [deductionValue, setDeductionValue] = useState(10);
   const [remarks, setRemarks] = useState('');
@@ -73,7 +73,7 @@ export default function SuperAdminPayrollPage() {
   const fetchData = async () => {
     await Promise.all([
       fetchPayrolls(),
-      fetchTeachers(),
+      fetchEmployees(),
       fetchBranches(),
       fetchStats(),
     ]);
@@ -108,10 +108,10 @@ export default function SuperAdminPayrollPage() {
     }
   };
 
-  const fetchTeachers = async () => {
+  const fetchEmployees = async () => {
     try {
       const params = {
-        role: 'teacher',
+        role: 'teacher,staff,branch_admin',
         status: 'active',
         limit: 200,
         ...(selectedBranch !== 'all' && { branchId: selectedBranch }),
@@ -119,10 +119,10 @@ export default function SuperAdminPayrollPage() {
       
       const response = await apiClient.get('/api/users', params);
       if (response.success) {
-        setTeachers(response.data);
+        setEmployees(response.data);
       }
     } catch (error) {
-      console.error('Fetch teachers error:', error);
+      console.error('Fetch employees error:', error);
     }
   };
 
@@ -167,8 +167,8 @@ export default function SuperAdminPayrollPage() {
   };
 
   const handleProcessPayroll = async () => {
-    if (selectedTeachers.length === 0) {
-      toast.error('Please select at least one teacher');
+    if (selectedEmployees.length === 0) {
+      toast.error('Please select at least one employee');
       return;
     }
 
@@ -181,8 +181,8 @@ export default function SuperAdminPayrollPage() {
       setProcessing(true);
       
       const payload = {
-        teacherIds: selectedTeachers,
-        branchId: selectedBranch,
+        userIds: selectedEmployees,
+        branchId: selectedBranch !== 'all' ? selectedBranch : undefined,
         month: parseInt(selectedMonth),
         year: parseInt(selectedYear),
         deductionType,
@@ -201,16 +201,16 @@ export default function SuperAdminPayrollPage() {
         
         if (results.failed.length > 0) {
           console.log('Failed:', results.failed);
-          toast.warning(`Some teachers failed: ${results.failed.map(f => f.reason).join(', ')}`);
+          toast.warning(`Some employees failed: ${results.failed.map(f => f.reason).join(', ')}`);
         }
         
         if (results.skipped.length > 0) {
           console.log('Skipped:', results.skipped);
-          toast.info(`Some teachers skipped: ${results.skipped.map(s => s.reason).join(', ')}`);
+          toast.info(`Some employees skipped: ${results.skipped.map(s => s.reason).join(', ')}`);
         }
 
         setShowProcessModal(false);
-        setSelectedTeachers([]);
+        setSelectedEmployees([]);
         setRemarks('');
         fetchData();
       }
@@ -261,22 +261,55 @@ export default function SuperAdminPayrollPage() {
     }
   };
 
-  const handleSelectTeacher = (teacherId) => {
-    setSelectedTeachers(prev => {
-      if (prev.includes(teacherId)) {
-        return prev.filter(id => id !== teacherId);
+  const handleSelectEmployee = (employeeId) => {
+    setSelectedEmployees(prev => {
+      if (prev.includes(employeeId)) {
+        return prev.filter(id => id !== employeeId);
       } else {
-        return [...prev, teacherId];
+        return [...prev, employeeId];
       }
     });
   };
 
-  const handleSelectAllTeachers = () => {
-    if (selectedTeachers.length === teachers.length) {
-      setSelectedTeachers([]);
+  const handleSelectAllEmployees = () => {
+    if (selectedEmployees.length === employees.length) {
+      setSelectedEmployees([]);
     } else {
-      setSelectedTeachers(teachers.map(t => t._id));
+      setSelectedEmployees(employees.map(t => t._id));
     }
+  };
+
+  const getBasicSalary = (employee) => {
+    if (employee.role === 'teacher' && employee.teacherProfile?.salaryDetails?.basicSalary) {
+      return employee.teacherProfile.salaryDetails.basicSalary;
+    }
+    if (employee.role === 'staff' && employee.staffProfile?.salaryDetails?.basicSalary) {
+      return employee.staffProfile.salaryDetails.basicSalary;
+    }
+    if (employee.role === 'branch_admin') {
+      // Check if branch_admin has teacherProfile or staffProfile
+      if (employee.teacherProfile?.salaryDetails?.basicSalary) {
+        return employee.teacherProfile.salaryDetails.basicSalary;
+      }
+      if (employee.staffProfile?.salaryDetails?.basicSalary) {
+        return employee.staffProfile.salaryDetails.basicSalary;
+      }
+    }
+    return 0;
+  };
+
+  const getDesignation = (employee) => {
+    if (employee.role === 'teacher' && employee.teacherProfile?.designation) {
+      return employee.teacherProfile.designation;
+    }
+    if (employee.role === 'staff' && employee.staffProfile?.role) {
+      return employee.staffProfile.role;
+    }
+    if (employee.role === 'branch_admin') {
+      return 'Branch Admin';
+    }
+    // Fallback
+    return employee.role ? employee.role.replace('_', ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Staff';
   };
 
   const monthNames = [
@@ -462,7 +495,7 @@ export default function SuperAdminPayrollPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Teacher</TableHead>
+                <TableHead>Employee</TableHead>
                 <TableHead>Branch</TableHead>
                 <TableHead>Basic Salary</TableHead>
                 <TableHead>Gross Salary</TableHead>
@@ -489,10 +522,13 @@ export default function SuperAdminPayrollPage() {
                     <TableCell>
                       <div>
                         <p className="font-medium">
-                          {payroll.teacherId?.firstName} {payroll.teacherId?.lastName}
+                          {payroll.userId?.firstName} {payroll.userId?.lastName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {payroll.teacherId?.email}
+                          {payroll.userId?.email}
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {payroll.userId?.role?.replace('_', ' ')}
                         </p>
                       </div>
                     </TableCell>
@@ -580,7 +616,7 @@ export default function SuperAdminPayrollPage() {
             </Button>
             <Button
               onClick={handleProcessPayroll}
-              disabled={processing || selectedTeachers.length === 0}
+              disabled={processing || selectedEmployees.length === 0}
               className="gap-2"
             >
               {processing ? (
@@ -655,49 +691,49 @@ export default function SuperAdminPayrollPage() {
                 />
               </div>
 
-              {/* Teacher Selection */}
+              {/* Employee Selection */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">Select Teachers</h3>
+                  <h3 className="font-semibold">Select Employees</h3>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleSelectAllTeachers}
+                    onClick={handleSelectAllEmployees}
                   >
-                    {selectedTeachers.length === teachers.length ? 'Deselect All' : 'Select All'}
+                    {selectedEmployees.length === employees.length ? 'Deselect All' : 'Select All'}
                   </Button>
                 </div>
 
                 <div className="border rounded-lg max-h-96 overflow-y-auto">
-                  {teachers.length === 0 ? (
+                  {employees.length === 0 ? (
                     <div className="p-8 text-center text-muted-foreground">
                       <Users className="w-12 h-12 mx-auto mb-2" />
-                      <p>No active teachers found</p>
+                      <p>No active employees found</p>
                     </div>
                   ) : (
                     <div className="divide-y">
-                      {teachers.map((teacher) => (
+                      {employees.map((employee) => (
                         <label
-                          key={teacher._id}
+                          key={employee._id}
                           className="flex items-center gap-3 p-4 hover:bg-accent cursor-pointer"
                         >
                           <input
                             type="checkbox"
-                            checked={selectedTeachers.includes(teacher._id)}
-                            onChange={() => handleSelectTeacher(teacher._id)}
+                            checked={selectedEmployees.includes(employee._id)}
+                            onChange={() => handleSelectEmployee(employee._id)}
                             className="w-4 h-4"
                           />
                           <div className="flex-1">
                             <p className="font-medium">
-                              {teacher.firstName} {teacher.lastName}
+                              {employee.firstName} {employee.lastName}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {teacher.email} • {teacher.teacherProfile?.designation || 'Teacher'}
+                              {employee.email} • {getDesignation(employee)}
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-green-600">
-                              PKR {(teacher.teacherProfile?.salaryDetails?.basicSalary || 0).toLocaleString()}
+                              PKR {getBasicSalary(employee).toLocaleString()}
                             </p>
                             <p className="text-xs text-muted-foreground">Basic Salary</p>
                           </div>
@@ -708,7 +744,7 @@ export default function SuperAdminPayrollPage() {
                 </div>
 
                 <p className="text-sm text-muted-foreground mt-2">
-                  {selectedTeachers.length} teacher(s) selected
+                  {selectedEmployees.length} employee(s) selected
                 </p>
               </div>
             </div>

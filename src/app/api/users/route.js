@@ -35,7 +35,13 @@ export const GET = withAuth(async (request, authenticatedUser, userDoc) => {
     // Build query
     const query = {};
     
-    if (role) query.role = role;
+    if (role) {
+      if (role.includes(',')) {
+        query.role = { $in: role.split(',') };
+      } else {
+        query.role = role;
+      }
+    }
     if (branchId) query.branchId = branchId;
     if (status) query.status = status;
     

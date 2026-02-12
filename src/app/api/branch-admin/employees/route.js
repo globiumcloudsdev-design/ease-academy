@@ -19,9 +19,9 @@ async function getEmployeesHandler(request, user, userDoc) {
       );
     }
     
-    // Fetch employees (teachers and staff) from the branch_admin's branch only
+    // Fetch employees (teachers, staff, and branch admins) from the branch_admin's branch only
     const employees = await User.find({
-      role: { $in: ['teacher', 'staff'] },
+      role: { $in: ['teacher', 'staff', 'branch_admin'] },
       branchId: user.branchId,
       isActive: true
     })

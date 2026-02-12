@@ -28,10 +28,18 @@ async function summaryHandler(request, user, userDoc) {
     }
 
     // Determine which user's summary to fetch
-    let targetUserId = userId || currentUser._id;
+    let targetUserId = userId || (currentUser._id ? currentUser._id.toString() : null);
+
+    if (!targetUserId) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Permission check
-    if (userId && userId !== currentUser._id.toString()) {
+    const currentUserId = currentUser._id ? currentUser._id.toString() : null;
+    if (userId && currentUserId && userId !== currentUserId) {
       if (currentUser.role === 'teacher' || currentUser.role === 'student') {
         return NextResponse.json(
           { success: false, error: 'You can only view your own attendance summary' },
@@ -43,7 +51,10 @@ async function summaryHandler(request, user, userDoc) {
         // Verify user belongs to same branch
         const User = (await import('@/backend/models/User')).default;
         const targetUser = await User.findById(userId);
-        if (!targetUser || targetUser.branchId.toString() !== currentUser.branchId.toString()) {
+        const currentBranchId = currentUser.branchId ? currentUser.branchId.toString() : null;
+        const targetBranchId = targetUser?.branchId ? targetUser.branchId.toString() : null;
+        
+        if (!targetUser || (targetBranchId && currentBranchId && targetBranchId !== currentBranchId)) {
           return NextResponse.json(
             { success: false, error: 'You can only view attendance for users in your branch' },
             { status: 403 }
@@ -66,9 +77,15 @@ async function summaryHandler(request, user, userDoc) {
     return NextResponse.json({
       success: true,
       data: {
-        ...summary,
+        totalEmployees: 1,
+        presentCount: summary.presentDays || 0,
+        absentCount: summary.absentDays || 0,
+        lateCount: summary.lateDays || 0,
+        leaveCount: summary.leaveDays || 0,
+        attendanceRate: parseFloat(attendancePercentage) || 0,
+        totalWorkingHours: summary.totalWorkingHours || 0,
+        averageWorkingHours: parseFloat(summary.averageWorkingHours) || 0,
         workingDays,
-        attendancePercentage: parseFloat(attendancePercentage),
         month,
         year,
       },

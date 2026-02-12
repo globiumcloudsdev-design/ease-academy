@@ -75,6 +75,9 @@ const handler = withAuth(async (request, user, userDoc, context) => {
         paymentMethod: payment.paymentMethod,
         transactionId: payment.transactionId,
         remarks: payment.remarks,
+        status: payment.status,
+        approvedBy: payment.approvedBy,
+        approvedAt: payment.approvedAt,
       })) || [],
       remarks: voucher.remarks,
     }));

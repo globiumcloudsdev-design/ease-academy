@@ -7,6 +7,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 import Branch from '@/backend/models/Branch';
 import Class from '@/backend/models/Class';
 import FeeTemplate from '@/backend/models/FeeTemplate';
+import Notification from '@/backend/models/Notification';
 
 const handler = withAuth(async (request, user, userDoc, context) => {
   try {
