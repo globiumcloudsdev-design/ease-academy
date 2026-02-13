@@ -26,28 +26,67 @@ export const GET = withAuth(async (request, user, userDoc) => {
     const year = searchParams.get('year');
     const classId = searchParams.get('classId');
 
+    // Build the base query
     const query = { branchId: user.branchId };
+    
+    if (status) {
+      query.status = status;
+    }
+    if (month) {
+      query.month = parseInt(month);
+    }
+    if (year) {
+      query.year = parseInt(year);
+    }
+    if (classId) {
+      query.classId = classId;
+    }
 
-      if (status) {
-        query.status = status;
-      }
-
-      if (month) {
-        query.month = parseInt(month);
-      }
-
-      if (year) {
-        query.year = parseInt(year);
-      }
-
-      if (classId) {
-        query.classId = classId;
-      }
-
+    // Build search conditions - search by student name or ID
     if (search) {
-      query.$or = [
+      const { ObjectId } = await import('mongodb');
+      
+      // First, try to find student IDs that match the search name
+      const studentNameSearch = new RegExp(search, 'i');
+      const studentQuery = {
+        $or: [
+          { fullName: studentNameSearch },
+          { firstName: studentNameSearch },
+          { lastName: studentNameSearch },
+          { email: studentNameSearch },
+          { 'studentProfile.registrationNumber': studentNameSearch }
+        ],
+        role: 'student'
+      };
+      
+      // Check if search is a valid MongoDB ObjectId
+      let isValidObjectId = false;
+      try {
+        isValidObjectId = ObjectId.isValid(search) && new ObjectId(search).toString() === search;
+      } catch (e) {
+        isValidObjectId = false;
+      }
+      
+      // Find matching students
+      const matchingStudents = await User.find(studentQuery).select('_id').lean();
+      const studentIds = matchingStudents.map(s => s._id);
+      
+      // Build OR conditions
+      const orConditions = [
         { voucherNumber: { $regex: search, $options: 'i' } },
       ];
+      
+      // Add student ID search if valid ObjectId
+      if (isValidObjectId) {
+        orConditions.push({ studentId: new ObjectId(search) });
+      }
+      
+      // Add student IDs from name search
+      if (studentIds.length > 0) {
+        orConditions.push({ studentId: { $in: studentIds } });
+      }
+      
+      query.$or = orConditions;
     }
 
     const skip = (page - 1) * limit;

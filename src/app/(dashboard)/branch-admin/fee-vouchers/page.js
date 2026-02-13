@@ -9,7 +9,8 @@ import Dropdown from '@/components/ui/dropdown';
 import Modal from '@/components/ui/modal';
 import FullPageLoader from '@/components/ui/full-page-loader';
 import ButtonLoader from '@/components/ui/button-loader';
-import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Download } from 'lucide-react';
+import Tabs, { TabPanel } from '@/components/ui/tabs';
+import { Plus, Search, DollarSign, Trash2, Eye, ChevronDown, Download, CreditCard, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiClient from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/constants/api-endpoints';
@@ -49,6 +50,7 @@ export default function FeeVouchersPage() {
     const [loading, setLoading] = useState(true);
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [isManualPaymentModalOpen, setIsManualPaymentModalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [viewingVoucher, setViewingVoucher] = useState(null);
     const [viewLoading, setViewLoading] = useState(false);
@@ -58,6 +60,19 @@ export default function FeeVouchersPage() {
     const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
     const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
     const [studentDropdownOpen, setStudentDropdownOpen] = useState(false);
+    
+    // Tabs state for Pending, Approved, Rejected
+    const [activeTab, setActiveTab] = useState('pending');
+    const [statistics, setStatistics] = useState({
+        pending: { count: 0 },
+        approved: { count: 0 },
+        rejected: { count: 0 },
+    });
+
+    const [selectedVoucherForPayment, setSelectedVoucherForPayment] = useState(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [paymentRemarks, setPaymentRemarks] = useState('');
+    const [processingPayment, setProcessingPayment] = useState(false);
 
     const [formData, setFormData] = useState({
         templateId: '',
@@ -81,7 +96,7 @@ export default function FeeVouchersPage() {
 
     useEffect(() => {
         fetchVouchers();
-    }, [search, statusFilter, monthFilter, yearFilter, pagination.page]);
+    }, [search, statusFilter, monthFilter, yearFilter, pagination.page, activeTab]);
 
     useEffect(() => {
         if (isGenerateModalOpen) {
@@ -115,7 +130,21 @@ export default function FeeVouchersPage() {
                 limit: pagination.limit,
                 search,
             };
-            if (statusFilter) params.status = statusFilter;
+            
+            // Map tabs to status values
+            const statusMap = {
+                'pending': 'pending',
+                'approved': 'paid',
+                'rejected': 'cancelled'
+            };
+            
+            // For tabs, use specific status, otherwise use the filter
+            if (activeTab && statusMap[activeTab]) {
+                params.status = statusMap[activeTab];
+            } else if (statusFilter) {
+                params.status = statusFilter;
+            }
+            
             if (monthFilter) params.month = monthFilter;
             if (yearFilter) params.year = yearFilter;
 
@@ -123,6 +152,30 @@ export default function FeeVouchersPage() {
             if (response.success) {
                 setVouchers(response.data.vouchers || []);
                 setPagination(response.data.pagination || { page: 1, limit: 10, total: 0, pages: 0 });
+                
+                // Fetch statistics
+                try {
+                    const statsResponse = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.LIST, { 
+                        limit: 1, 
+                        status: 'pending' 
+                    });
+                    const approvedResponse = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.LIST, { 
+                        limit: 1, 
+                        status: 'paid' 
+                    });
+                    const rejectedResponse = await apiClient.get(API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.LIST, { 
+                        limit: 1, 
+                        status: 'cancelled' 
+                    });
+                    
+                    setStatistics({
+                        pending: { count: statsResponse.data?.pagination?.total || 0 },
+                        approved: { count: approvedResponse.data?.pagination?.total || 0 },
+                        rejected: { count: rejectedResponse.data?.pagination?.total || 0 },
+                    });
+                } catch (statsError) {
+                    console.error('Error fetching statistics:', statsError);
+                }
             }
         } catch (error) {
             console.error('Error fetching vouchers:', error);
@@ -244,6 +297,56 @@ export default function FeeVouchersPage() {
         }
     };
 
+    const handleOpenManualPayment = (voucher) => {
+        setSelectedVoucherForPayment(voucher);
+        // Set default payment amount to remaining amount
+        const remainingAmount = voucher.remainingAmount ?? (voucher.totalAmount - voucher.paidAmount);
+        setPaymentAmount(remainingAmount.toString());
+        setPaymentRemarks('');
+        setIsManualPaymentModalOpen(true);
+    };
+
+    const handleManualPayment = async (e) => {
+        e.preventDefault();
+        
+        if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+            toast.error('Please enter a valid payment amount');
+            return;
+        }
+
+        const amount = parseFloat(paymentAmount);
+        const remainingAmount = selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount);
+        
+        if (amount > remainingAmount) {
+            toast.error('Payment amount cannot exceed remaining amount');
+            return;
+        }
+
+        setProcessingPayment(true);
+
+        try {
+            const response = await apiClient.post(
+                API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.MANUAL_PAYMENT.replace(':id', selectedVoucherForPayment._id),
+                {
+                    amount: amount,
+                    paymentMethod: 'cash',
+                    remarks: paymentRemarks,
+                    paymentDate: new Date().toISOString()
+                }
+            );
+
+            if (response.success) {
+                toast.success('Payment recorded successfully!');
+                setIsManualPaymentModalOpen(false);
+                fetchVouchers();
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to process payment');
+        } finally {
+            setProcessingPayment(false);
+        }
+    };
+
     const resetForm = () => {
         setFormData({
             templateId: '',
@@ -317,11 +420,156 @@ export default function FeeVouchersPage() {
         return <FullPageLoader message="Loading fee vouchers..." />;
     }
 
+    // VoucherTable component
+    const VoucherTable = ({ vouchers, loading, pagination, setPagination }) => {
+        if (loading && vouchers.length === 0) {
+            return (
+                <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            );
+        }
+
+        return (
+            <>
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                                <th className="text-left p-4 font-semibold text-sm">Voucher #</th>
+                                <th className="text-left p-4 font-semibold text-sm">Student</th>
+                                <th className="text-left p-4 font-semibold text-sm">Template</th>
+                                <th className="text-left p-4 font-semibold text-sm">Month/Year</th>
+                                <th className="text-left p-4 font-semibold text-sm">Due Date</th>
+                                <th className="text-left p-4 font-semibold text-sm">Amount</th>
+                                <th className="text-left p-4 font-semibold text-sm">Paid</th>
+                                <th className="text-left p-4 font-semibold text-sm">Status</th>
+                                <th className="text-left p-4 font-semibold text-sm">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {vouchers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={9} className="text-center p-8 text-gray-500">
+                                        No fee vouchers found for this category
+                                    </td>
+                                </tr>
+                            ) : (
+                                vouchers.map((voucher) => (
+                                    <tr key={voucher._id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                                        <td className="p-4 font-medium text-sm">{voucher.voucherNumber}</td>
+                                        <td className="p-4">
+                                            {(() => {
+                                                const { name, registrationNumber, rollNumber, section } = formatStudent(voucher.studentId);
+                                                return (
+                                                    <div>
+                                                        <div className="font-medium text-sm">{name}</div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="text-sm">{voucher.templateId?.name || '—'}</div>
+                                            <div className="text-xs text-gray-500">{voucher.templateId?.code || ''}</div>
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            {MONTHS.find(m => m.value === voucher.month?.toString())?.label || '—'} {voucher.year}
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            {voucher.dueDate ? new Date(voucher.dueDate).toLocaleDateString('en-PK') : '—'}
+                                        </td>
+                                        <td className="p-4 font-semibold text-sm">
+                                            PKR {voucher.totalAmount?.toLocaleString() || 0}
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            PKR {voucher.paidAmount?.toLocaleString() || 0}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(voucher.status)}`}>
+                                                {voucher.status?.charAt(0).toUpperCase() + voucher.status?.slice(1) || 'Unknown'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex gap-2">
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    title="View Details" 
+                                                    onClick={() => handleViewVoucher(voucher._id)}
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    title="Download PDF" 
+                                                    onClick={() => handleDownloadVoucher(voucher)}
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </Button>
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    title="Manual Payment" 
+                                                    onClick={() => handleOpenManualPayment(voucher)}
+                                                >
+                                                    <CreditCard className="w-4 h-4 text-green-600" />
+                                                </Button>
+                                                {voucher.status !== 'paid' && voucher.status !== 'cancelled' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleCancelVoucher(voucher._id)}
+                                                        title="Cancel Voucher"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-red-600" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4 pt-4 border-t">
+                    <div className="text-sm text-gray-600">
+                        Showing {vouchers.length} of {pagination.total} vouchers
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
+                            disabled={pagination.page === 1}
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
+                            disabled={pagination.page >= pagination.pages}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
     return (
-        <div className="p-6">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
             <Card>
                 <CardHeader className="border-b">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <CardTitle>Fee Vouchers Management</CardTitle>
                             <p className="text-sm text-gray-500 mt-1">Generate and manage fee vouchers for students</p>
@@ -333,145 +581,109 @@ export default function FeeVouchersPage() {
                     </div>
                 </CardHeader>
 
-                <CardContent>
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <Input
-                            placeholder="Search vouchers..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            icon={Search}
-                        />
-                        <Dropdown
-                            placeholder="Filter by status"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            options={STATUS_OPTIONS}
-                        />
-                        <Dropdown
-                            placeholder="Filter by month"
-                            value={monthFilter}
-                            onChange={(e) => setMonthFilter(e.target.value)}
-                            options={[{ value: '', label: 'All Months' }, ...MONTHS]}
-                        />
-                        <Input
-                            type="number"
-                            placeholder="Year"
-                            value={yearFilter}
-                            onChange={(e) => setYearFilter(e.target.value)}
-                        />
-                    </div>
-
-                    {/* Table */}
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Voucher #</TableHead>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Template</TableHead>
-                                <TableHead>Month/Year</TableHead>
-                                <TableHead>Due Date</TableHead>
-                                <TableHead>Amount</TableHead>
-                                <TableHead>Paid</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {vouchers.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} className="text-center text-gray-500">
-                                        No fee vouchers found
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                vouchers.map((voucher) => (
-                                    <TableRow key={voucher._id}>
-                                        <TableCell className="font-medium">{voucher.voucherNumber}</TableCell>
-                                        <TableCell>
-                                            {(() => {
-                                                const { name, registrationNumber, rollNumber, section } = formatStudent(voucher.studentId);
-                                                return (
-                                                    <div>
-                                                        <div className="font-medium">{name}</div>
-                                                        <div className="text-xs text-gray-500">
-                                                            Reg: {registrationNumber} | Roll: {rollNumber} | Sec: {section}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm">{voucher.templateId?.name}</div>
-                                            <div className="text-xs text-gray-500">{voucher.templateId?.code}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {MONTHS.find(m => m.value === voucher.month.toString())?.label} {voucher.year}
-                                        </TableCell>
-                                        <TableCell>
-                                            {new Date(voucher.dueDate).toLocaleDateString('en-PK')}
-                                        </TableCell>
-                                        <TableCell className="font-semibold">
-                                            PKR {voucher.totalAmount.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            PKR {voucher.paidAmount.toLocaleString()}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadge(voucher.status)}`}>
-                                                {voucher.status.charAt(0).toUpperCase() + voucher.status.slice(1)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-2">
-                                                <Button variant="ghost" size="icon-sm" title="View Details" onClick={() => handleViewVoucher(voucher._id)}>
-                                                    <Eye className="w-4 h-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon-sm" title="Download PDF" onClick={() => handleDownloadVoucher(voucher)}>
-                                                    <Download className="w-4 h-4" />
-                                                </Button>
-                                                {voucher.status !== 'paid' && voucher.status !== 'cancelled' && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon-sm"
-                                                        onClick={() => handleCancelVoucher(voucher._id)}
-                                                        title="Cancel Voucher"
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-red-600" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                <CardContent className="space-y-4">
+                    {/* Search and Filters Row */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Search by voucher number, student name, or registration..."
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPagination(prev => ({ ...prev, page: 1 }));
+                                }}
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            {search && (
+                                <button
+                                    onClick={() => {
+                                        setSearch('');
+                                        setPagination(prev => ({ ...prev, page: 1 }));
+                                    }}
+                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    ×
+                                </button>
                             )}
-                        </TableBody>
-                    </Table>
-
-                    {/* Pagination */}
-                    <div className="flex justify-between items-center mt-4">
-                        <div className="text-sm text-gray-600">
-                            Showing {vouchers.length} of {pagination.total} vouchers
                         </div>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-                                disabled={pagination.page === 1}
-                            >
-                                Previous
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                                disabled={pagination.page >= pagination.pages}
-                            >
-                                Next
-                            </Button>
-                        </div>
+                        
+                        {/* Month Filter */}
+                        <select
+                            value={monthFilter}
+                            onChange={(e) => {
+                                setMonthFilter(e.target.value);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All Months</option>
+                            {MONTHS.map(month => (
+                                <option key={month.value} value={month.value}>{month.label}</option>
+                            ))}
+                        </select>
+                        
+                        {/* Year Filter */}
+                        <select
+                            value={yearFilter}
+                            onChange={(e) => {
+                                setYearFilter(e.target.value);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">All Years</option>
+                            {[2024, 2025, 2026, 2027, 2028].map(year => (
+                                <option key={year} value={year.toString()}>{year}</option>
+                            ))}
+                        </select>
+                        
+                        {/* Refresh Button */}
+                        <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => fetchVouchers()}
+                        >
+                            <RefreshCw className="w-4 h-4 mr-1" />
+                            Refresh
+                        </Button>
                     </div>
+
+                    {/* Tabs */}
+                    <Tabs
+                        tabs={[
+                            {
+                                id: 'pending',
+                                label: `Pending (${statistics.pending.count})`,
+                                icon: <Clock className="w-4 h-4" />
+                            },
+                            {
+                                id: 'approved',
+                                label: `Approved (${statistics.approved.count})`,
+                                icon: <CheckCircle className="w-4 h-4" />
+                            },
+                            {
+                                id: 'rejected',
+                                label: `Rejected (${statistics.rejected.count})`,
+                                icon: <XCircle className="w-4 h-4" />
+                            }
+                        ]}
+                        activeTab={activeTab}
+                        onChange={setActiveTab}
+                    />
+
+                    <TabPanel value="pending" activeTab={activeTab}>
+                        <VoucherTable vouchers={vouchers} loading={loading} pagination={pagination} setPagination={setPagination} />
+                    </TabPanel>
+
+                    <TabPanel value="approved" activeTab={activeTab}>
+                        <VoucherTable vouchers={vouchers} loading={loading} pagination={pagination} setPagination={setPagination} />
+                    </TabPanel>
+
+                    <TabPanel value="rejected" activeTab={activeTab}>
+                        <VoucherTable vouchers={vouchers} loading={loading} pagination={pagination} setPagination={setPagination} />
+                    </TabPanel>
                 </CardContent>
             </Card>
 
@@ -816,6 +1028,102 @@ export default function FeeVouchersPage() {
                     )}
                 </form>
             </Modal>
+
+            {/* Manual Payment Modal */}
+            <Modal
+                open={isManualPaymentModalOpen}
+                onClose={() => setIsManualPaymentModalOpen(false)}
+                title="Record Manual Payment"
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={() => setIsManualPaymentModalOpen(false)} disabled={processingPayment}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleManualPayment} disabled={processingPayment}>
+                            {processingPayment ? <ButtonLoader /> : 'Record Payment'}
+                        </Button>
+                    </div>
+                }
+            >
+                {selectedVoucherForPayment && (
+                    <div className="space-y-4">
+                        {/* Voucher Info */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-blue-600">Voucher Number</p>
+                                    <p className="font-semibold text-blue-900">{selectedVoucherForPayment.voucherNumber}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-blue-600">Student</p>
+                                    <p className="font-semibold text-blue-900">
+                                        {selectedVoucherForPayment.studentId?.fullName || 
+                                         `${selectedVoucherForPayment.studentId?.firstName || ''} ${selectedVoucherForPayment.studentId?.lastName || ''}`}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Payment Details */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-500">Total Amount</p>
+                                <p className="font-semibold">PKR {selectedVoucherForPayment.totalAmount?.toLocaleString() || 0}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-500">Already Paid</p>
+                                <p className="font-semibold text-green-600">PKR {selectedVoucherForPayment.paidAmount?.toLocaleString() || 0}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-3">
+                                <p className="text-xs text-gray-500">Remaining Amount</p>
+                                <p className="font-semibold text-red-600">PKR {((selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount)) || 0).toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        {/* Payment Form */}
+                        <form onSubmit={handleManualPayment} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Payment Amount *</label>
+                                <Input
+                                    type="number"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    placeholder="Enter payment amount"
+                                    min="1"
+                                    max={(selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount))}
+                                    required
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Max: PKR {((selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount)) || 0).toLocaleString()}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Payment Method</label>
+                                <select
+                                    className="w-full px-3 py-2 border rounded-lg bg-gray-50"
+                                    defaultValue="cash"
+                                    disabled
+                                >
+                                    <option value="cash">Cash</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Remarks (Optional)</label>
+                                <textarea
+                                    value={paymentRemarks}
+                                    onChange={(e) => setPaymentRemarks(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg"
+                                    rows="2"
+                                    placeholder="Any additional notes..."
+                                />
+                            </div>
+                        </form>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }
+

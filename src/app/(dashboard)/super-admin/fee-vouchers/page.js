@@ -80,8 +80,11 @@ export default function SuperAdminFeeVouchersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [viewingVoucher, setViewingVoucher] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+  const [selectedVoucherForPayment, setSelectedVoucherForPayment] = useState(null);
   const [selectedVoucherId, setSelectedVoucherId] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentRemarks, setPaymentRemarks] = useState('');
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
@@ -484,6 +487,12 @@ export default function SuperAdminFeeVouchersPage() {
     setIsManualPaymentModalOpen(true);
   };
 
+  const handleOpenManualPayment = (voucher) => {
+    setSelectedVoucherForPayment(voucher);
+    setPaymentAmount(voucher.totalAmount.toString());
+    setIsManualPaymentModalOpen(true);
+  };
+
   const confirmManualPayment = async () => {
     if (!selectedVoucherId || !paymentAmount) {
       toast.error('Please enter the payment amount');
@@ -792,7 +801,7 @@ export default function SuperAdminFeeVouchersPage() {
                           <Button variant="ghost" size="icon-sm" title="Download PDF" onClick={() => handleDownloadVoucher(voucher)}><Download className="w-4 h-4" /></Button>
                           {voucher.status !== 'paid' && voucher.status !== 'cancelled' && (
                             <>
-                              <Button variant="ghost" size="icon-sm" title="Manual Cash Payment" onClick={() => handleManualPayment(voucher._id)}><DollarSign className="w-4 h-4 text-green-600" /></Button>
+                          <Button variant="ghost" size="icon-sm" title="Manual Payment" onClick={() => handleOpenManualPayment(voucher)}><CreditCard className="w-4 h-4 text-green-600" /></Button>
                               <Button variant="ghost" size="icon-sm" onClick={() => handleCancelVoucher(voucher._id)} title="Cancel Voucher"><Trash2 className="w-4 h-4 text-red-600" /></Button>
                             </>
                           )}
