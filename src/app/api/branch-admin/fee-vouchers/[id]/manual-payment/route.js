@@ -9,11 +9,13 @@ import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 import { getParentEmailTemplate } from '@/backend/templates/parentEmail';
 
 // POST /api/branch-admin/fee-vouchers/:id/manual-payment - Record manual payment
-export const POST = withAuth(async (request, user, userDoc, { params: routeParams }) => {
+export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    const { id } = routeParams;
+    // In Next.js 16, params is a Promise
+    const { id } = await context.params || {};
+    
     const body = await request.json();
     const { amount, paymentMethod, remarks, paymentDate } = body;
 
@@ -31,7 +33,7 @@ export const POST = withAuth(async (request, user, userDoc, { params: routeParam
       .populate('templateId', 'name code')
       .populate('classId', 'name code')
       .lean();
-
+      
     if (!voucher) {
       return NextResponse.json(
         { success: false, message: 'Voucher not found' },
@@ -54,13 +56,14 @@ export const POST = withAuth(async (request, user, userDoc, { params: routeParam
       );
     }
 
-    // Calculate remaining amount
+    // Calculate remaining amount with proper rounding
     const paidAmount = voucher.paidAmount || 0;
     const totalAmount = voucher.totalAmount || 0;
-    const remainingAmount = (voucher.remainingAmount ?? (totalAmount - paidAmount)) || 0;
+    const remainingAmount = Math.round((voucher.remainingAmount ?? (totalAmount - paidAmount)) * 100) / 100;
 
-    // Validate payment amount doesn't exceed remaining
-    if (amount > remainingAmount) {
+    // Validate payment amount doesn't exceed remaining (with small tolerance for floating point)
+    const paymentAmount = Math.round(amount * 100) / 100;
+    if (paymentAmount - remainingAmount > 0.01) {
       return NextResponse.json(
         { success: false, message: `Payment amount exceeds remaining amount of PKR ${remainingAmount}` },
         { status: 400 }
@@ -68,9 +71,11 @@ export const POST = withAuth(async (request, user, userDoc, { params: routeParam
     }
 
     // Calculate new paid amount and status
-    const newPaidAmount = paidAmount + amount;
+    const newPaidAmount = Math.round((paidAmount + paymentAmount) * 100) / 100;
+    const newRemainingAmount = Math.round((totalAmount - newPaidAmount) * 100) / 100;
     let newStatus = 'partial';
-    if (newPaidAmount >= totalAmount) {
+    // Mark as paid if remaining amount is 0 or very small (due to floating point)
+    if (newRemainingAmount <= 0.01) {
       newStatus = 'paid';
     }
 
@@ -80,17 +85,18 @@ export const POST = withAuth(async (request, user, userDoc, { params: routeParam
       {
         $set: {
           paidAmount: newPaidAmount,
-          remainingAmount: totalAmount - newPaidAmount,
+          remainingAmount: newRemainingAmount <= 0.01 ? 0 : newRemainingAmount,
           status: newStatus,
         },
         $push: {
-          payments: {
-            amount: amount,
-            paymentMethod: paymentMethod || 'cash',
+          paymentHistory: {
+            amount: paymentAmount,
             paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
-            remarks: remarks || '',
-            recordedBy: user.userId,
+            paymentMethod: paymentMethod || 'cash',
             transactionId: `MANUAL-${Date.now()}`,
+            status: 'approved',
+            receivedBy: user.userId,
+            remarks: remarks || '',
           },
         },
       },
@@ -177,9 +183,21 @@ export const POST = withAuth(async (request, user, userDoc, { params: routeParam
     });
   } catch (error) {
     console.error('Error recording manual payment:', error);
+    
+    // Handle different error types
+    let errorMessage = 'Failed to record payment';
+    let errorStatus = 500;
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      errorMessage = error.message || errorMessage;
+      errorStatus = error.status || errorStatus;
+    }
+    
     return NextResponse.json(
-      { success: false, message: error.message || 'Failed to record payment' },
-      { status: 500 }
+      { success: false, message: errorMessage },
+      { status: errorStatus }
     );
   }
 }, [requireRole(['branch_admin'])]);

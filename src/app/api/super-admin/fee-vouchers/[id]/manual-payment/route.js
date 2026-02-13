@@ -9,11 +9,12 @@ import { getStudentEmailTemplate } from '@/backend/templates/studentEmail';
 import { getParentEmailTemplate } from '@/backend/templates/parentEmail';
 
 // POST /api/super-admin/fee-vouchers/:id/manual-payment - Record manual payment (for super admin - cross branch)
-export const POST = withAuth(async (request, user, userDoc, { params: routeParams }) => {
+export const POST = withAuth(async (request, user, userDoc, context) => {
   try {
     await connectDB();
 
-    const { id } = routeParams;
+    // In Next.js 16, params is a Promise
+    const { id } = await context.params || {};
     const body = await request.json();
     const { amount, paymentMethod, remarks, paymentDate } = body;
 

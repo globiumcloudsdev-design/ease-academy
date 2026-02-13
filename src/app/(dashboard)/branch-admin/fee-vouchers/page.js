@@ -297,10 +297,16 @@ export default function FeeVouchersPage() {
         }
     };
 
+    // Helper function to calculate remaining amount with proper rounding
+    const calculateRemainingAmount = (voucher) => {
+        const remaining = voucher.remainingAmount ?? (voucher.totalAmount - voucher.paidAmount);
+        return Math.round(remaining * 100) / 100;
+    };
+
     const handleOpenManualPayment = (voucher) => {
         setSelectedVoucherForPayment(voucher);
-        // Set default payment amount to remaining amount
-        const remainingAmount = voucher.remainingAmount ?? (voucher.totalAmount - voucher.paidAmount);
+        // Set default payment amount to remaining amount (properly rounded)
+        const remainingAmount = calculateRemainingAmount(voucher);
         setPaymentAmount(remainingAmount.toString());
         setPaymentRemarks('');
         setIsManualPaymentModalOpen(true);
@@ -314,19 +320,32 @@ export default function FeeVouchersPage() {
             return;
         }
 
-        const amount = parseFloat(paymentAmount);
-        const remainingAmount = selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount);
+        const amount = Math.round(parseFloat(paymentAmount) * 100) / 100;
+        const remainingAmount = calculateRemainingAmount(selectedVoucherForPayment);
         
-        if (amount > remainingAmount) {
-            toast.error('Payment amount cannot exceed remaining amount');
+        if (!paymentAmount || amount <= 0) {
+            toast.error('Please enter a valid payment amount');
+            return;
+        }
+        
+        // Check if amount exceeds remaining (with small tolerance)
+        if (amount - remainingAmount > 0.01) {
+            toast.error(`Payment amount cannot exceed remaining amount of PKR ${remainingAmount.toFixed(2)}`);
             return;
         }
 
         setProcessingPayment(true);
 
+        const voucherId = selectedVoucherForPayment?._id;
+        if (!voucherId) {
+            toast.error('Voucher ID is missing. Please refresh and try again.');
+            setProcessingPayment(false);
+            return;
+        }
+        
         try {
             const response = await apiClient.post(
-                API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.MANUAL_PAYMENT.replace(':id', selectedVoucherForPayment._id),
+                API_ENDPOINTS.BRANCH_ADMIN.FEE_VOUCHERS.MANUAL_PAYMENT.replace(':id', voucherId),
                 {
                     amount: amount,
                     paymentMethod: 'cash',
@@ -341,7 +360,9 @@ export default function FeeVouchersPage() {
                 fetchVouchers();
             }
         } catch (error) {
-            toast.error(error.message || 'Failed to process payment');
+            console.error('Payment error:', error);
+            const errorMessage = error?.message || error?.data?.message || 'Failed to process payment';
+            toast.error(errorMessage);
         } finally {
             setProcessingPayment(false);
         }
@@ -1076,7 +1097,10 @@ export default function FeeVouchersPage() {
                             </div>
                             <div className="bg-gray-50 rounded-lg p-3">
                                 <p className="text-xs text-gray-500">Remaining Amount</p>
-                                <p className="font-semibold text-red-600">PKR {((selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount)) || 0).toLocaleString()}</p>
+                                <p className="font-semibold text-red-600">PKR {(() => {
+                                    const rem = calculateRemainingAmount(selectedVoucherForPayment);
+                                    return rem.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                })()}</p>
                             </div>
                         </div>
 
@@ -1090,11 +1114,14 @@ export default function FeeVouchersPage() {
                                     onChange={(e) => setPaymentAmount(e.target.value)}
                                     placeholder="Enter payment amount"
                                     min="1"
-                                    max={(selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount))}
+                                    max={calculateRemainingAmount(selectedVoucherForPayment)}
                                     required
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
-                                    Max: PKR {((selectedVoucherForPayment.remainingAmount ?? (selectedVoucherForPayment.totalAmount - selectedVoucherForPayment.paidAmount)) || 0).toLocaleString()}
+                                    Max: PKR {(() => {
+                                        const rem = calculateRemainingAmount(selectedVoucherForPayment);
+                                        return rem.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                    })()}
                                 </p>
                             </div>
 
