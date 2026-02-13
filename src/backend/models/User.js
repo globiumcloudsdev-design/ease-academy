@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// Import Branch model to ensure it's registered
+import Branch from './Branch';
+
 const userSchema = new mongoose.Schema(
   {
     // ==================== COMMON FIELDS (ALL ROLES) ====================
