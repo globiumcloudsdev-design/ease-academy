@@ -14,6 +14,7 @@ async function summaryHandler(request, user, userDoc) {
 
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const branchId = searchParams.get('branchId');
     const month = parseInt(searchParams.get('month'));
     const year = parseInt(searchParams.get('year'));
 
@@ -27,8 +28,91 @@ async function summaryHandler(request, user, userDoc) {
       );
     }
 
-    // Determine which user's summary to fetch
-    let targetUserId = userId || (currentUser._id ? currentUser._id.toString() : null);
+    const currentUserId = currentUser._id ? currentUser._id.toString() : null;
+
+    // For super_admin with branch filter, get summary for all employees in branch
+    if (currentUser.role === 'super_admin' && branchId && branchId !== 'all' && !userId) {
+      // Import User model
+      const User = (await import('@/backend/models/User')).default;
+      
+      // Get all employees in the branch (teachers and staff)
+      const employees = await User.find({
+        role: { $in: ['teacher', 'staff'] },
+        branchId: branchId,
+        isActive: true,
+      }).select('_id');
+
+      const employeeIds = employees.map(emp => emp._id);
+
+      if (employeeIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          data: {
+            totalEmployees: 0,
+            presentCount: 0,
+            absentCount: 0,
+            lateCount: 0,
+            leaveCount: 0,
+            attendanceRate: 0,
+            totalWorkingHours: 0,
+            averageWorkingHours: 0,
+            workingDays: EmployeeAttendance.getWorkingDaysCount(month, year),
+            month,
+            year,
+          },
+        });
+      }
+
+      // Get date range for the month
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59);
+
+      // Get all attendance records for employees in this branch for the month
+      const attendanceRecords = await EmployeeAttendance.find({
+        userId: { $in: employeeIds },
+        date: { $gte: startDate, $lte: endDate },
+      });
+
+      // Calculate working days
+      const workingDays = EmployeeAttendance.getWorkingDaysCount(month, year);
+
+      // Get unique employees who have attendance records
+      const employeesWithRecords = new Set(attendanceRecords.map(r => r.userId.toString()));
+
+      // Calculate stats
+      const presentCount = attendanceRecords.filter(r => r.status === 'present').length;
+      const absentCount = attendanceRecords.filter(r => r.status === 'absent').length;
+      const lateCount = attendanceRecords.filter(r => r.status === 'late').length;
+      const leaveCount = attendanceRecords.filter(r => r.status === 'leave').length;
+      const halfDayCount = attendanceRecords.filter(r => r.status === 'half-day').length;
+
+      const totalWorkingHours = attendanceRecords.reduce((sum, r) => sum + (r.workingHours || 0), 0);
+      const totalEmployees = employees.length;
+
+      const attendancePercentage = totalEmployees > 0 && workingDays > 0
+        ? ((presentCount + (halfDayCount * 0.5)) / (totalEmployees * workingDays) * 100).toFixed(2)
+        : 0;
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          totalEmployees,
+          presentCount,
+          absentCount,
+          lateCount,
+          leaveCount: leaveCount + halfDayCount,
+          attendanceRate: parseFloat(attendancePercentage) || 0,
+          totalWorkingHours: parseFloat(totalWorkingHours.toFixed(2)),
+          averageWorkingHours: totalEmployees > 0 ? parseFloat((totalWorkingHours / totalEmployees).toFixed(2)) : 0,
+          workingDays,
+          month,
+          year,
+        },
+      });
+    }
+
+    // For single user summary (existing behavior)
+    let targetUserId = userId || currentUserId;
 
     if (!targetUserId) {
       return NextResponse.json(
@@ -38,7 +122,6 @@ async function summaryHandler(request, user, userDoc) {
     }
 
     // Permission check
-    const currentUserId = currentUser._id ? currentUser._id.toString() : null;
     if (userId && currentUserId && userId !== currentUserId) {
       if (currentUser.role === 'teacher' || currentUser.role === 'student') {
         return NextResponse.json(
