@@ -1,3 +1,4 @@
+//src/components/Sidebar.jsx
 "use client";
 
 import Link from "next/link";
@@ -51,11 +52,11 @@ const ROLE_MENUS = {
           path: "/super-admin/branch-management/branches",
           icon: FolderOpen,
         },
-        {
-          name: "Library",
-          path: "/super-admin/library",
-          icon: Library,
-        }
+        // {
+        //   name: "Library",
+        //   path: "/super-admin/library",
+        //   icon: Library,
+        // }
       ],
     },
     {

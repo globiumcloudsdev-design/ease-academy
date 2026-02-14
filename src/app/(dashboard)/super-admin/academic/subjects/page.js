@@ -1,3 +1,4 @@
+// src/app/%28dashboard%29/super-admin/academic/subjects/page.js
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -99,8 +100,8 @@ export default function SubjectsPage() {
   const fetchSectionStudents = async (classId, subjectId, section) => {
     try {
       const params = new URLSearchParams({ classId, limit: '1', page: '1' });
-      if (section) params.append('section', section);
-      const res = await apiClient.get(`/api/super-admin/students?${params}`);
+      if (section && typeof section === 'string' && section.trim()) params.append('section', section);
+      const res = await apiClient.get(`/api/super-admin/users/students?${params}`);
       if (res?.success) {
         const total = res.pagination?.total ?? 0;
         setSectionCount((s) => ({ ...s, [subjectId]: total }));
